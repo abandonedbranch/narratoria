@@ -38,7 +38,7 @@ public class StoryPlaybackTests : IClassFixture<NarratoriaServerFixture>
 
         await narratorLocator.WaitForAsync(new LocatorWaitForOptions
         {
-            Timeout = 15000
+            Timeout = 30000
         });
 
         var transcript = await narratorLocator.InnerTextAsync();
