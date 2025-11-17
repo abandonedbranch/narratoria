@@ -2,6 +2,15 @@
 
 The following backlog items use Scrum-style acceptance criteria to clarify expected behavior for the MVP and near-term roadmap. See `CONTRIBUTORS.md` for contribution rules and workflow expectations.
 
+## Playwright test runner availability
+- **Status**: Blocked
+- **Assignee**: Unassigned
+- **As a** developer, **I want** the Playwright test suite to run in the repo so we can catch regressions automatically.
+- **Acceptance criteria:**
+  - Install or document the required .NET SDK so `dotnet test tests/NarratoriaClient.PlaywrightTests` executes (current runs fail because `dotnet` is unavailable in the environment).
+  - Ensure Playwright browser dependencies are installed as part of the test workflow and can run headless in CI/dev containers.
+  - Provide a repeatable command (including any `playwright install` steps) that passes locally and in automation without manual setup.
+
 ## Chat session as tabs
 - **Status**: Proposed
 - **Assignee**: Unassigned
