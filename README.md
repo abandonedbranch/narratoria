@@ -8,6 +8,12 @@
 ## Developer Prereqs
 - .NET 9 SDK (app and Playwright tests target `net9.0`).
 
+## Getting Started
+- Install Playwright browsers (first run): `dotnet build tests/NarratoriaClient.PlaywrightTests && ./tests/NarratoriaClient.PlaywrightTests/bin/Debug/net9.0/playwright.sh install` (or `pwsh -File .../playwright.ps1`).
+- Run the app: `dotnet run --project NarratoriaClient/NarratoriaClient.csproj --urls http://localhost:5000`
+- Run Playwright tests headless: `DOTNET_ENVIRONMENT=Testing dotnet test tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj`
+- Watch Playwright tests headful with slow-mo: `PLAYWRIGHT_HEADFUL=true PLAYWRIGHT_SLOWMO_MS=250 DOTNET_ENVIRONMENT=Testing dotnet test tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj`
+
 ## Core Goals
 - **Solo & Multiplayer Sessions**: Support single-player adventures plus optional peer connections so multiple clients share a story instance.
 - **Narrator Pipeline**: Allow selection/configuration of models (OpenAI API or compatible) to drive the GM persona, including prompt templates and tuning.
@@ -55,9 +61,5 @@ See `SPEC.md` for Scrum-style acceptance criteria that track future requirements
 ### About SPEC.md
 `SPEC.md` maintains the backlog in a Scrum-style format with acceptance criteria, status, assignee, and any supporting discussion. Developers must keep it updated when starting work (status/assignee) and when finishing (technical summary + required Playwright test). Treat it as the authoritative backlog for upcoming and in-progress work.
 
-## Next Steps for Discussion
-- Decide on Blazor hosting model and multiplayer architecture.
-- Define abstraction layer for API providers and model metadata.
-- Outline persistence schema for `localStorage` (keys, versioning, encryption strategy).
-- Identify testing strategy for prompt flows (record/replay, mock providers).
-- Create initial UI wireframes to guide component structure.
+## License
+GPL-3.0-or-later. See `LICENSE`.
