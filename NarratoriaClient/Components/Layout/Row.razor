@@ -1,0 +1,50 @@
+<div class="grid-row" style="@BuildTemplateStyle()">
+    @if (ItemsToRender is { Count: > 0 })
+    {
+        foreach (var item in ItemsToRender)
+        {
+            <Column>
+                @ItemTemplate!(item)
+            </Column>
+        }
+    }
+    else
+    {
+        @ChildContent
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<object?>? Items { get; set; }
+    [Parameter] public RenderFragment<object?>? ItemTemplate { get; set; }
+    [Parameter] public int? Columns { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private IReadOnlyList<object?>? ItemsToRender { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Items is not null)
+        {
+            ItemsToRender = Items as IReadOnlyList<object?> ?? Items.Cast<object?>().ToList();
+            if (ItemTemplate is null)
+            {
+                throw new InvalidOperationException("Provide ItemTemplate when supplying Items to Row.");
+            }
+        }
+        else
+        {
+            ItemsToRender = null;
+        }
+    }
+
+    private string BuildTemplateStyle()
+    {
+        var columnCount = Columns ?? ItemsToRender?.Count;
+        var template = columnCount.HasValue && columnCount.Value > 0
+            ? $"repeat({columnCount.Value}, minmax(var(--grid-min-column-width, 12rem), 1fr))"
+            : "repeat(auto-fit, minmax(var(--grid-min-column-width, 12rem), 1fr))";
+
+        return $"grid-template-columns:{template}";
+    }
+}

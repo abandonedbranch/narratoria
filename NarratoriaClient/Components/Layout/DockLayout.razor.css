@@ -1,0 +1,101 @@
+.dock-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    width: 100%;
+    gap: var(--dock-gap, 1.5rem);
+    box-sizing: border-box;
+    position: relative;
+}
+
+.dock-strip {
+    display: flex;
+    gap: var(--dock-gap, 1.5rem);
+    flex: 0 0 auto;
+    min-height: 0;
+    z-index: 2;
+}
+
+.dock-strip-top,
+.dock-strip-bottom {
+    align-items: stretch;
+    padding: 0;
+}
+
+.dock-strip-top {
+    position: sticky;
+    top: 0;
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.dock-strip-bottom {
+    position: sticky;
+    bottom: 0;
+    flex-direction: row;
+    align-items: flex-end;
+}
+
+.dock-cluster {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dock-gap, 1.5rem);
+    min-width: 0;
+}
+
+.dock-cluster-top,
+.dock-cluster-bottom {
+    flex: 1 1 auto;
+}
+
+.dock-cluster-top-left,
+.dock-cluster-top-right,
+.dock-cluster-bottom-left,
+.dock-cluster-bottom-right {
+    flex: 0 0 auto;
+}
+
+.dock-cluster-top-right,
+.dock-cluster-bottom-right {
+    margin-left: auto;
+}
+
+.dock-middle {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: var(--dock-gap, 1.5rem);
+    align-items: stretch;
+}
+
+.dock-strip-left,
+.dock-strip-right {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dock-gap, 1.5rem);
+    flex: 0 0 auto;
+    min-height: 0;
+    position: sticky;
+    top: var(--dock-gap, 1.5rem);
+    max-height: calc(100vh - 2 * var(--dock-gap, 1.5rem));
+    overflow: auto;
+}
+
+.dock-center {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: var(--dock-gap, 1.5rem);
+}
+
+.dock-section {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+}
+
+.dock-section-center {
+    flex: 1 1 auto;
+}

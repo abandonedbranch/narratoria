@@ -1,0 +1,90 @@
+.system-prompt-editor {
+    padding: 1.5rem;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.75rem;
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
+}
+
+.system-prompt-editor label {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.35rem;
+}
+
+.system-prompt-editor input,
+.system-prompt-editor select,
+.system-prompt-editor textarea {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.system-prompt-editor textarea {
+    resize: vertical;
+    min-height: 12rem;
+    line-height: 1.5;
+}
+
+.system-prompt-editor button[type="submit"] {
+    padding: 0.65rem 1.4rem;
+    border-radius: 0.5rem;
+    border: none;
+    background-color: #0f172a;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.system-prompt-editor button[type="submit"]:hover {
+    background-color: #1e293b;
+}
+
+.system-prompt-editor .label-cell {
+    display: flex;
+    align-items: center;
+}
+
+.system-prompt-editor select {
+    background-color: #fff;
+}
+
+.prompt-section {
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+    background-color: #f8fafc;
+}
+
+.prompt-section header {
+    margin-bottom: 0.85rem;
+}
+
+.prompt-section h3 {
+    margin: 0;
+}
+
+.prompt-section p {
+    margin: 0.35rem 0 0;
+    color: #475569;
+}
+
+.prompt-section--system {
+    background-color: #fff7ed;
+    border-color: #fed7aa;
+}
+
+.system-warning {
+    color: #b45309;
+    margin-top: 0.25rem;
+    font-size: 0.95rem;
+}
+
+.system-prompt-editor .actions {
+    display: flex;
+    justify-content: flex-end;
+}

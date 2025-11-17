@@ -1,0 +1,22 @@
+<div class="grid" style="@BuildStyle()">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string RowGap { get; set; } = "1.5rem";
+    [Parameter] public string ColumnGap { get; set; } = "1rem";
+    [Parameter] public string MinColumnWidth { get; set; } = "12rem";
+    [Parameter] public string MinRowHeight { get; set; } = "auto";
+
+    private string BuildStyle()
+    {
+        return string.Join(';', new[]
+        {
+            $"--grid-row-gap:{RowGap}",
+            $"--grid-column-gap:{ColumnGap}",
+            $"--grid-min-column-width:{MinColumnWidth}",
+            $"--grid-min-row-height:{MinRowHeight}"
+        });
+    }
+}

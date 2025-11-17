@@ -1,0 +1,28 @@
+@implements IChatCommandComponent
+
+<section class="help-command">
+    <h3>Available commands</h3>
+    <ul class="help-command__list">
+        @foreach (var command in _commands)
+        {
+            <li class="help-command__item">
+                <span class="help-command__token">@($"@{command.Token}")</span>
+                <span class="help-command__name">@command.DisplayName</span>
+                <p class="help-command__description">@command.Description</p>
+            </li>
+        }
+    </ul>
+</section>
+
+@code {
+    private IReadOnlyList<ChatCommandRegistry.ChatCommandDescriptor> _commands = System.Array.Empty<ChatCommandRegistry.ChatCommandDescriptor>();
+
+    public string CommandToken => "help";
+    public string DisplayName => "Help";
+    public string Description => "List every available command and what it renders.";
+
+    protected override void OnInitialized()
+    {
+        _commands = ChatCommandRegistry.GetCommandDescriptors();
+    }
+}

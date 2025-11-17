@@ -1,0 +1,219 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+@implements IChatCommandComponent
+@implements IDisposable
+
+<section class="persona-manager">
+    <header class="persona-header">
+        <div>
+            <h2>Your Personas</h2>
+            <p>Create alternate characters to drive different play styles.</p>
+        </div>
+        <button type="button" class="add" @onclick="AddPersona" disabled="@_isBusy">Add Persona</button>
+    </header>
+
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <p class="persona-status">@_statusMessage</p>
+    }
+
+    @if (_personas.Count == 0)
+    {
+        <p class="empty-state">No personas yet. Add one to get started.</p>
+    }
+    else
+    {
+        <ul class="persona-list">
+            @for (var index = 0; index < _personas.Count; index++)
+            {
+                var persona = _personas[index];
+                <li class="persona-item">
+                    <EditForm Model="persona" OnValidSubmit="@(() => SavePersonaAsync(index))">
+                        <Grid RowGap="0.75rem" ColumnGap="0.75rem" MinColumnWidth="12rem">
+                            <Row Columns="2">
+                                <Column class="label-cell">
+                                    <label for="@($"name-{index}")">Name</label>
+                                </Column>
+                                <Column>
+                                    <InputText id="@($"name-{index}")" @bind-Value="persona.Name" />
+                                </Column>
+                            </Row>
+
+                            <Row Columns="2">
+                                <Column class="label-cell">
+                                    <label for="@($"concept-{index}")">Concept</label>
+                                </Column>
+                                <Column>
+                                    <InputText id="@($"concept-{index}")" @bind-Value="persona.Concept" />
+                                </Column>
+                            </Row>
+
+                            <Row>
+                                <Column ColumnSpan="2">
+                                    <label for="@($"backstory-{index}")">Backstory</label>
+                                </Column>
+                            </Row>
+                            <Row>
+                                <Column ColumnSpan="2">
+                                    <InputTextArea id="@($"backstory-{index}")"
+                                                   @bind-Value="persona.Backstory"
+                                                   rows="6" />
+                                </Column>
+                            </Row>
+
+                            <Row>
+                                <Column ColumnSpan="2" Class="item-actions">
+                                    <button type="submit" disabled="@_isBusy">Save</button>
+                                    <button type="button"
+                                            class="secondary"
+                                            disabled="@_isBusy"
+                                            @onclick="() => RemovePersonaAsync(index)">
+                                        Remove
+                                    </button>
+                                </Column>
+                            </Row>
+                        </Grid>
+                    </EditForm>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    [Inject] private IAppDataService AppData { get; set; } = default!;
+
+    private readonly List<PersonaModel> _personas = new();
+    private bool _isBusy;
+    private string? _statusMessage;
+
+    public string CommandToken => "personas";
+    public string DisplayName => "Persona Manager";
+    public string Description => "Create, edit, and organize narrator personas.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppData.PersonasChanged += HandlePersonasChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var personas = await AppData.GetPersonasAsync();
+        _personas.Clear();
+        _personas.AddRange(personas.Select(PersonaModel.FromProfile));
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SavePersonaAsync(int index)
+    {
+        if (_isBusy || index < 0 || index >= _personas.Count)
+        {
+            return;
+        }
+
+        var persona = _personas[index];
+        if (string.IsNullOrWhiteSpace(persona.Name))
+        {
+            _statusMessage = "Personas need a name before they can be saved.";
+            return;
+        }
+
+        _isBusy = true;
+        _statusMessage = null;
+
+        try
+        {
+            var payload = new PersonaProfile
+            {
+                Id = persona.Id,
+                Name = persona.Name.Trim(),
+                Concept = persona.Concept.Trim(),
+                Backstory = persona.Backstory.Trim()
+            };
+
+            var saved = await AppData.UpsertPersonaAsync(payload);
+            _personas[index] = PersonaModel.FromProfile(saved);
+            _statusMessage = "Persona saved.";
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Unable to save persona. {ex.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private void AddPersona()
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _personas.Add(PersonaModel.CreateNew());
+        _statusMessage = null;
+    }
+
+    private async Task RemovePersonaAsync(int index)
+    {
+        if (_isBusy || index < 0 || index >= _personas.Count)
+        {
+            return;
+        }
+
+        var persona = _personas[index];
+        _isBusy = true;
+        _statusMessage = null;
+
+        try
+        {
+            await AppData.DeletePersonaAsync(persona.Id);
+            _personas.RemoveAt(index);
+            _statusMessage = "Persona removed.";
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Unable to remove persona. {ex.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private void HandlePersonasChanged(object? sender, IReadOnlyList<PersonaProfile> personas)
+    {
+        _personas.Clear();
+        _personas.AddRange(personas.Select(PersonaModel.FromProfile));
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AppData.PersonasChanged -= HandlePersonasChanged;
+    }
+
+    private sealed class PersonaModel
+    {
+        public string Id { get; init; } = Guid.NewGuid().ToString("N");
+        public string Name { get; set; } = string.Empty;
+        public string Concept { get; set; } = string.Empty;
+        public string Backstory { get; set; } = string.Empty;
+
+        public static PersonaModel CreateNew() => new();
+
+        public static PersonaModel FromProfile(PersonaProfile profile)
+        {
+            return new PersonaModel
+            {
+                Id = profile.Id,
+                Name = profile.Name,
+                Concept = profile.Concept,
+                Backstory = profile.Backstory
+            };
+        }
+    }
+}

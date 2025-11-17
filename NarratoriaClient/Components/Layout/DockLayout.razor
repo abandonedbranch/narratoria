@@ -1,0 +1,224 @@
+@using System.Globalization
+
+<CascadingValue Value="this">
+    @ChildContent
+
+    @{
+        var topSections = GetSections(DockSide.Top);
+        var bottomSections = GetSections(DockSide.Bottom);
+        var leftSections = GetSections(DockSide.Left);
+        var rightSections = GetSections(DockSide.Right);
+        var centerSections = GetSections(DockSide.Center);
+        var topLeftSections = GetSections(DockSide.TopLeft);
+        var topRightSections = GetSections(DockSide.TopRight);
+        var bottomLeftSections = GetSections(DockSide.BottomLeft);
+        var bottomRightSections = GetSections(DockSide.BottomRight);
+    }
+
+    <div class="@RootClass" style="@Style" @attributes="AdditionalAttributes">
+        @if (topSections.Count > 0 || topLeftSections.Count > 0 || topRightSections.Count > 0)
+        {
+            <div class="dock-strip dock-strip-top">
+                @if (topLeftSections.Count > 0)
+                {
+                    <div class="dock-cluster dock-cluster-top-left">
+                        @foreach (var dockSection in topLeftSections)
+                        {
+                            <div class='@BuildSectionClass(dockSection, "dock-section dock-section-top dock-section-top-left")' style="@BuildSectionStyle(dockSection)" @attributes="dockSection.AdditionalAttributes">
+                                @dockSection.ChildContent
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (topSections.Count > 0)
+                {
+                    <div class="dock-cluster dock-cluster-top">
+                        @foreach (var dockSection in topSections)
+                        {
+                            <div class='@BuildSectionClass(dockSection, "dock-section dock-section-top")' style="@BuildSectionStyle(dockSection)" @attributes="dockSection.AdditionalAttributes">
+                                @dockSection.ChildContent
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (topRightSections.Count > 0)
+                {
+                    <div class="dock-cluster dock-cluster-top-right">
+                        @foreach (var dockSection in topRightSections)
+                        {
+                            <div class='@BuildSectionClass(dockSection, "dock-section dock-section-top dock-section-top-right")' style="@BuildSectionStyle(dockSection)" @attributes="dockSection.AdditionalAttributes">
+                                @dockSection.ChildContent
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="dock-middle">
+            @if (leftSections.Count > 0)
+            {
+                <div class="dock-strip dock-strip-left">
+                    @foreach (var dockSection in leftSections)
+                    {
+                        <div class='@BuildSectionClass(dockSection, "dock-section dock-section-left")' style="@BuildSectionStyle(dockSection)" @attributes="dockSection.AdditionalAttributes">
+                            @dockSection.ChildContent
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="dock-center">
+                @if (centerSections.Count > 0)
+                {
+                    @foreach (var dockSection in centerSections)
+                    {
+                        <div class='@BuildSectionClass(dockSection, "dock-section dock-section-center")' style="@BuildSectionStyle(dockSection)" @attributes="dockSection.AdditionalAttributes">
+                            @dockSection.ChildContent
+                        </div>
+                    }
+                }
+            </div>
+
+            @if (rightSections.Count > 0)
+            {
+                <div class="dock-strip dock-strip-right">
+                    @foreach (var dockSection in rightSections)
+                    {
+                        <div class='@BuildSectionClass(dockSection, "dock-section dock-section-right")' style="@BuildSectionStyle(dockSection)" @attributes="dockSection.AdditionalAttributes">
+                            @dockSection.ChildContent
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @if (bottomSections.Count > 0 || bottomLeftSections.Count > 0 || bottomRightSections.Count > 0)
+        {
+            <div class="dock-strip dock-strip-bottom">
+                @if (bottomLeftSections.Count > 0)
+                {
+                    <div class="dock-cluster dock-cluster-bottom-left">
+                        @foreach (var dockSection in bottomLeftSections)
+                        {
+                            <div class='@BuildSectionClass(dockSection, "dock-section dock-section-bottom dock-section-bottom-left")' style="@BuildSectionStyle(dockSection)" @attributes="dockSection.AdditionalAttributes">
+                                @dockSection.ChildContent
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (bottomSections.Count > 0)
+                {
+                    <div class="dock-cluster dock-cluster-bottom">
+                        @foreach (var dockSection in bottomSections)
+                        {
+                            <div class='@BuildSectionClass(dockSection, "dock-section dock-section-bottom")' style="@BuildSectionStyle(dockSection)" @attributes="dockSection.AdditionalAttributes">
+                                @dockSection.ChildContent
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (bottomRightSections.Count > 0)
+                {
+                    <div class="dock-cluster dock-cluster-bottom-right">
+                        @foreach (var dockSection in bottomRightSections)
+                        {
+                            <div class='@BuildSectionClass(dockSection, "dock-section dock-section-bottom dock-section-bottom-right")' style="@BuildSectionStyle(dockSection)" @attributes="dockSection.AdditionalAttributes">
+                                @dockSection.ChildContent
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</CascadingValue>
+
+@code {
+    private readonly List<DockRegistration> _registrations = new();
+    private int _sequence;
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    internal DockRegistration RegisterSection()
+    {
+        var registration = new DockRegistration(++_sequence);
+        _registrations.Add(registration);
+        StateHasChanged();
+        return registration;
+    }
+
+    internal void UnregisterSection(DockRegistration registration)
+    {
+        if (_registrations.Remove(registration))
+        {
+            StateHasChanged();
+        }
+    }
+
+    internal void NotifySectionsChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string RootClass => string.IsNullOrWhiteSpace(Class) ? "dock-layout" : $"dock-layout {Class}";
+
+    private IReadOnlyList<DockRegistration> GetSections(DockSide side) =>
+        _registrations
+            .Where(section => section.Side == side)
+            .OrderBy(section => section.Sequence)
+            .ToList();
+
+    private static string BuildSectionClass(DockRegistration registration, string baseClass) =>
+        string.IsNullOrWhiteSpace(registration.Class)
+            ? baseClass
+            : $"{baseClass} {registration.Class}";
+
+    private static string? BuildSectionStyle(DockRegistration registration)
+    {
+        string? dimension = null;
+
+        if (registration.Size is double size)
+        {
+            var sizeValue = size.ToString(CultureInfo.InvariantCulture);
+            dimension = registration.Side switch
+            {
+                DockSide.Top or DockSide.Bottom
+                    or DockSide.TopLeft or DockSide.TopRight
+                    or DockSide.BottomLeft or DockSide.BottomRight => $"height:{sizeValue}vh;flex:0 0 {sizeValue}vh;",
+                DockSide.Left or DockSide.Right => $"width:{sizeValue}vw;flex:0 0 {sizeValue}vw;",
+                _ => $"flex-basis:{sizeValue}%;"
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(registration.Style))
+        {
+            return dimension;
+        }
+
+        return dimension is null ? registration.Style : $"{dimension}{registration.Style}";
+    }
+
+    internal sealed class DockRegistration
+    {
+        internal DockRegistration(int sequence)
+        {
+            Sequence = sequence;
+        }
+
+        internal int Sequence { get; }
+        internal DockSide Side { get; set; } = DockSide.Center;
+        internal double? Size { get; set; }
+        internal RenderFragment? ChildContent { get; set; }
+        internal string? Class { get; set; }
+        internal string? Style { get; set; }
+        internal IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+    }
+}

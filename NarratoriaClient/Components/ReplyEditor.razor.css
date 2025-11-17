@@ -1,0 +1,41 @@
+.reply-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem 1.25rem;
+    background: #ffffff;
+}
+
+.reply-editor .input-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+
+.reply-editor .message-input {
+    padding: 0.65rem 0.85rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 2.75rem;
+}
+
+.reply-editor button[type="submit"] {
+    padding: 0.65rem 1.3rem;
+    border-radius: 0.5rem;
+    border: none;
+    background-color: #2563eb;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.reply-editor button[type="submit"]:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+}

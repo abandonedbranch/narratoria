@@ -1,0 +1,82 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+@implements IChatCommandComponent
+
+<section class="import-settings">
+    <h2>Import Settings</h2>
+    <p>Restore a saved configuration file to preload your narrator, prompts, and personas.</p>
+    <div class="import-controls">
+        <label class="file-picker">
+            <span>@(_selectedFileName ?? "Choose file")</span>
+            <InputFile OnChange="HandleFileSelectedAsync" accept=".json,application/json" />
+        </label>
+        <button type="button"
+                @onclick="HandleImportAsync"
+                disabled="@(_isImporting || _pendingContent is null)">
+            Import Settings
+        </button>
+    </div>
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <p class="import-status">@_statusMessage</p>
+    }
+</section>
+
+@code {
+    [Inject] private IAppDataService AppData { get; set; } = default!;
+
+    private const long MaxFileBytes = 1024 * 1024; // 1 MB cap to keep imports lightweight.
+
+    private string? _pendingContent;
+    private string? _selectedFileName;
+    private string? _statusMessage;
+    private bool _isImporting;
+
+    public string CommandToken => "import";
+    public string DisplayName => "Import Settings";
+    public string Description => "Load settings, personas, and sessions from a backup file.";
+
+    private async Task HandleFileSelectedAsync(InputFileChangeEventArgs args)
+    {
+        _statusMessage = null;
+        _pendingContent = null;
+        _selectedFileName = null;
+
+        var file = args.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        _selectedFileName = file.Name;
+
+        await using var stream = file.OpenReadStream(MaxFileBytes);
+        using var reader = new StreamReader(stream);
+        _pendingContent = await reader.ReadToEndAsync();
+    }
+
+    private async Task HandleImportAsync()
+    {
+        if (_pendingContent is null || _isImporting)
+        {
+            return;
+        }
+
+        _isImporting = true;
+        _statusMessage = null;
+
+        try
+        {
+            await AppData.ImportAsync(_pendingContent);
+            _statusMessage = "Import complete. Your data has been merged.";
+        }
+        catch
+        {
+            _statusMessage = "Import failed. Please verify the file and try again.";
+        }
+        finally
+        {
+            _isImporting = false;
+        }
+    }
+}

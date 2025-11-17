@@ -1,0 +1,47 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Attach to Narratoria",
+            "type": "coreclr",
+            "request": "attach",
+            "processId": "${command:pickProcess}",
+            "justMyCode": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": "Playwright Tests (headless)",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "dotnet",
+            "args": [
+                "test",
+                "tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
+            "env": {
+                "DOTNET_ENVIRONMENT": "Testing"
+            }
+        },
+        {
+            "name": "Playwright Tests (headful, 250ms slowmo)",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "dotnet",
+            "args": [
+                "test",
+                "tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
+            "env": {
+                "DOTNET_ENVIRONMENT": "Testing",
+                "PLAYWRIGHT_HEADFUL": "true",
+                "PLAYWRIGHT_SLOWMO_MS": "250"
+            }
+        }
+    ]
+}
