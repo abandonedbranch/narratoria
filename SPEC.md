@@ -1,11 +1,6 @@
 # Narratoria Future Requirements
 
-The following backlog items use Scrum-style acceptance criteria to clarify expected behavior for the MVP and near-term roadmap.
-
-**Developers must:**
-- Update the status of a work item they are using and assign themselves to it using their e-mail address. Coding agents should specify their model as their name, an at symbol, and their provider. E.g. `gpt-codex-5.1@api.openai.org`
-- Upon completion add a technical summary on how the feature was integrated.
-- Create a Playwright test that proves the implementation works before marking a backlog item as Done.
+The following backlog items use Scrum-style acceptance criteria to clarify expected behavior for the MVP and near-term roadmap. See `CONTRIBUTORS.md` for contribution rules and workflow expectations.
 
 ---
 

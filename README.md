@@ -61,5 +61,8 @@ See `SPEC.md` for Scrum-style acceptance criteria that track future requirements
 ### About SPEC.md
 `SPEC.md` maintains the backlog in a Scrum-style format with acceptance criteria, status, assignee, and any supporting discussion. Developers must keep it updated when starting work (status/assignee) and when finishing (technical summary + required Playwright test). Treat it as the authoritative backlog for upcoming and in-progress work.
 
+## Contributing
+See `CONTRIBUTORS.md` for coding guidelines, testing expectations, and how to work with `SPEC.md`.
+
 ## License
 GPL-3.0-or-later. See `LICENSE`.
