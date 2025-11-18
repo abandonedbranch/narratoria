@@ -19,7 +19,9 @@ public class ComponentCoverageTests : IClassFixture<NarratoriaServerFixture>
         using var playwright = launch.Playwright;
         await using var browser = launch.Browser;
         var page = await browser.NewPageAsync();
-        await page.GotoAsync(_server.BaseUrl);
+        page.SetDefaultTimeout(3000);
+        var response = await page.GotoAsync(_server.BaseUrl);
+        Assert.True(response?.Ok ?? false, $"Root navigation failed: {response?.Status} {response?.StatusText}");
         await WaitForAppReadyAsync(page);
 
         await OpenSessionsManagerAsync(page);
@@ -103,11 +105,11 @@ public class ComponentCoverageTests : IClassFixture<NarratoriaServerFixture>
     {
         await page.Locator("textarea.message-input").FillAsync("@sessions");
         await page.Locator("button[type=submit]").ClickAsync();
-        await page.WaitForSelectorAsync(".sessions-manager", new() { Timeout = 30000 });
+        await page.WaitForSelectorAsync(".sessions-manager", new() { Timeout = 3000 });
     }
 
     private static async Task WaitForAppReadyAsync(IPage page)
     {
-        await page.WaitForSelectorAsync("textarea.message-input", new() { Timeout = 30000 });
+        await page.WaitForSelectorAsync("textarea.message-input", new() { Timeout = 15000 });
     }
 }

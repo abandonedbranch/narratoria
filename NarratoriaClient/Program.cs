@@ -1,5 +1,7 @@
 using NarratoriaClient.Components;
 using NarratoriaClient.Services;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +30,11 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// Skip HTTPS redirection in dev/test to avoid redirect loops when only HTTP is bound (e.g., Playwright).
+if (!(app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")))
+{
+    app.UseHttpsRedirection();
+}
 app.UseAntiforgery();
 
 app.MapStaticAssets();

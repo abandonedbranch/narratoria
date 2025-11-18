@@ -19,14 +19,18 @@ public class TabStripDemoTests : IClassFixture<NarratoriaServerFixture>
         using var playwright = launch.Playwright;
         await using var browser = launch.Browser;
         var page = await browser.NewPageAsync();
-        await page.GotoAsync($"{_server.BaseUrl}/tabs-demo");
+        page.SetDefaultTimeout(15000);
+        var response = await page.GotoAsync($"{_server.BaseUrl}/tabs-demo");
+        Assert.True(response?.Ok ?? false, $"Tabs demo navigation failed: {response?.Status} {response?.StatusText}");
         await WaitForTabsReadyAsync(page);
 
         var tabTwo = page.GetByRole(AriaRole.Tab, new() { Name = "Tab 2" });
         await Assertions.Expect(tabTwo).ToHaveAttributeAsync("aria-selected", "true");
 
         var tabOne = page.GetByRole(AriaRole.Tab, new() { Name = "Tab 1" });
-        await tabOne.ClickAsync();
+        await tabOne.ClickAsync(new() { Force = true });
+        await Assertions.Expect(tabOne).ToHaveAttributeAsync("aria-selected", "true", new() { Timeout = 10000 });
+        await page.Locator("#tab1-panel").WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
         await page.FillAsync("#tab1-notes", "Preserved note between tabs");
 
         var tabThree = page.GetByRole(AriaRole.Tab, new() { Name = "Tab 3" });
@@ -46,7 +50,9 @@ public class TabStripDemoTests : IClassFixture<NarratoriaServerFixture>
         using var playwright = launch.Playwright;
         await using var browser = launch.Browser;
         var page = await browser.NewPageAsync();
-        await page.GotoAsync($"{_server.BaseUrl}/tabs-demo");
+        page.SetDefaultTimeout(15000);
+        var response = await page.GotoAsync($"{_server.BaseUrl}/tabs-demo");
+        Assert.True(response?.Ok ?? false, $"Tabs demo navigation failed: {response?.Status} {response?.StatusText}");
         await WaitForTabsReadyAsync(page);
 
         var tabTwo = page.GetByRole(AriaRole.Tab, new() { Name = "Tab 2" });
@@ -80,6 +86,6 @@ public class TabStripDemoTests : IClassFixture<NarratoriaServerFixture>
 
     private static Task WaitForTabsReadyAsync(IPage page)
     {
-        return page.WaitForSelectorAsync(".tab-strip__tab", new() { Timeout = 30000 });
+        return page.WaitForSelectorAsync(".tab-strip__tab", new() { Timeout = 15000 });
     }
 }

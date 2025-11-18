@@ -23,7 +23,9 @@ public class StoryPlaybackTests : IClassFixture<NarratoriaServerFixture>
         });
 
         var page = await browser.NewPageAsync();
-        await page.GotoAsync(_server.BaseUrl);
+        page.SetDefaultTimeout(15000);
+        var response = await page.GotoAsync(_server.BaseUrl);
+        Assert.True(response?.Ok ?? false, $"Root navigation failed: {response?.Status} {response?.StatusText}");
 
         await page.Locator("textarea.message-input").FillAsync("Investigate the ruins ahead.");
         await page.Locator("button[type=submit]").ClickAsync();
