@@ -26,12 +26,14 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 ## Session tab strip component
 - **Status**: Proposed
 - **Assignee**: Unassigned
-- **As a** player, **I want** to see a tab strip for sessions so I can quickly switch stories and open or close them inline.
+- **As a** player, **I want** a reusable tab component so I can swap between multiple pieces of content inline.
 - **Acceptance criteria:**
-  - Implement a tab strip using existing layout primitives (Grid/Dock) with labels, close buttons, and a plus button aligned to the right.
-  - Active tab is visually distinct and matches the currently active session from `IAppDataService`.
-  - Tab close invokes session deletion and refreshes the visible list without a page reload.
-  - Plus button calls session creation and selects the new session tab.
+  - Tab component renders a list of child components passed as children in Razor markup; each child corresponds to a tab with a label/title.
+  - Tapping/clicking a tab makes its child the only visible panel; non-active children are hidden but remain mounted to preserve state.
+  - Provides a simple API for callers to define tab order, labels, and initial selected tab; supports programmatic selection changes.
+  - Keyboard accessibility: arrow keys move focus/selection between tabs, selection is indicated, and panels are navigable when active.
+  - Visual active state differentiates the selected tab; layout centers the tab list within its parent.
+  - Tests cover rendering multiple children, switching active tab via click/keyboard, maintaining child state, and initial selection behavior.
 
 ## Session tab state sync
 - **Status**: Proposed
