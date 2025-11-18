@@ -85,6 +85,17 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Dots expose accessible button semantics/labels (e.g., “Page 2 of 5”) and maintain contrast in light/dark themes.
   - Tests cover rendering variable page counts, dot navigation updates, and event callbacks fired when the active page changes.
 
+## Progress indicator component
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** a progress indicator with text so I can see what’s happening and how far along it is.
+- **Acceptance criteria:**
+  - Supports both indeterminate (spinner + label) and determinate (progress bar + label) modes with a single API; label is optional but displayed when provided.
+  - Determinate mode accepts a numeric progress value (0–100 or 0–1) and clamps to bounds; bar visually fills according to the value and animates smoothly on change.
+  - Indeterminate mode shows a non-blocking spinner that does not reserve unnecessary width and does not mislead with arbitrary percentages.
+  - Accessible semantics: label is associated with the control, determinate mode exposes `aria-valuenow/min/max`, indeterminate mode uses `aria-busy`/status roles; supports light/dark themes with sufficient contrast.
+  - Tests cover rendering with/without label, switching between indeterminate/determinate modes, value clamping/updates, and accessibility attributes.
+
 ## Per-workflow API keys
 - **Status**: Proposed
 - **Assignee**: Unassigned
