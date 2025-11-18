@@ -118,6 +118,17 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Export/import includes per-workflow credentials (redacted in UI logs) and preserves schemas for future migrations.
   - Playwright/automated tests cover saving, loading, and using the per-workflow settings.
 
+## Workflow picker component
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** a reusable workflow picker so I can choose Narrator, System, or Image from a dropdown wherever it’s needed.
+- **Acceptance criteria:**
+  - Renders as a labeled dropdown/select that lists exactly the three workflows (Narrator/System/Image) and highlights the current selection.
+  - Exposes a simple API for default/controlled selection and emits change events so callers can update request plumbing and UI state.
+  - Keyboard and screen reader accessible (combobox/select semantics, focusable, ESC/Enter/arrow navigation); honors dark/light themes.
+  - Supports disabled/read-only state for contexts where workflow changes aren’t allowed; component is reusable across pages/dialogs without layout hacks.
+  - Tests cover default selection, change handling, disabled state, and accessibility attributes/keyboard navigation.
+
 ## Targeted workflow sending
 - **Status**: Proposed
 - **Assignee**: Unassigned
