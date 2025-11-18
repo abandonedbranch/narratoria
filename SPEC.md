@@ -68,7 +68,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **Status**: Proposed
 - **Assignee**: Unassigned
 - **As a** player, **I want** the reply editor to behave predictably so I don’t lose input or trigger duplicate sends.
-  - **Acceptance criteria:**
+- **Acceptance criteria:**
   - “Send” is disabled while a send is in progress and when the input is empty; a visual cue shows busy state.
   - Keyboard handling supports Enter to send and Shift+Enter to insert a newline without double submission.
   - Errors from `OnSend` path surface a non-blocking notification and keep the unsent text intact.
