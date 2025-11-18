@@ -5,11 +5,11 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 ## Playwright test runner availability
 - **Status**: Blocked
 - **Assignee**: Unassigned
-- **As a** developer, **I want** the Playwright test suite to run in the repo so we can catch regressions automatically.
+- **As a** developer, **I want** a one-step setup script so CI environments can run the Playwright suite reliably.
 - **Acceptance criteria:**
-  - Install or document the required .NET SDK so `dotnet test tests/NarratoriaClient.PlaywrightTests` executes (current runs fail because `dotnet` is unavailable in the environment).
-  - Ensure Playwright browser dependencies are installed as part of the test workflow and can run headless in CI/dev containers.
-  - Provide a repeatable command (including any `playwright install` steps) that passes locally and in automation without manual setup.
+  - Provide a shell script that installs the required .NET SDK, restores tools/deps, and installs Playwright browsers for `tests/NarratoriaClient.PlaywrightTests`.
+  - Script is idempotent and suitable for CI images/containers; documents required OS packages (if any) and runs headless.
+  - Running the script, then `dotnet test tests/NarratoriaClient.PlaywrightTests`, succeeds locally and in CI without manual intervention.
 
 ## Chat session as tabs
 - **Status**: Proposed
