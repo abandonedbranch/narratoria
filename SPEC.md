@@ -10,6 +10,8 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Provide a shell script that installs the required .NET SDK, restores tools/deps, and installs Playwright browsers for `tests/NarratoriaClient.PlaywrightTests`.
   - Script is idempotent and suitable for CI images/containers; documents required OS packages (if any) and runs headless.
   - Running the script, then `dotnet test tests/NarratoriaClient.PlaywrightTests`, succeeds locally and in CI without manual intervention.
+- **Discussion:**
+  - Prefer using the Microsoft `dotnet-install` script to provision the required SDK in CI containers/agents for consistency across environments.
 
 ## Chat session as tabs
 - **Status**: Proposed
