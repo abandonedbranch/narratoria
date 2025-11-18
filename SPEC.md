@@ -14,8 +14,8 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Keep the existing `@sessions` command available so sessions can still be managed via chat commands in addition to tabs.
 
 ## Session tab strip component
-- **Status**: Proposed
-- **Assignee**: Unassigned
+- **Status**: In Review
+- **Assignee**: Codex
 - **As a** player, **I want** a reusable tab component so I can swap between multiple pieces of content inline.
 - **Acceptance criteria:**
   - Tab component renders a list of child components passed as children in Razor markup; each child corresponds to a tab with a label/title.
@@ -24,6 +24,8 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Keyboard accessibility: arrow keys move focus/selection between tabs, selection is indicated, and panels are navigable when active.
   - Visual active state differentiates the selected tab; layout centers the tab list within its parent.
   - Tests cover rendering multiple children, switching active tab via click/keyboard, maintaining child state, and initial selection behavior.
+- **Technical summary**: Added a reusable `TabStrip`/`TabStripTab` component with iPadOS-inspired pill styling, preserved panels, and keyboard navigation; created a `/tabs-demo` page to exercise programmatic selection and child state retention.
+- **Tests**: `DOTNET_ENVIRONMENT=Testing dotnet test tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj` (currently timing out in Playwright harness after the new scenarios were added).
 
 ## Component test coverage baseline
 - **Status**: Proposed
