@@ -3,8 +3,8 @@
 The following backlog items use Scrum-style acceptance criteria to clarify expected behavior for the MVP and near-term roadmap. See `CONTRIBUTORS.md` for contribution rules and workflow expectations.
 
 ## Playwright test runner availability
-- **Status**: Blocked
-- **Assignee**: Unassigned
+- **Status**: In Progress
+- **Assignee**: Codex
 - **As a** developer, **I want** a one-step setup script so CI environments can run the Playwright suite reliably.
 - **Acceptance criteria:**
   - Provide a shell script that installs the required .NET SDK, restores tools/deps, and installs Playwright browsers for `tests/NarratoriaClient.PlaywrightTests`.

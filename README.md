@@ -9,10 +9,11 @@
 - .NET 9 SDK (app and Playwright tests target `net9.0`).
 
 ## Getting Started
-- Install Playwright browsers (first run): `dotnet build tests/NarratoriaClient.PlaywrightTests && ./tests/NarratoriaClient.PlaywrightTests/bin/Debug/net9.0/playwright.sh install` (or `pwsh -File .../playwright.ps1`).
+- One-step Playwright setup (installs .NET 9 SDK as needed, restores, installs Playwright browsers headless): `./scripts/setup-playwright.sh`
+  - On Debian/Ubuntu set `INSTALL_PLAYWRIGHT_DEPS=true` to include system packages via `playwright.sh install --with-deps` (sudo may be required). Common deps: `libatk1.0-0 libatk-bridge2.0-0 libdrm2 libgbm1 libgtk-3-0 libnspr4 libnss3 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libxshmfence1`.
 - Run the app: `dotnet run --project NarratoriaClient/NarratoriaClient.csproj --urls http://localhost:5000`
-- Run Playwright tests headless: `DOTNET_ENVIRONMENT=Testing dotnet test tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj`
-- Watch Playwright tests headful with slow-mo: `PLAYWRIGHT_HEADFUL=true PLAYWRIGHT_SLOWMO_MS=250 DOTNET_ENVIRONMENT=Testing dotnet test tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj`
+- Run Playwright tests headless: `PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers DOTNET_ENVIRONMENT=Testing dotnet test tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj`
+- Watch Playwright tests headful with slow-mo: `PLAYWRIGHT_HEADFUL=true PLAYWRIGHT_SLOWMO_MS=250 PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers DOTNET_ENVIRONMENT=Testing dotnet test tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj`
 
 ## Core Goals
 - **Solo & Multiplayer Sessions**: Support single-player adventures plus optional peer connections so multiple clients share a story instance.
