@@ -1,0 +1,120 @@
+.tabs-demo {
+    max-width: 960px;
+    margin: 2.5rem auto 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 0 1.25rem;
+    align-items: center;
+}
+
+.tabs-demo__header {
+    text-align: center;
+    max-width: 640px;
+    color: #1f2937;
+}
+
+.tabs-demo__header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.4rem;
+}
+
+.tabs-demo__strip {
+    max-width: 840px;
+}
+
+.tabs-demo__panel {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: #ffffff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    color: #111827;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.tabs-demo__panel h2 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.tabs-demo__panel p {
+    margin: 0;
+    color: #374151;
+}
+
+.tabs-demo__panel label {
+    font-weight: 600;
+    display: block;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
+
+.tabs-demo__panel input,
+.tabs-demo__panel textarea {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 0.75rem;
+    font: inherit;
+    color: inherit;
+    background: #f9fafb;
+}
+
+.tabs-demo__panel textarea {
+    resize: vertical;
+    min-height: 5.5rem;
+}
+
+.tabs-demo__icon-button {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #1f2937;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.tabs-demo__icon-button:hover {
+    background: rgba(15, 23, 42, 0.06);
+}
+
+.tabs-demo__controls {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+}
+
+.tabs-demo__controls button {
+    padding: 0.55rem 1rem;
+    border-radius: 0.65rem;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.tabs-demo__controls button:hover {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+}
+
+@media (max-width: 768px) {
+    .tabs-demo {
+        align-items: stretch;
+    }
+
+    .tabs-demo__strip {
+        width: 100%;
+    }
+
+    .tabs-demo__controls {
+        flex-direction: column;
+    }
+}

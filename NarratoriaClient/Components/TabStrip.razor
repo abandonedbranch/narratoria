@@ -1,0 +1,329 @@
+<CascadingValue Value="this">
+    <div class="tab-strip__registrations" aria-hidden="true">
+        @ChildContent
+    </div>
+
+    <div class="tab-strip @Class">
+        <div class="tab-strip__surface">
+            @if (LeadingContent is not null)
+            {
+                <div class="tab-strip__side tab-strip__side--leading">
+                    @LeadingContent
+                </div>
+            }
+
+            <div class="tab-strip__list" role="tablist" aria-label="@AriaLabel">
+                @foreach (var tab in OrderedTabs)
+                {
+                    var isActive = tab.Id == _currentActiveTabId;
+                    <button @ref="tab.ButtonRef"
+                            class="tab-strip__tab @(isActive ? "is-active" : null)"
+                            type="button"
+                            id="@BuildTabDomId(tab.Id)"
+                            role="tab"
+                            aria-selected="@(isActive ? "true" : "false")"
+                            aria-controls="@BuildPanelDomId(tab.Id)"
+                            tabindex="@(isActive ? 0 : -1)"
+                            @onclick="() => SelectTabAsync(tab.Id, true)"
+                            @onkeydown="args => HandleKeyDownAsync(args, tab.Id)">
+                        @if (tab.Icon is not null)
+                        {
+                            <span class="tab-strip__icon" aria-hidden="true">@tab.Icon</span>
+                        }
+                        <span class="tab-strip__label">@tab.Title</span>
+                    </button>
+                }
+            </div>
+
+            @if (TrailingContent is not null)
+            {
+                <div class="tab-strip__side tab-strip__side--trailing">
+                    @TrailingContent
+                </div>
+            }
+        </div>
+
+        <div class="tab-strip__panels">
+            @foreach (var tab in OrderedTabs)
+            {
+                var isActive = tab.Id == _currentActiveTabId;
+                <div class="tab-strip__panel @(isActive ? "is-active" : null)"
+                     id="@BuildPanelDomId(tab.Id)"
+                     role="tabpanel"
+                     aria-labelledby="@BuildTabDomId(tab.Id)"
+                     aria-hidden="@(isActive ? "false" : "true")"
+                     hidden="@(!isActive)">
+                    @tab.ChildContent
+                </div>
+            }
+        </div>
+    </div>
+</CascadingValue>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? LeadingContent { get; set; }
+    [Parameter] public RenderFragment? TrailingContent { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? InitialActiveTabId { get; set; }
+    [Parameter] public string? ActiveTabId { get; set; }
+    [Parameter] public EventCallback<string> ActiveTabIdChanged { get; set; }
+    [Parameter] public EventCallback<string> OnTabChanged { get; set; }
+
+    private readonly List<TabState> _tabs = new();
+    private string? _currentActiveTabId;
+    private string? _pendingActiveTabId;
+    private bool _initialSelectionSatisfied;
+    private bool _hasRendered;
+    private bool _renderPending;
+    private readonly string _domId = $"tab-strip-{Guid.NewGuid():N}";
+
+    private IEnumerable<TabState> OrderedTabs => _tabs.OrderBy(tab => tab.Order);
+
+    internal void RegisterTab(TabStripTab tab)
+    {
+        UpsertTab(tab);
+    }
+
+    internal void UpdateTab(TabStripTab tab)
+    {
+        UpsertTab(tab);
+    }
+
+    internal void UnregisterTab(TabStripTab tab)
+    {
+        var index = _tabs.FindIndex(t => t.Id == tab.TabId);
+        if (index < 0)
+        {
+            return;
+        }
+
+        _tabs.RemoveAt(index);
+        ReindexTabs();
+
+        if (_currentActiveTabId == tab.TabId)
+        {
+            _currentActiveTabId = _tabs.FirstOrDefault()?.Id;
+        }
+
+        StateHasChanged();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (!string.IsNullOrEmpty(ActiveTabId) &&
+            ActiveTabId != _currentActiveTabId &&
+            _tabs.Any(t => t.Id == ActiveTabId))
+        {
+            _currentActiveTabId = ActiveTabId;
+            _pendingActiveTabId = null;
+            _initialSelectionSatisfied = true;
+        }
+        else if (!string.IsNullOrEmpty(ActiveTabId))
+        {
+            _pendingActiveTabId = ActiveTabId;
+        }
+        else if (_currentActiveTabId is null && _tabs.Count > 0)
+        {
+            TrySetInitialActive(_tabs[0].Id);
+        }
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _hasRendered = true;
+        }
+
+        return base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task SelectTabAsync(string tabId, bool focusTab)
+    {
+        if (tabId == _currentActiveTabId || !_tabs.Any(t => t.Id == tabId))
+        {
+            return;
+        }
+
+        _currentActiveTabId = tabId;
+
+        if (ActiveTabIdChanged.HasDelegate)
+        {
+            await ActiveTabIdChanged.InvokeAsync(tabId);
+        }
+
+        if (OnTabChanged.HasDelegate)
+        {
+            await OnTabChanged.InvokeAsync(tabId);
+        }
+
+        await InvokeAsync(StateHasChanged);
+
+        if (focusTab)
+        {
+            await FocusTabAsync(tabId);
+        }
+    }
+
+    private async Task HandleKeyDownAsync(KeyboardEventArgs args, string currentTabId)
+    {
+        string? targetId = args.Key switch
+        {
+            "ArrowRight" or "ArrowDown" => GetAdjacentTabId(currentTabId, 1),
+            "ArrowLeft" or "ArrowUp" => GetAdjacentTabId(currentTabId, -1),
+            "Home" => OrderedTabs.FirstOrDefault()?.Id,
+            "End" => OrderedTabs.LastOrDefault()?.Id,
+            _ => null
+        };
+
+        if (targetId is null)
+        {
+            return;
+        }
+
+        await SelectTabAsync(targetId, focusTab: true);
+    }
+
+    private string? GetAdjacentTabId(string currentId, int offset)
+    {
+        var ordered = OrderedTabs.ToList();
+        var index = ordered.FindIndex(t => t.Id == currentId);
+        if (index < 0 || ordered.Count == 0)
+        {
+            return ordered.FirstOrDefault()?.Id;
+        }
+
+        var nextIndex = (index + offset + ordered.Count) % ordered.Count;
+        return ordered[nextIndex].Id;
+    }
+
+    private void UpsertTab(TabStripTab tab)
+    {
+        var existing = _tabs.FirstOrDefault(t => t.Id == tab.TabId);
+        var changed = false;
+        if (existing is null)
+        {
+            _tabs.Add(new TabState(tab.TabId, tab.Title, tab.ChildContent, tab.Icon, _tabs.Count));
+            changed = true;
+        }
+        else
+        {
+            if (!string.Equals(existing.Title, tab.Title, StringComparison.Ordinal))
+            {
+                existing.Title = tab.Title;
+                changed = true;
+            }
+
+            if (existing.ChildContent is null && tab.ChildContent is not null)
+            {
+                existing.ChildContent = tab.ChildContent;
+            }
+
+            if (existing.Icon is null && tab.Icon is not null)
+            {
+                existing.Icon = tab.Icon;
+            }
+        }
+
+        if (changed)
+        {
+            TrySetInitialActive(tab.TabId);
+            if (!_renderPending)
+            {
+                _renderPending = true;
+                _ = InvokeAsync(() =>
+                {
+                    _renderPending = false;
+                    StateHasChanged();
+                    return Task.CompletedTask;
+                });
+            }
+        }
+    }
+
+    private void TrySetInitialActive(string lastRegisteredId)
+    {
+        if (_tabs.Count == 0)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(ActiveTabId) && _tabs.Any(t => t.Id == ActiveTabId))
+        {
+            _currentActiveTabId = ActiveTabId;
+            _pendingActiveTabId = null;
+            _initialSelectionSatisfied = true;
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(_pendingActiveTabId) && _tabs.Any(t => t.Id == _pendingActiveTabId))
+        {
+            _currentActiveTabId = _pendingActiveTabId;
+            _initialSelectionSatisfied = true;
+            _pendingActiveTabId = null;
+            return;
+        }
+
+        if (!_initialSelectionSatisfied && !string.IsNullOrEmpty(InitialActiveTabId) && _tabs.Any(t => t.Id == InitialActiveTabId))
+        {
+            _currentActiveTabId = InitialActiveTabId;
+            _initialSelectionSatisfied = true;
+            return;
+        }
+
+        if (_currentActiveTabId is null)
+        {
+            _currentActiveTabId = lastRegisteredId;
+        }
+    }
+
+    private void ReindexTabs()
+    {
+        for (var i = 0; i < _tabs.Count; i++)
+        {
+            _tabs[i].Order = i;
+        }
+    }
+
+    private ValueTask FocusTabAsync(string tabId)
+    {
+        if (!_hasRendered)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var tab = _tabs.FirstOrDefault(t => t.Id == tabId);
+        if (tab is null || string.IsNullOrEmpty(tab.ButtonRef.Id))
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        return tab.ButtonRef.FocusAsync();
+    }
+
+    private string BuildTabDomId(string tabId) => $"{_domId}-tab-{tabId}";
+    private string BuildPanelDomId(string tabId) => $"{_domId}-panel-{tabId}";
+
+    private sealed class TabState
+    {
+        public TabState(string id, string title, RenderFragment? content, RenderFragment? icon, int order)
+        {
+            Id = id;
+            Title = title;
+            ChildContent = content;
+            Icon = icon;
+            Order = order;
+        }
+
+        public string Id { get; }
+        public string Title { get; set; }
+        public RenderFragment? ChildContent { get; set; }
+        public RenderFragment? Icon { get; set; }
+        public int Order { get; set; }
+        public ElementReference ButtonRef { get; set; }
+    }
+}

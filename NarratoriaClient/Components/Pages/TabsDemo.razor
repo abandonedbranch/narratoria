@@ -1,0 +1,90 @@
+@page "/tabs-demo"
+@rendermode Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer
+
+<PageTitle>Tab Strip Demo</PageTitle>
+
+<section class="tabs-demo">
+    <div class="tabs-demo__header">
+        <h1>Session tab strip preview</h1>
+        <p>The tab strip mirrors the iPadOS look while keeping panels mounted for stateful content.</p>
+    </div>
+
+    <TabStrip @bind-ActiveTabId="_activeTabId"
+              InitialActiveTabId="@CharactersTabId"
+              AriaLabel="Session tabs"
+              Class="tabs-demo__strip">
+        <LeadingContent>
+            <button type="button" class="tabs-demo__icon-button" aria-label="Library">
+                <span aria-hidden="true">▦</span>
+            </button>
+        </LeadingContent>
+
+        <ChildContent>
+            <TabStripTab TabId="@OverviewTabId" Title="Tab 1">
+                <div class="tabs-demo__panel" id="tab1-panel">
+                    <h2>Tab 1</h2>
+                    <p>Panels stay mounted even when hidden so you can preserve edits between switches.</p>
+                    <label for="tab1-notes">Notes</label>
+                    <input id="tab1-notes" @bind="_tabOneNotes" />
+                </div>
+            </TabStripTab>
+
+            <TabStripTab TabId="@CharactersTabId" Title="Tab 2">
+                <div class="tabs-demo__panel" id="tab2-panel">
+                    <h2>Tab 2</h2>
+                    <p>This is the default selection set by <code>InitialActiveTabId</code>.</p>
+                    <label for="tab2-counter">Counter</label>
+                    <input id="tab2-counter" type="number" min="0" @bind="_tabTwoCount" />
+                </div>
+            </TabStripTab>
+
+            <TabStripTab TabId="@ScenesTabId" Title="Tab 3">
+                <div class="tabs-demo__panel" id="tab3-panel">
+                    <h2>Tab 3</h2>
+                    <p>Use arrow keys to navigate between tabs; focus and selection move together.</p>
+                    <label for="tab3-notes">Scratchpad</label>
+                    <textarea id="tab3-notes" rows="3" @bind="_tabThreeNotes"></textarea>
+                </div>
+            </TabStripTab>
+
+            <TabStripTab TabId="@SearchTabId" Title="Search">
+                <div class="tabs-demo__panel" id="tab4-panel">
+                    <h2>Search</h2>
+                    <p>Trailing controls can programmatically change the active tab.</p>
+                </div>
+            </TabStripTab>
+        </ChildContent>
+
+        <TrailingContent>
+            <div class="tabs-demo__actions">
+                <button type="button"
+                        class="tabs-demo__icon-button"
+                        aria-label="Go to search"
+                        @onclick="@(() => JumpToTab(SearchTabId))">
+                    <span aria-hidden="true">🔍</span>
+                </button>
+            </div>
+        </TrailingContent>
+    </TabStrip>
+
+    <div class="tabs-demo__controls">
+        <button type="button" @onclick="@(() => JumpToTab(OverviewTabId))">Go to Tab 1</button>
+        <button type="button" @onclick="@(() => JumpToTab(ScenesTabId))">Go to Tab 3</button>
+    </div>
+</section>
+
+@code {
+    private string? _activeTabId;
+    private string _tabOneNotes = "Travel log keeps all changes.";
+    private int _tabTwoCount = 2;
+    private string _tabThreeNotes = "Allies: Finn, Mara\nTasks: Scout the ruins";
+    private const string OverviewTabId = "overview";
+    private const string CharactersTabId = "characters";
+    private const string ScenesTabId = "scenes";
+    private const string SearchTabId = "search";
+
+    private void JumpToTab(string tabId)
+    {
+        _activeTabId = tabId;
+    }
+}
