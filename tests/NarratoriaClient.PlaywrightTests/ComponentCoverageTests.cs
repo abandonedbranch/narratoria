@@ -91,13 +91,10 @@ public class ComponentCoverageTests : IClassFixture<NarratoriaServerFixture>
     private static async Task<(IPlaywright Playwright, IBrowser Browser)> LaunchBrowserAsync()
     {
         var playwright = await Playwright.CreateAsync();
-        var headless = !string.Equals(Environment.GetEnvironmentVariable("PLAYWRIGHT_HEADFUL"), "true", StringComparison.OrdinalIgnoreCase);
-        var slowMo = int.TryParse(Environment.GetEnvironmentVariable("PLAYWRIGHT_SLOWMO_MS"), out var parsedSlowMo) ? parsedSlowMo : 0;
-
         var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
-            Headless = headless,
-            SlowMo = slowMo
+            Headless = true,
+            SlowMo = 0
         });
         return (playwright, browser);
     }
