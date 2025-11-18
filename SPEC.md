@@ -46,6 +46,16 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Add coverage for `Components/ReplyEditor.razor` or input flow to verify message send invokes `INarrationService` and handles empty/disabled states.
   - Tests run via `dotnet test` (or Playwright where applicable) and are required before marking related backlog items Done.
 
+## Playwright component baseline
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** a baseline of Playwright component/e2e tests for untested UI so we catch regressions in interactive flows.
+- **Acceptance criteria:**
+  - Inventory UI components with no Playwright coverage and add at least one representative test per component for render, basic interaction, and accessibility smoke (role/label/focus).
+  - Include coverage for tabs, property sheet, workflow picker, carousel/page control, and progress indicator once built; ensure selectors are resilient (test IDs or accessible roles).
+  - Tests run under headless Playwright via the CI setup script and pass without manual steps; failures surface actionable logs/screenshots.
+  - Document how to run the Playwright suite locally and in CI; gate related backlog items on these tests.
+
 ## Service test coverage baseline
 - **Status**: Proposed
 - **Assignee**: Unassigned
