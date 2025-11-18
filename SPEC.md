@@ -108,6 +108,18 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Accessibility: ARIA roles/labels for dialog pattern, keyboard navigation for close/primary actions, and high-contrast support across themes.
   - Tests cover open/close triggers, focus trap/restore, scroll locking, and responsive layout behavior.
 
+## Workflow/persona settings sheet
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** a property sheet that lets me configure workflow credentials/prompts and manage personas without leaving the current view.
+- **Acceptance criteria:**
+  - Reuses the property sheet component to present two sections: (a) workflow settings (per-workflow endpoint/model/API key/prompt) and (b) persona setup.
+  - Workflow section lists Narrator/System/Image with inputs for endpoint, model, API key, and system prompt; keys are masked, validated, and stored securely; prompts are saved per workflow.
+  - Persona section allows creating, editing, and deleting personas with name/avatar/prompt fields; selecting a persona applies it to the active session.
+  - Sheet loads existing values on open and persists changes on save/apply; changes surface confirmation/error states without closing the sheet.
+  - Accessibility: dialog semantics, labeled inputs, keyboard navigable sections, and clear error messaging; honors light/dark themes.
+  - Tests cover loading existing settings/personas, saving updates, masked key handling, prompt persistence per workflow, persona create/edit/delete, and error/validation states.
+
 ## Per-workflow API keys
 - **Status**: Proposed
 - **Assignee**: Unassigned
