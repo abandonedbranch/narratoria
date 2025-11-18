@@ -18,12 +18,11 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **Assignee**: Unassigned
 - **As a** player, **I want** to be able to manage my sessions through a tab-based interface. Tabs should display the session title, and a close button. On the far right of the tabs I want a plus button which will add a new session and switch to its tab.
 - **Acceptance criteria:**
-  - Use existing layout components to achieve this; modify them if needed.
+  - Uses the session tab component to render all sessions; tab labels reflect session titles and the active tab matches the active session.
+  - Tab click switches the active session via `IAppDataService` and refreshes chat/metadata for that session.
+  - Close button deletes the session via `IAppDataService` and removes it from the list; tab strip updates without reload.
+  - Plus button creates a new session via `IAppDataService` and selects its tab.
   - Keep the existing `@sessions` command available so sessions can still be managed via chat commands in addition to tabs.
-  - Closing a tab deletes that session and removes it from the session list.
-  - Pressing the plus button creates a new tab and starts a new session in it.
-- **Discussion:**
-  - Prefer reusing existing layout components (e.g., the grid component) to arrange the session tabs instead of introducing new layout primitives.
 
 ## Session tab strip component
 - **Status**: Proposed
