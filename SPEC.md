@@ -96,6 +96,18 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Accessible semantics: label is associated with the control, determinate mode exposes `aria-valuenow/min/max`, indeterminate mode uses `aria-busy`/status roles; supports light/dark themes with sufficient contrast.
   - Tests cover rendering with/without label, switching between indeterminate/determinate modes, value clamping/updates, and accessibility attributes.
 
+## Property sheet component
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** a slide-up property sheet so I can edit settings without leaving the current view.
+- **Acceptance criteria:**
+  - Sheet anchors to the bottom of the viewport and slides up over content with smooth enter/exit animation; supports modal scrim and dismissal via close button, drag-down, or escape key.
+  - Provides a header with title, optional primary action, and close; content area stacks child components vertically with scrolling when content exceeds available height.
+  - Respects safe areas/margins on mobile sizes; width adapts (full-width on mobile, constrained on desktop) with responsive max height and rounded top corners.
+  - Focus management: trap focus within the sheet when open, restore focus on close, and ensure scroll locking on the body to prevent background interaction.
+  - Accessibility: ARIA roles/labels for dialog pattern, keyboard navigation for close/primary actions, and high-contrast support across themes.
+  - Tests cover open/close triggers, focus trap/restore, scroll locking, and responsive layout behavior.
+
 ## Per-workflow API keys
 - **Status**: Proposed
 - **Assignee**: Unassigned
