@@ -417,6 +417,10 @@ wwwroot/dist/
 wwwroot/_content/
 wwwroot/.well-known/
 
+# Playwright
+.playwright-browsers/
+.playright-browsers/
+
 # macOS
 .DS_Store
 .AppleDouble
