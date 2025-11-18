@@ -30,7 +30,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// Skip HTTPS redirection in dev/test to avoid redirect loops when only HTTP is bound (e.g., Playwright).
+// Skip HTTPS redirection in dev/test to avoid redirect loops when only HTTP is bound in local test runs.
 if (!(app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")))
 {
     app.UseHttpsRedirection();

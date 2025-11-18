@@ -23,9 +23,9 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Provides a simple API for callers to define tab order, labels, and initial selected tab; supports programmatic selection changes.
   - Keyboard accessibility: arrow keys move focus/selection between tabs, selection is indicated, and panels are navigable when active.
   - Visual active state differentiates the selected tab; layout centers the tab list within its parent.
-  - Tests cover rendering multiple children, switching active tab via click/keyboard, maintaining child state, and initial selection behavior.
+  - Tests cover rendering multiple children, switching active tab via click/keyboard, maintaining child state, and initial selection behavior (component tests).
 - **Technical summary**: Added a reusable `TabStrip`/`TabStripTab` component with iPadOS-inspired pill styling, preserved panels, and keyboard navigation; created a `/tabs-demo` page to exercise programmatic selection and child state retention.
-- **Tests**: `DOTNET_ENVIRONMENT=Testing dotnet test tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj` (currently timing out in Playwright harness after the new scenarios were added).
+- **Tests**: `dotnet test tests/NarratoriaClient.ComponentTests/NarratoriaClient.ComponentTests.csproj`
 
 ## Component test coverage baseline
 - **Status**: Proposed
@@ -35,17 +35,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Add component/integration tests for `Components/SessionsManager.razor` (renders sessions list, switch/delete/start actions call `IAppDataService` and update UI).
   - Add coverage for the home page scrollback (`Components/Pages/Home.razor`) ensuring active session heading/subheading and chat history update on `SessionsChanged` and `ChatSessionChanged`.
   - Add coverage for `Components/ReplyEditor.razor` or input flow to verify message send invokes `INarrationService` and handles empty/disabled states.
-  - Tests run via `dotnet test` (or Playwright where applicable) and are required before marking related backlog items Done.
-
-## Playwright component baseline
-- **Status**: Proposed
-- **Assignee**: Unassigned
-- **As a** developer, **I want** a baseline of Playwright component/e2e tests for untested UI so we catch regressions in interactive flows.
-- **Acceptance criteria:**
-  - Inventory UI components with no Playwright coverage and add at least one representative test per component for render, basic interaction, and accessibility smoke (role/label/focus).
-  - Include coverage for tabs, property sheet, workflow picker, carousel/page control, and progress indicator once built; ensure selectors are resilient (test IDs or accessible roles).
-  - Tests run under headless Playwright via the CI setup script and pass without manual steps; failures surface actionable logs/screenshots.
-  - Document how to run the Playwright suite locally and in CI; gate related backlog items on these tests.
+  - Tests run via `dotnet test` (component tests) and are required before marking related backlog items Done.
 
 ## Service test coverage baseline
 - **Status**: Proposed
@@ -64,7 +54,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - `BrowserClientStorageService` surfaces quota and unavailability errors with actionable messages; `AppDataService` catches these and updates UI/state with a user-friendly notification.
   - Falling back to in-memory/session storage preserves current session state when persistent storage fails, and informs the player of limited persistence.
   - Logging captures storage error context (area/key/operation) without leaking sensitive data.
-  - Playwright/automated tests cover quota/unavailable scenarios.
+  - Automated tests cover quota/unavailable scenarios.
 
 ## Reply editor robustness
 - **Status**: Proposed
@@ -139,7 +129,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Settings UI allows distinct endpoint/model/API key inputs for Narrator, System, and Image workflows with validation and secure local storage.
   - Update request plumbing to use the corresponding credentials per workflow; ensure keys are not logged or leaked.
   - Export/import includes per-workflow credentials (redacted in UI logs) and preserves schemas for future migrations.
-  - Playwright/automated tests cover saving, loading, and using the per-workflow settings.
+  - Automated tests cover saving, loading, and using the per-workflow settings.
 
 ## Workflow picker component
 - **Status**: Proposed

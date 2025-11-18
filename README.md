@@ -6,14 +6,12 @@
 - Keep everything local-first: story logs, configuration, and session metadata persist in `localStorage`.
 
 ## Developer Prereqs
-- .NET 9 SDK (app and Playwright tests target `net9.0`).
+- .NET 9 SDK (app and tests target `net9.0`).
 
 ## Getting Started
-- One-step Playwright setup (installs .NET 9 SDK as needed, restores, installs Playwright browsers headless): `./scripts/setup-playwright.sh`
-  - On Debian/Ubuntu set `INSTALL_PLAYWRIGHT_DEPS=true` to include system packages via `playwright.sh install --with-deps` (sudo may be required). Common deps: `libatk1.0-0 libatk-bridge2.0-0 libdrm2 libgbm1 libgtk-3-0 libnspr4 libnss3 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libxshmfence1`.
 - Run the app: `dotnet run --project NarratoriaClient/NarratoriaClient.csproj --urls http://localhost:5000`
-- Run Playwright tests headless: `PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers DOTNET_ENVIRONMENT=Testing dotnet test tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj`
-- Watch Playwright tests headful with slow-mo: `PLAYWRIGHT_HEADFUL=true PLAYWRIGHT_SLOWMO_MS=250 PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers DOTNET_ENVIRONMENT=Testing dotnet test tests/NarratoriaClient.PlaywrightTests/NarratoriaClient.PlaywrightTests.csproj`
+- Run unit + component tests: `dotnet test`
+- Convention: services get unit tests; Blazor components get component tests (bUnit). Full end-to-end/browser testing will come later once the codebase stabilizes.
 
 ## Core Goals
 - **Solo & Multiplayer Sessions**: Support single-player adventures plus optional peer connections so multiple clients share a story instance.
@@ -60,7 +58,7 @@ The MVP can lean on `localStorage` for simplicity, but plan for an IndexedDB-bac
 See `SPEC.md` for Scrum-style acceptance criteria that track future requirements and MVP refinements.
 
 ### About SPEC.md
-`SPEC.md` maintains the backlog in a Scrum-style format with acceptance criteria, status, assignee, and any supporting discussion. Developers must keep it updated when starting work (status/assignee) and when finishing (technical summary + required Playwright test). Treat it as the authoritative backlog for upcoming and in-progress work.
+`SPEC.md` maintains the backlog in a Scrum-style format with acceptance criteria, status, assignee, and any supporting discussion. Developers must keep it updated when starting work (status/assignee) and when finishing (technical summary + linked tests per the unit/component convention). Treat it as the authoritative backlog for upcoming and in-progress work.
 
 ## Contributing
 See `CONTRIBUTORS.md` for coding guidelines, testing expectations, and how to work with `SPEC.md`.
