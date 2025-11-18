@@ -35,16 +35,6 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Visual active state differentiates the selected tab; layout centers the tab list within its parent.
   - Tests cover rendering multiple children, switching active tab via click/keyboard, maintaining child state, and initial selection behavior.
 
-## Session tab state sync
-- **Status**: Proposed
-- **Assignee**: Unassigned
-- **As a** player, **I want** session tabs to stay in sync with session changes so UI state matches the underlying data.
-  - **Acceptance criteria:**
-    - Tab strip listens to `SessionsChanged` and `ChatSessionChanged` events to keep tab labels, active state, and counts current.
-    - Switching tabs triggers `SwitchSessionAsync` and refreshes scrollback in the chat view.
-    - Closing a tab calls `DeleteSessionAsync` and updates the active session to the next available tab (or creates a default when none remain).
-    - `@sessions` chat command output reflects tab changes (new, deleted, switched) without manual refresh.
-
 ## Component test coverage baseline
 - **Status**: Proposed
 - **Assignee**: Unassigned
