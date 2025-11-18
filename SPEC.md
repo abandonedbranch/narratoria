@@ -68,11 +68,22 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **Status**: Proposed
 - **Assignee**: Unassigned
 - **As a** player, **I want** the reply editor to behave predictably so I don’t lose input or trigger duplicate sends.
-- **Acceptance criteria:**
+  - **Acceptance criteria:**
   - “Send” is disabled while a send is in progress and when the input is empty; a visual cue shows busy state.
   - Keyboard handling supports Enter to send and Shift+Enter to insert a newline without double submission.
   - Errors from `OnSend` path surface a non-blocking notification and keep the unsent text intact.
   - Tests validate empty-state behavior, busy-state guarding, and keyboard interactions.
+
+## Carousel page control component
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** to page through horizontally stacked content with a dot control so I can switch cards/panels without scrolling vertically.
+- **Acceptance criteria:**
+  - Provide a reusable horizontal pager that renders its children as pages laid out side-by-side with only the active page visible (using translate/snap rather than stacking vertically).
+  - Dot control renders one dot per page (supporting small counts and 8+ cases) with a highlighted state for the active page; clicking/tapping a dot animates to that page and updates state.
+  - Keyboard and touch/trackpad interactions allow paging (e.g., left/right arrows or swipe) and keep dot selection in sync; components wrapped in the pager are tabbable/focusable when active.
+  - Dots expose accessible button semantics/labels (e.g., “Page 2 of 5”) and maintain contrast in light/dark themes.
+  - Tests cover rendering variable page counts, dot navigation updates, and event callbacks fired when the active page changes.
 
 ## Per-workflow API keys
 - **Status**: Proposed
