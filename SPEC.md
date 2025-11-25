@@ -44,6 +44,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **Acceptance criteria:**
   - Add tests for `AppDataService` covering session create/switch/delete, persona upsert/delete, and export/import paths with storage mocked.
   - Add tests for `NarrationService` ensuring empty input is ignored, system commands are filtered from history, status notifications fire in success/cancel/error flows, and narration fallback text is applied when responses are empty.
+  - Expand coverage to include the narration pipeline orchestration service once introduced (context cloning, lifecycle event sequencing, cancellation propagation, and failure handling).
   - Tests run via `dotnet test` and gate completion of dependent backlog items.
 
 ## Client storage resilience
@@ -85,6 +86,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Supports both indeterminate (spinner + label) and determinate (progress bar + label) modes with a single API; label is optional but displayed when provided.
   - Determinate mode accepts a numeric progress value (0–100 or 0–1) and clamps to bounds; bar visually fills according to the value and animates smoothly on change.
   - Indeterminate mode shows a non-blocking spinner that does not reserve unnecessary width and does not mislead with arbitrary percentages.
+  - Component can bind to Narration Pipeline lifecycle events so status text/progress reflect real stage updates without extra adapters.
   - Accessible semantics: label is associated with the control, determinate mode exposes `aria-valuenow/min/max`, indeterminate mode uses `aria-busy`/status roles; supports light/dark themes with sufficient contrast.
   - Tests cover rendering with/without label, switching between indeterminate/determinate modes, value clamping/updates, and accessibility attributes.
 
@@ -127,7 +129,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **As a** player, **I want** to configure separate API keys/endpoints for the narrator, system, and image workflows so I can mix providers per task.
 - **Acceptance criteria:**
   - Settings UI allows distinct endpoint/model/API key inputs for Narrator, System, and Image workflows with validation and secure local storage.
-  - Update request plumbing to use the corresponding credentials per workflow; ensure keys are not logged or leaked.
+  - Update the Narration Pipeline's ModelRouter stage to use the corresponding credentials per workflow when building requests; ensure keys are not logged or leaked.
   - Export/import includes per-workflow credentials (redacted in UI logs) and preserves schemas for future migrations.
   - Automated tests cover saving, loading, and using the per-workflow settings.
 
@@ -137,7 +139,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **As a** player, **I want** a reusable workflow picker so I can choose Narrator, System, or Image from a dropdown wherever it’s needed.
 - **Acceptance criteria:**
   - Renders as a labeled dropdown/select that lists exactly the three workflows (Narrator/System/Image) and highlights the current selection.
-  - Exposes a simple API for default/controlled selection and emits change events so callers can update request plumbing and UI state.
+  - Exposes a simple API for default/controlled selection and emits change events so callers can update the Narration Pipeline context/ModelRouter selection plus UI state.
   - Keyboard and screen reader accessible (combobox/select semantics, focusable, ESC/Enter/arrow navigation); honors dark/light themes.
   - Supports disabled/read-only state for contexts where workflow changes aren’t allowed; component is reusable across pages/dialogs without layout hacks.
   - Tests cover default selection, change handling, disabled state, and accessibility attributes/keyboard navigation.
@@ -148,7 +150,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **As a** player, **I want** to explicitly route a message to the narrator, system, or image workflows so I control which engine responds.
 - **Acceptance criteria:**
   - Reply editor (or adjacent controls) offers an explicit selector/switch to choose Narrator/System/Image before sending.
-  - The selection is reflected in prompts/request payloads and surfaced in the chat log metadata.
+  - The selection feeds into the Narration Pipeline (PromptAssembler + ModelRouter stages) so prompts/request payloads use the chosen workflow and the metadata reflects it in chat logs.
   - Defaults to Narrator; preserves last selection per session; prevents sending without a selected workflow.
   - Tests verify routing changes request construction and the correct provider receives the message.
 
@@ -178,7 +180,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **Acceptance criteria:**
   - System workflow maintains a rolling summary of past turns, applying heavier summarization to older messages while retaining recent details.
   - Summaries are generated via the System model and stored with timestamps/ordering so they can be refreshed as the session evolves.
-  - Narrator requests include the latest system-generated summary in their context payload.
+  - Summaries plug into the Narration Pipeline: the MemoryManager stage updates them, and the PromptAssembler stage includes the latest summary when building narrator requests.
   - Tests verify summaries are produced, refresh over time, and are attached to narrator calls.
 
 ## System workflow cadence and persistence
@@ -187,7 +189,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **As a** player, **I want** the system workflow to refresh its working memory without slowing down narration so the story keeps flowing smoothly.
 - **Acceptance criteria:**
   - System summarization runs asynchronously/off the critical path of sending a narrator request; narrator calls are not blocked on summaries when not ready.
-  - Summaries are persisted per session (alongside chat history) and restored on reload; they update when new messages arrive or after a defined interval/count.
+  - Summaries are persisted per session (alongside chat history) and restored on reload; updates happen when new messages arrive or after a defined interval/count, and refreshed data flows through the Narration Pipeline’s MemoryManager + PromptAssembler stages automatically.
   - Summaries respect storage limits and fall back gracefully if storage is unavailable; logging captures refresh events and errors without leaking content.
   - Tests cover persistence/restore, non-blocking behavior, and storage-failure handling.
 
@@ -210,3 +212,93 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Theme choice is persisted and restored on reload; UI updates immediately on change.
   - Styling updates cover common components (layout, scrollback, editor, buttons) and meet accessibility contrast guidelines.
   - Tests verify the UI toggle, persistence, and correct theme application.
+
+## Narration pipeline infrastructure
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** a reusable narration pipeline runner so each lifecycle stage can emit events and mutate shared context deterministically.
+- **Acceptance criteria:**
+  - Introduce `NarrationPipelineContext`, `NarrationLifecycleEvent`, and a stage contract that enumerates hooks via DI (`IEnumerable<INarrationStageHook>`).
+  - Pipeline executions expose `IAsyncEnumerable<NarrationLifecycleEvent>` backed by `System.Threading.Channels`, covering `StageStarting/Completed/Failed` plus terminal `output.ready/output.failed`.
+  - `INarrationService.ProcessPlayerMessageAsync` switches to the pipeline runner and relays cancellation tokens, errors, and final narrator text.
+  - Automated tests assert stage ordering, event streaming, cancellation propagation, and error short-circuit behaviors without using third-party libraries.
+
+## InputPreprocessor stage
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** the pipeline’s first stage to normalize player input and detect command hints through composable hooks.
+- **Acceptance criteria:**
+  - Define `IInputPreprocessorHook` with access to the shared context and emitted telemetry.
+  - Built-in hooks cover whitespace/emoji normalization, `@command` detection, and workflow hint extraction (e.g., `/system` prefixes).
+  - Stage emits `input.preprocessed` events summarizing detected tags/modifiers; downstream context stores normalized text + tags.
+  - Tests verify hook ordering, mutation safety, and emitted lifecycle events for sample inputs.
+
+## SafetyPolicyChecker stage
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** pipeline-pluggable safety checks that can block or rewrite requests before they reach the model.
+- **Acceptance criteria:**
+  - Create `ISafetyCheckHook` interface and default hooks for mode compliance, explicit-mode gating, and tone restrictions/world rules.
+  - Stage emits `safety.checked` events with pass/fail verdicts; failures produce actionable messages returned to the UI.
+  - Pipeline short-circuits when a hook rejects input while still writing a narrator response explaining the rejection.
+  - Tests cover allowed vs. blocked input, event payloads, and interaction with `INarrationService`.
+
+## PromptAssembler stage
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** the pipeline to build narrator-ready prompts from global rules, memory, and personas without duplicating logic elsewhere.
+- **Acceptance criteria:**
+  - Implement `PromptAssemblerStage` that reads API settings, personas, memory summaries, and normalized input to produce a `NarrationPromptBundle`.
+  - Ensure stage injects workflow-specific system prompts plus rolling summaries (when available) and emits `prompt.assembled` events with counts/titles (no raw content).
+  - Provide hooks for future prompt mutators (e.g., persona overrides) with deterministic ordering.
+  - Tests verify message construction, persona inclusion, and event metadata.
+
+## ModelRouter stage
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** model selection to be centralized so workflow-specific keys/models/flags are honored before dispatching the request.
+- **Acceptance criteria:**
+  - Implement `ModelRouterStage` that inspects the selected workflow, per-workflow settings, and any hook-provided overrides to choose the model + endpoint + headers.
+  - Stage emits `model.selected` events with the chosen workflow, model name, and rationale (no secrets); these events drive UI notifications.
+  - Hooks can swap models (e.g., escalate to reasoning models) while logging why; invalid configurations surface descriptive errors before hitting the LLM.
+  - Tests cover selection fallback, override precedence, error handling, and credential usage.
+
+## LLMClient stage
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** the pipeline to stream narrator output chunks while emitting lifecycle events so the UI and logging stay in sync.
+- **Acceptance criteria:**
+  - Wrap `IOpenAiChatService` in a stage that listens for streaming updates, emits `llm.response.chunk` and final `llm.response.received` events, and forwards text deltas to the shared context.
+  - Handle cancellation and HTTP errors by emitting `StageFailed` plus diagnostic narrator messages, keeping compatibility with existing log buffer behavior.
+  - Ensure per-workflow headers/keys selected by ModelRouter are applied to outbound requests.
+  - Tests simulate streaming responses, cancellation, and failure payloads, asserting event ordering and buffered text output.
+
+## PostProcessor stage
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** a hook-based post-processing stage so narrator replies can be cleaned, validated, and annotated before persistence.
+- **Acceptance criteria:**
+  - Provide `IPostProcessorHook` implementations for meta-text stripping, lore consistency checks, narrator-style enforcement, and structured event extraction.
+  - Stage emits `output.postprocessed` events summarizing adjustments plus any warnings for the UI/log panel.
+  - Hooks can append metadata (e.g., detected NPC updates) for consumption by the MemoryManager stage.
+  - Tests cover text normalization, lore violation detection, metadata emission, and failure propagation.
+
+## MemoryManager stage
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** the pipeline to persist chat entries, world state, and rolling summaries so future prompts have high-quality context.
+- **Acceptance criteria:**
+  - Integrate `AppDataService` operations into a `MemoryManagerStage` that appends player/narrator messages, updates NPC/inventory structures, and logs automation decisions.
+  - Stage emits `state.memory.updated` with counts/timestamps plus optional summary references for long-running sessions.
+  - Provide scaffolding for future rolling summaries (trigger thresholds, placeholder fields) even if summarization hooks are implemented later.
+  - Tests verify persistence calls, event payloads, and resilience when storage is unavailable.
+
+## OutputFormatter & UI streaming integration
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** the UI to display stage-by-stage progress and final narrator output so I know exactly what the system is doing.
+- **Acceptance criteria:**
+  - Implement `OutputFormatterStage` that converts post-processed text + metadata into UI-ready structures, emits `output.ready`, and hands final replies back to `INarrationService`.
+  - Update components (e.g., `NarrationStatusIndicator`, future progress indicator) to subscribe to the pipeline event stream and show “Checking safety… / Selecting model…” etc.
+  - Provide a lightweight API (`INarrationPipelineEvents`) for other components (logging panel, future toasts) to observe the same stream without duplicating logic.
+  - Tests cover UI bindings to lifecycle events, ensuring statuses change as stages progress and revert to idle on completion/failure.
