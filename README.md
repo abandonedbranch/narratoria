@@ -73,6 +73,7 @@ The future narrator experience revolves around a hook-driven pipeline. Each stag
 │ Stage 7: MemoryManager       │
 │ - update sessions/NPCs/items │
 │ - log automation decisions   │
+│ - future: rolling summaries  │
 └─────┬────────────────────────┘
       │ emit: state.memory.updated
       ▼
@@ -89,6 +90,8 @@ The future narrator experience revolves around a hook-driven pipeline. Each stag
 ```
 
 Each rectangular stage owns a collection of hook implementations (small, testable listeners). They mutate the pipeline context in sequence, can short-circuit on failures, and broadcast fine-grained telemetry via lifecycle events (e.g., `input.tags.detected`, `llm.response.chunk`). Components such as the status indicator, logging panel, or gameplay automation subscribe to these events to update the UI in real time or to trigger auxiliary workflows like analytics, persona adjustments, or multiplayer synchronization.
+
+MemoryManager will initially sync detailed state (chat transcript pointers, NPC traits, inventory items). Later iterations will attach periodic, system-generated summaries when transcripts grow large, so prompt assembly can feed a concise memory while the full history remains available for exports and lore audits.
 
 ### Implementation approach (first-party .NET only)
 - **Pipeline orchestration**: `INarrationService` will call a `NarrationPipeline` helper that enumerates stages as an `IAsyncEnumerable<NarrationLifecycleEvent>`. Every stage `yield return`s `StageStarting/Completed/Failed` events so Blazor components can `await foreach` and react in real time without third-party frameworks.
