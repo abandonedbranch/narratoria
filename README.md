@@ -19,6 +19,84 @@
 - **State Persistence**: Store sessions, settings, and cached model replies locally; plan for sync/export/import so sessions can move across devices.
 - **Extensibility**: Design with future pluggable backends in mind (self-hosted functions, hosted orchestrators) without blocking the local-first MVP.
 
+## Narration Pipeline Architecture
+The future narrator experience revolves around a hook-driven pipeline. Each stage emits lifecycle events so specialized services can mutate or inspect the shared context without hard-coded coupling.
+
+```
+┌────────────┐
+│  UI Input  │
+└─────┬──────┘
+      ▼
+┌──────────────────────────────┐
+│ Stage 1: InputPreprocessor   │
+│ - normalization hooks        │
+│ - command/tag extraction     │
+└─────┬────────────────────────┘
+      │ emit: input.preprocessed
+      ▼
+┌──────────────────────────────┐
+│ Stage 2: SafetyPolicyChecker │
+│ - mode & tone enforcement    │
+│ - command short-circuiting   │
+└─────┬────────────────────────┘
+      │ emit: safety.checked
+      ▼
+┌──────────────────────────────┐
+│ Stage 3: PromptAssembler     │
+│ - narrator/system rules      │
+│ - world memory + personas    │
+└─────┬────────────────────────┘
+      │ emit: prompt.assembled
+      ▼
+┌──────────────────────────────┐
+│ Stage 4: ModelRouter         │
+│ - workflow-aware selection   │
+│ - config-driven overrides    │
+└─────┬────────────────────────┘
+      │ emit: model.selected
+      ▼
+┌──────────────────────────────┐
+│ Stage 5: LLMClient           │
+│ - streaming request/response │
+│ - chunked lifecycle events   │
+└─────┬────────────────────────┘
+      │ emit: llm.response.received
+      ▼
+┌──────────────────────────────┐
+│ Stage 6: PostProcessor       │
+│ - lore/style validation      │
+│ - structured event extraction│
+└─────┬────────────────────────┘
+      │ emit: output.postprocessed
+      ▼
+┌──────────────────────────────┐
+│ Stage 7: MemoryManager       │
+│ - update sessions/NPCs/items │
+│ - log automation decisions   │
+└─────┬────────────────────────┘
+      │ emit: state.memory.updated
+      ▼
+┌──────────────────────────────┐
+│ Stage 8: OutputFormatter     │
+│ - final reply + metadata     │
+│ - UI-ready payloads          │
+└─────┬────────────────────────┘
+      │ emit: output.ready
+      ▼
+┌───────────────┐
+│ UI Rendering  │
+└───────────────┘
+```
+
+Each rectangular stage owns a collection of hook implementations (small, testable listeners). They mutate the pipeline context in sequence, can short-circuit on failures, and broadcast fine-grained telemetry via lifecycle events (e.g., `input.tags.detected`, `llm.response.chunk`). Components such as the status indicator, logging panel, or gameplay automation subscribe to these events to update the UI in real time or to trigger auxiliary workflows like analytics, persona adjustments, or multiplayer synchronization.
+
+### Implementation approach (first-party .NET only)
+- **Pipeline orchestration**: `INarrationService` will call a `NarrationPipeline` helper that enumerates stages as an `IAsyncEnumerable<NarrationLifecycleEvent>`. Every stage `yield return`s `StageStarting/Completed/Failed` events so Blazor components can `await foreach` and react in real time without third-party frameworks.
+- **Hook wiring**: Each stage resolves its `IStageHook` implementations via the built-in DI container (`IEnumerable<IStageHook>`). Hooks mutate the shared `NarrationPipelineContext`, log via `Microsoft.Extensions.Logging`, and optionally emit sub-events by writing to the shared event stream.
+- **Event transport**: Per pipeline run, a `System.Threading.Channels.Channel<NarrationLifecycleEvent>` buffers events. The pipeline writes into the channel; the UI reads via `channel.Reader.ReadAllAsync()` (the Blazor status indicator can subscribe through a simple `event EventHandler<NarrationLifecycleEvent>` shim).
+- **UI updates**: Components replace the coarse “typing…” indicator with stage-specific notifications (e.g., “Checking safety…”, “Selecting model…”). Because the stream is first-party `IAsyncEnumerable`, no extra packages are needed to consume it.
+- **Failure/short-circuit handling**: Hooks throw descriptive exceptions captured by the pipeline. Before bubbling, the pipeline emits a `StageFailed` event plus a terminal `output.failed`, enabling UI toast notifications while keeping the existing `NarrationStatus` fallback for compatibility.
+
 ## Early Technical Questions
 - **Hosting Model**: Blazor WebAssembly only vs. ASP.NET + Blazor Server hybrid? WebAssembly aligns with local-first but complicates real-time multiplayer.
 - **Communication Layer**: For peer sessions, should the client rely on WebRTC data channels, a relayed signal server, or defer multiplayer until an optional service exists?
