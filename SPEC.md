@@ -92,6 +92,26 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Provide scaffolding for future rolling summaries (trigger thresholds, placeholder fields) even if summarization hooks are implemented later.
   - Tests verify persistence calls, event payloads, and resilience when storage is unavailable.
 
+## Scenario export hooks
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** to save my adventure (sessions, personas, summaries, workflow settings) to local storage so I can resume on another device or after reinstalling.
+- **Acceptance criteria:**
+  - Add pipeline hooks (invoked via UI command or `@save`) that package the current `AppDataService` state, workflow configuration, and latest memory summaries into a portable JSON payload.
+  - Emitting `scenario.export.requested` / `scenario.exported` lifecycle events lets the UI show progress/success or errors.
+  - Downloads use browser-friendly mechanisms (e.g., File System Access API or generated file download) without exposing secrets in logs.
+  - Tests cover serialization contents, event emission, and graceful failure when storage APIs are unavailable.
+
+## Scenario import & restoration
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** to load a previously saved scenario so Narratoria rebuilds sessions and summaries automatically.
+- **Acceptance criteria:**
+  - Provide an import hook that validates snapshot schema versions, hydrates `AppDataService` sessions/personas/settings, and restores rolling summaries before the next pipeline run.
+  - Emit `scenario.import.requested` / `scenario.imported` events so the UI can confirm the load or surface errors (with actionable messages when schema mismatch occurs).
+  - Ensure restored data drives PromptAssembler/ModelRouter immediately (no restart required) and that export/import integrates with existing export/import backlog expectations.
+  - Tests include successful import, schema mismatch handling, and partial failure (e.g., missing image workflow config) with recovery guidance.
+
 ## OutputFormatter & UI streaming integration
 - **Status**: Proposed
 - **Assignee**: Unassigned
