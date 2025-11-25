@@ -12,6 +12,16 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - `INarrationService.ProcessPlayerMessageAsync` switches to the pipeline runner and relays cancellation tokens, errors, and final narrator text.
   - Automated tests assert stage ordering, event streaming, cancellation propagation, and error short-circuit behaviors without using third-party libraries.
 
+## Stage hook chaining
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** each stage to run multiple hook listeners safely so features can be composed without rewriting the pipeline.
+- **Acceptance criteria:**
+  - Stages resolve hooks via `IEnumerable<IStageHook>` and execute them deterministically (document default ordering + guidance for parallel execution when safe).
+  - Hooks can emit sub-events (`input.tags.detected`, `image.generated.chunk`, etc.) that appear in the lifecycle stream before the stage reports completion.
+  - Provide diagnostics/logging that record which hook ran and what it mutated; failures in one hook short-circuit the remaining ones with clear metadata.
+  - Tests include fake hooks to assert sequencing, cancellation, and error propagation across multiple listeners.
+
 ## InputPreprocessor stage
 - **Status**: Proposed
 - **Assignee**: Unassigned
@@ -91,6 +101,26 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Update components (e.g., `NarrationStatusIndicator`, future progress indicator) to subscribe to the pipeline event stream and show “Checking safety… / Selecting model…” etc.
   - Provide a lightweight API (`INarrationPipelineEvents`) for other components (logging panel, future toasts) to observe the same stream without duplicating logic.
   - Tests cover UI bindings to lifecycle events, ensuring statuses change as stages progress and revert to idle on completion/failure.
+
+## Image sketch workflow branch
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** rough sketch images generated at key story beats so the adventure includes lightweight visuals.
+- **Acceptance criteria:**
+  - Add optional pipeline hooks (`ImagePromptAssembler`, `ImageModelRouter`, `ImageClientStage`) that branch off after `PromptAssembler`, emit `image.prompt.assembled`, `image.model.selected`, `image.generated` events, and rejoin before `OutputFormatter`.
+  - Reuse per-workflow settings for the Image workflow (endpoint/model/key/enable flag); disabling the workflow skips image hooks entirely.
+  - Output formatter attaches generated image metadata/URIs to the final payload so the UI displays sketches alongside narrator text; lifecycle events make progress visible (“Sketching scene…”).
+  - Tests cover enabled/disabled cases, event ordering, error handling, and integration with the existing narration stages.
+
+## Workflow multi-model chaining
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** power user, **I want** to chain multiple models within a workflow (e.g., Model A → Model B) so I can refine outputs before presenting them.
+- **Acceptance criteria:**
+  - Extend `ModelRouterStage` and downstream stages to accept ordered lists of model slots per workflow; each slot has endpoint/model/key/enable flags stored in settings.
+  - Pipeline lifecycle events include slot indices when emitting `model.selected` / `llm.response.received` so UI/logs show multi-step progress.
+  - Provide config UI affordances (add/remove/reorder slots) and validation plus warnings about extra latency/cost.
+  - Tests ensure chained invocations run in order, propagate intermediate results, handle per-slot failures gracefully, and skip disabled slots.
 
 ## System workflow state summarization
 - **Status**: Proposed
