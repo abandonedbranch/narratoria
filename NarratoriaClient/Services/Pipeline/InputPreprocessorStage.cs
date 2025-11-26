@@ -1,9 +1,12 @@
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace NarratoriaClient.Services.Pipeline;
 
 public sealed class InputPreprocessorStage : INarrationPipelineStage
 {
+    private static readonly Regex CommandPattern = new(@"@(?<command>[A-Za-z][\w-]*)", RegexOptions.Compiled);
+
     private readonly ILogger<InputPreprocessorStage> _logger;
 
     public InputPreprocessorStage(ILogger<InputPreprocessorStage> logger)
@@ -24,12 +27,45 @@ public sealed class InputPreprocessorStage : INarrationPipelineStage
         }
 
         context.NormalizedInput = normalized;
+        context.IsSystemCommand = ContainsSystemCommand(normalized);
 
         if (_logger.IsEnabled(LogLevel.Debug))
         {
-            _logger.LogDebug("Input normalized. Length={Length}", normalized.Length);
+            _logger.LogDebug("Input normalized. Length={Length}. CommandDetected={Command}", normalized.Length, context.IsSystemCommand);
         }
 
         return Task.CompletedTask;
+    }
+
+    private static bool ContainsSystemCommand(string? content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return false;
+        }
+
+        var text = content;
+        var cursor = 0;
+        while (cursor < text.Length)
+        {
+            var match = CommandPattern.Match(text, cursor);
+            if (!match.Success)
+            {
+                break;
+            }
+
+            var matchIndex = match.Index;
+            var isEscaped = matchIndex > 0 && text[matchIndex - 1] == '\\';
+            cursor = matchIndex + match.Length;
+
+            if (isEscaped)
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 }

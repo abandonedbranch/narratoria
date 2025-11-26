@@ -33,6 +33,8 @@ public sealed class NarrationPipelineContext
 
     public string? GeneratedNarration { get; set; }
 
+    public bool IsSystemCommand { get; set; }
+
     public IReadOnlyDictionary<string, object?> Items => _items;
 
     public void SetItem(string key, object? value)

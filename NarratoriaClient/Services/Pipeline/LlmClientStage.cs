@@ -22,6 +22,11 @@ public sealed class LlmClientStage : INarrationPipelineStage
 
     public async Task ExecuteAsync(NarrationPipelineContext context, CancellationToken cancellationToken)
     {
+        if (context.IsSystemCommand)
+        {
+            return;
+        }
+
         if (context.PromptMessages is null)
         {
             throw new InvalidOperationException("Prompt messages must be assembled before invoking the LLM.");

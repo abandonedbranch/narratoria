@@ -19,6 +19,11 @@ public sealed class MemoryManagerStage : INarrationPipelineStage
 
     public async Task ExecuteAsync(NarrationPipelineContext context, CancellationToken cancellationToken)
     {
+        if (context.IsSystemCommand)
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(context.GeneratedNarration))
         {
             throw new InvalidOperationException("No narrator text available to persist.");

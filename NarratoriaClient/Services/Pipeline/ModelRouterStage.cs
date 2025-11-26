@@ -19,6 +19,11 @@ public sealed class ModelRouterStage : INarrationPipelineStage
 
     public async Task ExecuteAsync(NarrationPipelineContext context, CancellationToken cancellationToken)
     {
+        if (context.IsSystemCommand)
+        {
+            return;
+        }
+
         var apiSettings = await _appData.GetApiSettingsAsync(cancellationToken).ConfigureAwait(false);
         var narratorModel = apiSettings.Narrator.Model;
         if (string.IsNullOrWhiteSpace(narratorModel))
