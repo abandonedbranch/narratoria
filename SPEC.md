@@ -32,6 +32,16 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Downloads use browser-friendly mechanisms (e.g., File System Access API or generated file download) without exposing secrets in logs.
   - Tests cover serialization contents, event emission, and graceful failure when storage APIs are unavailable.
 
+## Scenario file attachments component
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** to attach one or more files (e.g., background story, reference docs) to the current scenario so the narrator can leverage context-specific materials.
+- **Acceptance criteria:**
+  - Provide a UI component to add/remove attachments tied to the active session; preserves original filenames and MIME types.
+  - Attachments are stored with scenario-specific data (aligned with export/import) and do not leak across sessions.
+  - PromptAssembler (or a dedicated hook) can surface attachment metadata to workflows without transmitting file contents unless explicitly enabled.
+  - Tests cover uploading/removing attachments, MIME type preservation, session association, and export/import of attachment metadata.
+
 ## Scenario import & restoration
 - **Status**: Proposed
 - **Assignee**: Unassigned
