@@ -18,6 +18,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **As a** player, **I want** to enable or disable safety checks so I can use explicit-friendly models when appropriate.
 - **Acceptance criteria:**
   - Add a pipeline-aware setting/command that toggles the SafetyPolicyChecker stage on/off per session; disabled mode bypasses safety hooks but logs that protection is off.
+  - Provide a dedicated component for the toggle so its state is cleanly bound to persisted settings and can be reused across UI surfaces.
   - UI surfaces the current safety state (on/off) and warns when disabled; toggling emits lifecycle events (`safety.toggle`) for transparency.
   - Pipeline respects the toggle without affecting other stages; defaults remain safe (enabled).
   - Tests cover toggling on/off, persistence per session, event emission, and ensuring narration proceeds correctly when safety is disabled.
