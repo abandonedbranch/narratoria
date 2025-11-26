@@ -2,16 +2,6 @@
 
 The following backlog items use Scrum-style acceptance criteria to clarify expected behavior for the MVP and near-term roadmap. See `CONTRIBUTORS.md` for contribution rules and workflow expectations.
 
-## Narration pipeline infrastructure
-- **Status**: Proposed
-- **Assignee**: Unassigned
-- **As a** developer, **I want** a reusable narration pipeline runner so each lifecycle stage can emit events and mutate shared context deterministically.
-- **Acceptance criteria:**
-  - Introduce `NarrationPipelineContext`, `NarrationLifecycleEvent`, and a stage contract that enumerates hooks via DI (`IEnumerable<INarrationStageHook>`).
-  - Pipeline executions expose `IAsyncEnumerable<NarrationLifecycleEvent>` backed by `System.Threading.Channels`, covering `StageStarting/Completed/Failed` plus terminal `output.ready/output.failed`.
-  - `INarrationService.ProcessPlayerMessageAsync` switches to the pipeline runner and relays cancellation tokens, errors, and final narrator text.
-  - Automated tests assert stage ordering, event streaming, cancellation propagation, and error short-circuit behaviors without using third-party libraries.
-
 ## Stage hook chaining
 - **Status**: Proposed
 - **Assignee**: Unassigned
