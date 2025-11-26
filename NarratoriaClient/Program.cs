@@ -1,7 +1,8 @@
-using NarratoriaClient.Components;
-using NarratoriaClient.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using NarratoriaClient.Components;
+using NarratoriaClient.Services;
+using NarratoriaClient.Services.Pipeline;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,8 @@ builder.Services.AddSingleton<ILogBuffer, LogBuffer>();
 builder.Services.AddScoped<IClientStorageService, BrowserClientStorageService>();
 builder.Services.AddScoped<IAppDataService, AppDataService>();
 builder.Services.AddScoped<INarrationService, NarrationService>();
+builder.Services.AddScoped<INarrationPipeline, NarrationPipeline>();
+builder.Services.AddScoped<INarrationPipelineStage, LegacyNarrationPipelineStage>();
 
 if (builder.Configuration.GetValue<bool>("UseFakeChatService"))
 {
