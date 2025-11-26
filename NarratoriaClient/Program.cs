@@ -15,7 +15,13 @@ builder.Services.AddScoped<IClientStorageService, BrowserClientStorageService>()
 builder.Services.AddScoped<IAppDataService, AppDataService>();
 builder.Services.AddScoped<INarrationService, NarrationService>();
 builder.Services.AddScoped<INarrationPipeline, NarrationPipeline>();
-builder.Services.AddScoped<INarrationPipelineStage, LegacyNarrationPipelineStage>();
+builder.Services.AddScoped<INarrationPipelineStage, InputPreprocessorStage>();
+builder.Services.AddScoped<INarrationPipelineStage, PlayerMessageRecorderStage>();
+builder.Services.AddScoped<INarrationPipelineStage, PromptAssemblerStage>();
+builder.Services.AddScoped<INarrationPipelineStage, ModelRouterStage>();
+builder.Services.AddScoped<INarrationPipelineStage, LlmClientStage>();
+builder.Services.AddScoped<INarrationPipelineStage, PostProcessorStage>();
+builder.Services.AddScoped<INarrationPipelineStage, MemoryManagerStage>();
 
 if (builder.Configuration.GetValue<bool>("UseFakeChatService"))
 {

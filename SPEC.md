@@ -12,6 +12,16 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Provide diagnostics/logging that record which hook ran and what it mutated; failures in one hook short-circuit the remaining ones with clear metadata.
   - Tests include fake hooks to assert sequencing, cancellation, and error propagation across multiple listeners.
 
+## Pipeline integration wrap-up
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** the app to consume the new narration pipeline end-to-end so legacy paths are retired and all components use lifecycle events.
+- **Acceptance criteria:**
+  - `INarrationService` runs exclusively through the pipeline; any legacy narration flow is removed or isolated to the legacy stage while keeping compatibility.
+  - UI components that surfaced narration status now bind to pipeline lifecycle events (or the existing status shim fed by the pipeline) to show stage-level progress.
+  - Configuration/settings (workflows, prompts, personas) are read only through pipeline-aware stages; no duplicate request-building code remains.
+  - Tests cover a full pipeline run from input to output, asserting lifecycle event ordering, status updates, and final chat persistence using the production service registration.
+
 ## InputPreprocessor stage
 - **Status**: Proposed
 - **Assignee**: Unassigned

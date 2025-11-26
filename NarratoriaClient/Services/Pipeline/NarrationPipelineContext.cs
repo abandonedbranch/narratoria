@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using NarratoriaClient.Services;
 
 namespace NarratoriaClient.Services.Pipeline;
 
@@ -23,6 +24,14 @@ public sealed class NarrationPipelineContext
     public Guid CorrelationId { get; }
 
     public string PlayerInput { get; }
+
+    public string? NormalizedInput { get; set; }
+
+    public IReadOnlyList<ChatPromptMessage>? PromptMessages { get; set; }
+
+    public string? SelectedModel { get; set; }
+
+    public string? GeneratedNarration { get; set; }
 
     public IReadOnlyDictionary<string, object?> Items => _items;
 
