@@ -12,6 +12,16 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Pipeline short-circuits when a hook rejects input while still writing a narrator response explaining the rejection.
   - Tests cover allowed vs. blocked input, event payloads, and interaction with `INarrationService`.
 
+## Safety policy toggle
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** to enable or disable safety checks so I can use explicit-friendly models when appropriate.
+- **Acceptance criteria:**
+  - Add a pipeline-aware setting/command that toggles the SafetyPolicyChecker stage on/off per session; disabled mode bypasses safety hooks but logs that protection is off.
+  - UI surfaces the current safety state (on/off) and warns when disabled; toggling emits lifecycle events (`safety.toggle`) for transparency.
+  - Pipeline respects the toggle without affecting other stages; defaults remain safe (enabled).
+  - Tests cover toggling on/off, persistence per session, event emission, and ensuring narration proceeds correctly when safety is disabled.
+
 ## Scenario export hooks
 - **Status**: Proposed
 - **Assignee**: Unassigned
