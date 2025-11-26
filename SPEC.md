@@ -82,6 +82,16 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Summaries plug into the Narration Pipeline: the MemoryManager stage updates them, and the PromptAssembler stage includes the latest summary when building narrator requests.
   - Tests verify summaries are produced, refresh over time, and are attached to narrator calls.
 
+## System workflow context enrichment
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** developer, **I want** the system workflow to receive a concise summary of configuration and session state so it can answer meta-questions and manage automation.
+- **Acceptance criteria:**
+  - PromptAssembler enriches system-targeted requests with a brief summary of current configuration (enabled workflows, selected models, safety toggle state) and a short per-session summary (name, created date, last activity, message count).
+  - The enrichment stays lightweight (bounded length) and redacts secrets (API keys).
+  - Lifecycle events or logs indicate when system context enrichment is attached, so we can debug what the system sees.
+  - Tests cover inclusion/exclusion of config/session summaries, length bounds, and redaction behavior.
+
 ## System workflow command awareness
 - **Status**: Proposed
 - **Assignee**: Unassigned
