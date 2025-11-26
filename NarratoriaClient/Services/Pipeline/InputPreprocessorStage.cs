@@ -47,7 +47,16 @@ public sealed class InputPreprocessorStage : INarrationPipelineStage
             context.CommandName = leadingSlash.Groups["command"].Value.Trim();
             var remainder = normalized[leadingSlash.Length..].TrimStart();
             context.CommandArgs = string.IsNullOrWhiteSpace(remainder) ? null : remainder;
-            context.NormalizedInput = normalized;
+            var commandText = context.CommandArgs is null
+                ? $"/{context.CommandName}"
+                : $"/{context.CommandName} {context.CommandArgs}";
+
+            // Store as @command so existing chat rendering surfaces command components.
+            var normalizedForHistory = context.CommandArgs is null
+                ? $"@{context.CommandName}"
+                : $"@{context.CommandName} {context.CommandArgs}";
+
+            context.NormalizedInput = normalizedForHistory;
             _logger.LogDebug("Slash command detected. Command={Command}, Args={Args}", context.CommandName, context.CommandArgs);
             return Task.CompletedTask;
         }

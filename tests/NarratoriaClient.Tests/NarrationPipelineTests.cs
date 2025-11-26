@@ -77,6 +77,26 @@ public class NarrationPipelineTests
     }
 
     [Fact]
+    public async Task UnknownCommandFailsPipeline()
+    {
+        var stages = new INarrationPipelineStage[]
+        {
+            new TestStage("slash-command", 0, (context, token) =>
+            {
+                context.IsCommand = true;
+                context.CommandName = "nope";
+                return Task.CompletedTask;
+            }),
+            new CommandHandlerStage(new TestLogBuffer())
+        };
+
+        var pipeline = new NarrationPipeline(stages, NullLogger<NarrationPipeline>.Instance);
+        var execution = pipeline.Execute(new NarrationPipelineContext("/nope"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => execution.Completion);
+    }
+
+    [Fact]
     public async Task CancellationStopsPipeline()
     {
         var stages = new INarrationPipelineStage[]

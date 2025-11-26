@@ -6,7 +6,7 @@
         @foreach (var command in _commands)
         {
             <li class="help-command__item">
-                <span class="help-command__token">@($"@{command.Token}")</span>
+                <span class="help-command__token">@command.Token</span>
                 <span class="help-command__name">@command.DisplayName</span>
                 <p class="help-command__description">@command.Description</p>
             </li>

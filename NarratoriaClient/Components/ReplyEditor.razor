@@ -20,7 +20,7 @@
 
     [Parameter] public EventCallback<string> OnSend { get; set; }
 
-    private const string PlaceholderText = "Use @help for help, or type your move here for the narrator to progress the session.";
+    private const string PlaceholderText = "Use /help for help, or type your move here for the narrator to progress the session.";
     private readonly ReplyModel _model = new();
     private bool _isSubmitting;
     private ElementReference _textAreaRef;

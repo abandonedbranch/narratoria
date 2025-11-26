@@ -133,7 +133,7 @@
                 if (!string.IsNullOrEmpty(normalizedToken))
                 {
                     var fragment = ChatCommandRegistry.TryCreateFragment(normalizedToken) ?? CreateUnknownFragment(normalizedToken);
-                    _items.Add(ChatItem.ForComponent(message.Author, commandName, normalizedToken, fragment, messageIndex, commandIndex++));
+                    _items.Add(ChatItem.ForComponent(message.Author, normalizedToken, normalizedToken, fragment, messageIndex, commandIndex++));
                 }
 
                 cursor = matchIndex + match.Length;
