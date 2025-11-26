@@ -152,6 +152,16 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Summaries plug into the Narration Pipeline: the MemoryManager stage updates them, and the PromptAssembler stage includes the latest summary when building narrator requests.
   - Tests verify summaries are produced, refresh over time, and are attached to narrator calls.
 
+## System workflow command awareness
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** the system workflow to list and invoke built-in commands when asked (e.g., “@system what commands can I use?”).
+- **Acceptance criteria:**
+  - PromptAssembler includes a structured list of available chat commands (token + display name) when the target workflow is `system`, so the system agent knows which commands exist.
+  - System workflow responses are parsed for commands and, when a recognized command is present, the pipeline routes it through the command handler instead of the narrator path; commands issued by the system are rendered in the UI just like player-issued commands.
+  - Guardrails: system prompts instruct the agent to emit commands only when relevant (e.g., when asked for help) and to avoid recursive @system calls; unknown commands render a safe fallback.
+  - Tests cover prompt enrichment for system workflow, system-issued command execution, and safeguards against runaway or recursive command emissions.
+
 ## System workflow cadence and persistence
 - **Status**: Proposed
 - **Assignee**: Unassigned
