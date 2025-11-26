@@ -33,11 +33,15 @@ public sealed class NarrationPipelineContext
 
     public string? GeneratedNarration { get; set; }
 
-    public bool IsSystemCommand { get; set; }
-
     public bool ShouldContinue { get; set; } = true;
 
     public string TargetWorkflow { get; set; } = "narrator";
+
+    public bool IsCommand { get; set; }
+
+    public string? CommandName { get; set; }
+
+    public string? CommandArgs { get; set; }
 
     public IReadOnlyDictionary<string, object?> Items => _items;
 

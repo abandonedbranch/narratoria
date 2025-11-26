@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using NarratoriaClient.Components;
 
 namespace NarratoriaClient.Services.Pipeline;
 
@@ -17,12 +18,25 @@ public sealed class CommandHandlerStage : INarrationPipelineStage
 
     public Task ExecuteAsync(NarrationPipelineContext context, CancellationToken cancellationToken)
     {
-        if (context.IsSystemCommand)
+        if (context.IsCommand)
         {
-            context.ShouldContinue = false;
-            _logBuffer.Log(StageName, LogLevel.Information, "System command detected; pipeline short-circuited.", new Dictionary<string, object?>
+            var commandToken = ChatCommandRegistry.NormalizeToken(context.CommandName ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(commandToken))
             {
-                ["input"] = context.NormalizedInput ?? context.PlayerInput
+                context.ShouldContinue = false;
+                return Task.CompletedTask;
+            }
+
+            if (!ChatCommandRegistry.TryGetComponentType(commandToken, out _))
+            {
+                throw new InvalidOperationException($"Unknown command '/{commandToken}'.");
+            }
+
+            context.ShouldContinue = false;
+            _logBuffer.Log(StageName, LogLevel.Information, "Command detected; pipeline short-circuited.", new Dictionary<string, object?>
+            {
+                ["command"] = commandToken,
+                ["args"] = context.CommandArgs ?? string.Empty
             });
         }
 

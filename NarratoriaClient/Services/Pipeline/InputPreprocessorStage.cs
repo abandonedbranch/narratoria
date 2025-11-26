@@ -7,6 +7,7 @@ public sealed class InputPreprocessorStage : INarrationPipelineStage
 {
     private static readonly Regex CommandPattern = new(@"@(?<command>[A-Za-z][\w-]*)", RegexOptions.Compiled);
     private static readonly Regex LeadingCommandPattern = new(@"^@(?<command>[A-Za-z][\w-]*)(\s+)?", RegexOptions.Compiled);
+    private static readonly Regex LeadingSlashCommandPattern = new(@"^/(?<command>[^\s]+)", RegexOptions.Compiled);
     private static readonly HashSet<string> RoutingCommands = new(StringComparer.OrdinalIgnoreCase)
     {
         "narrator",
@@ -34,10 +35,25 @@ public sealed class InputPreprocessorStage : INarrationPipelineStage
         }
 
         context.TargetWorkflow = "narrator";
-        context.IsSystemCommand = false;
+        context.IsCommand = false;
+        context.CommandName = null;
+        context.CommandArgs = null;
+
+        // Slash command detection
+        var leadingSlash = LeadingSlashCommandPattern.Match(normalized);
+        if (leadingSlash.Success && leadingSlash.Length > 1 && !(normalized.Length > 1 && normalized[1] == ' '))
+        {
+            context.IsCommand = true;
+            context.CommandName = leadingSlash.Groups["command"].Value.Trim();
+            var remainder = normalized[leadingSlash.Length..].TrimStart();
+            context.CommandArgs = string.IsNullOrWhiteSpace(remainder) ? null : remainder;
+            context.NormalizedInput = normalized;
+            _logger.LogDebug("Slash command detected. Command={Command}, Args={Args}", context.CommandName, context.CommandArgs);
+            return Task.CompletedTask;
+        }
 
         var leading = LeadingCommandPattern.Match(normalized);
-        if (leading.Success)
+        if (leading.Success && normalized.Length > 1 && normalized[1] != ' ')
         {
             var token = leading.Groups["command"].Value;
             var trimmedToken = token.Trim();
@@ -47,55 +63,15 @@ public sealed class InputPreprocessorStage : INarrationPipelineStage
                 context.TargetWorkflow = trimmedToken.ToLowerInvariant();
                 normalized = normalized[(leading.Length)..].TrimStart();
             }
-            else
-            {
-                context.IsSystemCommand = true;
-            }
-        }
-        else
-        {
-            context.IsSystemCommand = ContainsSystemCommand(normalized);
         }
 
         context.NormalizedInput = normalized;
 
         if (_logger.IsEnabled(LogLevel.Debug))
         {
-            _logger.LogDebug("Input normalized. Length={Length}. CommandDetected={Command}. TargetWorkflow={Workflow}", normalized.Length, context.IsSystemCommand, context.TargetWorkflow);
+            _logger.LogDebug("Input normalized. Length={Length}. CommandDetected={Command}. TargetWorkflow={Workflow}", normalized.Length, context.IsCommand, context.TargetWorkflow);
         }
 
         return Task.CompletedTask;
-    }
-
-    private static bool ContainsSystemCommand(string? content)
-    {
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            return false;
-        }
-
-        var text = content;
-        var cursor = 0;
-        while (cursor < text.Length)
-        {
-            var match = CommandPattern.Match(text, cursor);
-            if (!match.Success)
-            {
-                break;
-            }
-
-            var matchIndex = match.Index;
-            var isEscaped = matchIndex > 0 && text[matchIndex - 1] == '\\';
-            cursor = matchIndex + match.Length;
-
-            if (isEscaped)
-            {
-                continue;
-            }
-
-            return true;
-        }
-
-        return false;
     }
 }
