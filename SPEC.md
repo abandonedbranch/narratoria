@@ -153,7 +153,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Tests confirm the note renders in the editor UI across workflows.
 
 ## Workflow settings sheet
-- **Status**: Proposed
+- **Status**: Removed
 - **Assignee**: Unassigned
 - **As a** player, **I want** a property sheet that lets me configure workflow credentials/prompts without leaving the current view.
 - **Acceptance criteria:**
@@ -195,7 +195,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Tests validate empty-state behavior, busy-state guarding, and keyboard interactions.
 
 ## Progress indicator component
-- **Status**: Proposed
+- **Status**: Removed
 - **Assignee**: Unassigned
 - **As a** player, **I want** a progress indicator with text so I can see what’s happening and how far along it is.
 - **Acceptance criteria:**
@@ -207,7 +207,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Tests cover rendering with/without label, switching between indeterminate/determinate modes, value clamping/updates, and accessibility attributes.
 
 ## Property sheet component
-- **Status**: Proposed
+- **Status**: Removed
 - **Assignee**: Unassigned
 - **As a** player, **I want** a slide-up property sheet so I can edit settings without leaving the current view.
 - **Acceptance criteria:**
@@ -219,7 +219,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Tests cover open/close triggers, focus trap/restore, scroll locking, and responsive layout behavior.
 
 ## Persona management sheet
-- **Status**: Proposed
+- **Status**: Removed
 - **Assignee**: Unassigned
 - **As a** player, **I want** a dedicated property sheet to create, edit, and delete personas without leaving the current view.
 - **Acceptance criteria:**
@@ -259,7 +259,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Tests run via `dotnet test` (component tests) and are required before marking related backlog items Done.
 
 ## Chat session as tabs
-- **Status**: Proposed
+- **Status**: Removed
 - **Assignee**: Unassigned
 - **As a** player, **I want** to be able to manage my sessions through a tab-based interface. Tabs should display the session title, and a close button. On the far right of the tabs I want a plus button which will add a new session and switch to its tab.
 - **Acceptance criteria:**
@@ -270,7 +270,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Keep the existing `@sessions` command available so sessions can still be managed via chat commands in addition to tabs.
 
 ## Session tab strip component
-- **Status**: In Review
+- **Status**: Removed
 - **Assignee**: Codex
 - **As a** player, **I want** a reusable tab component so I can swap between multiple pieces of content inline.
 - **Acceptance criteria:**
@@ -284,7 +284,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **Tests**: `dotnet test tests/NarratoriaClient.ComponentTests/NarratoriaClient.ComponentTests.csproj`
 
 ## Carousel page control component
-- **Status**: Proposed
+- **Status**: Removed
 - **Assignee**: Unassigned
 - **As a** player, **I want** to page through horizontally stacked content with a dot control so I can switch cards/panels without scrolling vertically.
 - **Acceptance criteria:**
