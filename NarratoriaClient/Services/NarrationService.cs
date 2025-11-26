@@ -10,20 +10,13 @@ public interface INarrationService
     Task ProcessPlayerMessageAsync(string content, CancellationToken cancellationToken = default);
 }
 
-public sealed class NarrationService : INarrationService
+public sealed class NarrationService(INarrationPipeline pipeline, ILogger<NarrationService> logger, ILogBuffer logBuffer) : INarrationService
 {
-    private readonly INarrationPipeline _pipeline;
-    private readonly ILogBuffer _logBuffer;
-    private readonly ILogger<NarrationService> _logger;
+    private readonly INarrationPipeline _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
+    private readonly ILogBuffer _logBuffer = logBuffer ?? throw new ArgumentNullException(nameof(logBuffer));
+    private readonly ILogger<NarrationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public event EventHandler<NarrationStatusChangedEventArgs>? StatusChanged;
-
-    public NarrationService(INarrationPipeline pipeline, ILogger<NarrationService> logger, ILogBuffer logBuffer)
-    {
-        _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _logBuffer = logBuffer ?? throw new ArgumentNullException(nameof(logBuffer));
-    }
 
     public async Task ProcessPlayerMessageAsync(string content, CancellationToken cancellationToken = default)
     {
