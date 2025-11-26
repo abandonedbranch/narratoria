@@ -8,13 +8,14 @@ This document explains how to contribute to Narratoria—whether you are an AI a
 - Target .NET 9 SDK for all projects and tests.
 - Preserve local-first constraints (client-side storage, no backend dependencies); use the storage and API abstractions already in place.
 - Add or update tests for any non-trivial change.
-- Testing convention: services get unit tests; Blazor components get component tests (bUnit). Full end-to-end/browser tests will be reintroduced later once the codebase stabilizes.
+- Testing convention: services get unit tests; Blazor components get component tests (bUnit). 
 
 ## Code & UI Guidelines
 - Use existing component and layout patterns (`NarratoriaClient/Components/`, `NarratoriaClient/Components/Layout/`).
 - For storage and data, go through the service abstractions (`IClientStorageService`, `AppDataService`).
 - For external calls, follow the `OpenAiChatService` pattern and do not log secrets.
 - Maintain accessibility in UI updates; keep components focused and composable.
+- Prefer composition over inheritance. It's easier to test a has-a relationship than an is-a relationship.
 
 ## Testing
 - Run all tests for code changes: `dotnet test`
