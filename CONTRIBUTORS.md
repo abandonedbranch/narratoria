@@ -22,7 +22,7 @@ This document explains how to contribute to Narratoria—whether you are an AI a
 - Pure documentation/backlog updates do not require tests, but still keep `SPEC.md` and `README.md` consistent.
 
 ## Workflow Expectations
-- Before coding: read `README.md`, `SPEC.md`, and relevant services/components.
+- Before coding: read `README.md`, `SPEC.md`, and relevant services/components. Update the relevant `SPEC.md` backlog item with your name and status when you start work.
 - During work: update `SPEC.md` with status/assignee; keep changes aligned with local-first constraints.
 - After work: add tests, update `SPEC.md` with a technical summary and links to the tests you added, and ensure lint/build/tests pass.
 
