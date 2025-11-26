@@ -38,7 +38,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **Assignee**: Unassigned
 - **As a** player, **I want** to attach one or more files (e.g., background story, reference docs) to the current scenario so the narrator can leverage context-specific materials.
 - **Acceptance criteria:**
-  - Provide a UI component to add/remove attachments tied to the active session; preserves original filenames and MIME types.
+  - Provide a UI component to add/remove attachments tied to the active session; preserves original filenames and MIME types; only accepts plain-text formats (e.g., .txt, .md) with a 5 MB per-file limit.
   - Attachments are stored with scenario-specific data (aligned with export/import) and do not leak across sessions.
   - PromptAssembler (or a dedicated hook) can surface attachment metadata to workflows without transmitting file contents unless explicitly enabled.
   - Tests cover uploading/removing attachments, MIME type preservation, session association, and export/import of attachment metadata.

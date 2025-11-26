@@ -103,6 +103,7 @@ MemoryManager will initially sync detailed state (chat transcript pointers, NPC 
 - **Future image sketch workflow**: The same pipeline can branch into an image workflow (e.g., after `PromptAssembler`). When enabled, hooks assemble an image prompt, route it to the user’s configured image model, stream `image.generated` events, and pass scene sketches to the `OutputFormatter` so artwork appears alongside narrated text.
 - **Workflow system prompts**: Each workflow (Narrator, System, Image) will expose user-configurable system prompts so players can tune the narrator voice or image style (e.g., rough sketch vs. photorealistic). Those prompts feed the PromptAssembler stage and travel with export/import data.
 - **Scenario export/import hooks**: Because the MemoryManager already tracks transcripts, personas, and rolling summaries, dedicated save/load hooks can serialize the current pipeline context into a portable file (for backups or device transfers) and hydrate it later. A `scenario.exported`/`scenario.imported` event pair keeps the UI informed when players save progress or resume adventures on a fresh install.
+- **Command routing**: Runtime commands now use slash prefixes (e.g., `/help`, `/export`, `/settings`). Workflow routing still uses leading `@` (e.g., `@system`), but invoking components is done via `/` commands.
 
 ## Early Technical Questions
 - **Hosting Model**: Blazor WebAssembly only vs. ASP.NET + Blazor Server hybrid? WebAssembly aligns with local-first but complicates real-time multiplayer.
