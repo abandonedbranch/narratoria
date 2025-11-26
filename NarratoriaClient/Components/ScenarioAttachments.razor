@@ -1,0 +1,127 @@
+@using Microsoft.AspNetCore.Components.Forms
+@implements IChatCommandComponent
+
+<section class="attachments-panel">
+    <header>
+        <h3>Scenario Attachments</h3>
+        <p>Attach plain text or markdown files (max 5 MB each) to enrich this scenario.</p>
+    </header>
+
+    <div class="attachments-upload">
+        <InputFile OnChange="HandleFileSelected" Multiple />
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <p class="attachments-error">@_error</p>
+        }
+    </div>
+
+    @if (_attachments.Count == 0)
+    {
+        <p class="attachments-empty">No attachments yet.</p>
+    }
+    else
+    {
+        <ul class="attachments-list">
+            @foreach (var attachment in _attachments)
+            {
+                <li class="attachments-item">
+                    <div>
+                        <strong>@attachment.FileName</strong> (@attachment.ContentType, @FormatSize(attachment.Size))
+                        <div class="attachments-meta">Uploaded @attachment.UploadedAt.ToLocalTime().ToString("g")</div>
+                    </div>
+                    <button type="button" @onclick="() => RemoveAsync(attachment.Id)" disabled="@_busy">Remove</button>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    [Inject] public IAttachmentService Attachments { get; set; } = default!;
+    [Inject] public IAppDataService AppData { get; set; } = default!;
+
+    public string CommandToken => "attachments";
+    public string DisplayName => "Attachments";
+    public string Description => "Manage session-specific file attachments.";
+
+    private readonly List<AttachmentRecord> _attachments = new();
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var session = await AppData.GetActiveSessionSummaryAsync();
+        var list = await Attachments.GetAttachmentsAsync(session.SessionId);
+        _attachments.Clear();
+        _attachments.AddRange(list);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs args)
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        try
+        {
+            var session = await AppData.GetActiveSessionSummaryAsync();
+            foreach (var file in args.GetMultipleFiles())
+            {
+                try
+                {
+                    using var stream = file.OpenReadStream(5 * 1024 * 1024);
+                    await Attachments.AddAttachmentAsync(session.SessionId, file.Name, file.ContentType, stream);
+                }
+                catch (Exception ex)
+                {
+                    _error = ex.Message;
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task RemoveAsync(string attachmentId)
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var session = await AppData.GetActiveSessionSummaryAsync();
+            await Attachments.RemoveAttachmentAsync(session.SessionId, attachmentId);
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await LoadAsync();
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+}

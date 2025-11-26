@@ -13,6 +13,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSingleton<ILogBuffer, LogBuffer>();
 builder.Services.AddScoped<IClientStorageService, BrowserClientStorageService>();
 builder.Services.AddScoped<IAppDataService, AppDataService>();
+builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped<INarrationService, NarrationService>();
 builder.Services.AddScoped<INarrationPipeline, NarrationPipeline>();
 builder.Services.AddScoped<INarrationPipelineStage, CommandHandlerStage>();
