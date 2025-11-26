@@ -13,7 +13,7 @@ public sealed class PostProcessorStage : INarrationPipelineStage
 
     public string StageName => "post-processor";
 
-    public int Order => 5;
+    public int Order => 6;
 
     public Task ExecuteAsync(NarrationPipelineContext context, CancellationToken cancellationToken)
     {

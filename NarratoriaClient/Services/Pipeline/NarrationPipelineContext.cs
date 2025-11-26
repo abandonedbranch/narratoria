@@ -35,6 +35,10 @@ public sealed class NarrationPipelineContext
 
     public bool IsSystemCommand { get; set; }
 
+    public bool ShouldContinue { get; set; } = true;
+
+    public string TargetWorkflow { get; set; } = "narrator";
+
     public IReadOnlyDictionary<string, object?> Items => _items;
 
     public void SetItem(string key, object? value)

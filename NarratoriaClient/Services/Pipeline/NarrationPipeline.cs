@@ -36,6 +36,7 @@ public sealed class NarrationPipeline : INarrationPipeline
         {
             try
             {
+                var shortCircuited = false;
                 foreach (var stage in _stages)
                 {
                     linkedCts.Token.ThrowIfCancellationRequested();
@@ -56,9 +57,19 @@ public sealed class NarrationPipeline : INarrationPipeline
                         await PublishEventAsync(channel.Writer, context.CorrelationId, stage.StageName, NarrationLifecycleEventKind.StageFailed, null, ex, CancellationToken.None);
                         throw;
                     }
+
+                    if (!context.ShouldContinue)
+                    {
+                        shortCircuited = true;
+                        break;
+                    }
                 }
 
-                await PublishEventAsync(channel.Writer, context.CorrelationId, "pipeline", NarrationLifecycleEventKind.PipelineCompleted, null, null, CancellationToken.None);
+                var metadata = shortCircuited
+                    ? new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase) { ["reason"] = "short-circuited" }
+                    : null;
+
+                await PublishEventAsync(channel.Writer, context.CorrelationId, "pipeline", NarrationLifecycleEventKind.PipelineCompleted, metadata, null, CancellationToken.None);
             }
             catch (OperationCanceledException ex)
             {

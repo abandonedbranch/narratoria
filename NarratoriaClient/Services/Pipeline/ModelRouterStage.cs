@@ -15,28 +15,44 @@ public sealed class ModelRouterStage : INarrationPipelineStage
 
     public string StageName => "model-router";
 
-    public int Order => 3;
+    public int Order => 4;
 
     public async Task ExecuteAsync(NarrationPipelineContext context, CancellationToken cancellationToken)
     {
-        if (context.IsSystemCommand)
+        var apiSettings = await _appData.GetApiSettingsAsync(cancellationToken).ConfigureAwait(false);
+        string? model = null;
+        string workflow = context.TargetWorkflow;
+
+        if (workflow.Equals("system", StringComparison.OrdinalIgnoreCase))
         {
+            model = apiSettings.System.Model;
+        }
+        else if (workflow.Equals("sketch", StringComparison.OrdinalIgnoreCase))
+        {
+            context.ShouldContinue = false;
+            _logBuffer.Log(StageName, LogLevel.Information, "Sketch workflow requested but not implemented; skipping narrator request.", new Dictionary<string, object?>
+            {
+                ["workflow"] = workflow
+            });
             return;
         }
+        else
+        {
+            model = apiSettings.Narrator.Model;
+        }
 
-        var apiSettings = await _appData.GetApiSettingsAsync(cancellationToken).ConfigureAwait(false);
-        var narratorModel = apiSettings.Narrator.Model;
-        if (string.IsNullOrWhiteSpace(narratorModel))
+        if (string.IsNullOrWhiteSpace(model))
         {
             throw new InvalidOperationException("A model must be configured before requesting narration.");
         }
 
-        context.SelectedModel = narratorModel;
-        context.ReportStatus(NarrationStatus.Connecting, $"Connecting to {narratorModel}…");
+        context.SelectedModel = model;
+        context.ReportStatus(NarrationStatus.Connecting, $"Connecting to {model}…");
 
         _logBuffer.Log(StageName, LogLevel.Information, "Model selected.", new Dictionary<string, object?>
         {
-            ["model"] = narratorModel
+            ["model"] = model,
+            ["workflow"] = workflow
         });
     }
 }

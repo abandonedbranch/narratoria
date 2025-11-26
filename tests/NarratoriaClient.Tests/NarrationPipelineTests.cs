@@ -105,6 +105,38 @@ public class NarrationPipelineTests
         Assert.Equal(NarrationLifecycleEventKind.PipelineFailed, events.Last().Kind);
     }
 
+    [Fact]
+    public async Task ShortCircuitsWhenContextDisablesContinuation()
+    {
+        var stages = new INarrationPipelineStage[]
+        {
+            new TestStage("first", 0, (context, token) =>
+            {
+                context.ShouldContinue = false;
+                return Task.CompletedTask;
+            }),
+            new TestStage("second", 1, (context, token) =>
+            {
+                throw new InvalidOperationException("Should not run");
+            })
+        };
+
+        var pipeline = new NarrationPipeline(stages, NullLogger<NarrationPipeline>.Instance);
+        var execution = pipeline.Execute(new NarrationPipelineContext("hello"));
+
+        var events = new List<NarrationLifecycleEvent>();
+        await foreach (var evt in execution.ReadEventsAsync())
+        {
+            events.Add(evt);
+        }
+
+        await execution.Completion;
+
+        Assert.Equal(3, events.Count); // stage start/complete + pipeline complete
+        Assert.Equal(NarrationLifecycleEventKind.PipelineCompleted, events.Last().Kind);
+        Assert.Equal("short-circuited", events.Last().Metadata?["reason"]);
+    }
+
     private sealed class TestStage : INarrationPipelineStage
     {
         private readonly Func<NarrationPipelineContext, CancellationToken, Task> _callback;

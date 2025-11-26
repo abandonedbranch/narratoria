@@ -19,7 +19,7 @@ public sealed class PromptAssemblerStage : INarrationPipelineStage
 
     public string StageName => "prompt-assembler";
 
-    public int Order => 2;
+    public int Order => 3;
 
     public async Task ExecuteAsync(NarrationPipelineContext context, CancellationToken cancellationToken)
     {
@@ -29,14 +29,17 @@ public sealed class PromptAssemblerStage : INarrationPipelineStage
         var contextSummary = await BuildContextSummaryAsync(filteredHistory, cancellationToken).ConfigureAwait(false);
 
         var messages = new List<ChatPromptMessage>();
-        var narratorPrompt = promptSettings.Narrator;
-        if (!string.IsNullOrWhiteSpace(narratorPrompt.Content))
+        var workflowPrompt = context.TargetWorkflow.Equals("system", StringComparison.OrdinalIgnoreCase)
+            ? promptSettings.System
+            : promptSettings.Narrator;
+
+        if (!string.IsNullOrWhiteSpace(workflowPrompt.Content))
         {
             messages.Add(new ChatPromptMessage
             {
                 Role = "system",
-                Content = narratorPrompt.Content,
-                Name = BuildMessageName(narratorPrompt.Title)
+                Content = workflowPrompt.Content,
+                Name = BuildMessageName(workflowPrompt.Title)
             });
         }
 

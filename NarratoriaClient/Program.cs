@@ -15,6 +15,7 @@ builder.Services.AddScoped<IClientStorageService, BrowserClientStorageService>()
 builder.Services.AddScoped<IAppDataService, AppDataService>();
 builder.Services.AddScoped<INarrationService, NarrationService>();
 builder.Services.AddScoped<INarrationPipeline, NarrationPipeline>();
+builder.Services.AddScoped<INarrationPipelineStage, CommandHandlerStage>();
 builder.Services.AddScoped<INarrationPipelineStage, InputPreprocessorStage>();
 builder.Services.AddScoped<INarrationPipelineStage, PlayerMessageRecorderStage>();
 builder.Services.AddScoped<INarrationPipelineStage, PromptAssemblerStage>();

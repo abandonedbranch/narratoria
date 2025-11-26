@@ -15,15 +15,10 @@ public sealed class MemoryManagerStage : INarrationPipelineStage
 
     public string StageName => "memory-manager";
 
-    public int Order => 6;
+    public int Order => 7;
 
     public async Task ExecuteAsync(NarrationPipelineContext context, CancellationToken cancellationToken)
     {
-        if (context.IsSystemCommand)
-        {
-            return;
-        }
-
         if (string.IsNullOrWhiteSpace(context.GeneratedNarration))
         {
             throw new InvalidOperationException("No narrator text available to persist.");
