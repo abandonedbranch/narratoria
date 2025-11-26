@@ -17,8 +17,9 @@ This document explains how to contribute to Narratoria—whether you are an AI a
 - Maintain accessibility in UI updates; keep components focused and composable.
 
 ## Testing
-- Run all tests: `dotnet test`
+- Run all tests for code changes: `dotnet test`
 - Component tests live in `tests/NarratoriaClient.ComponentTests`; add service unit tests alongside other test projects following the same pattern.
+- Pure documentation/backlog updates do not require tests, but still keep `SPEC.md` and `README.md` consistent.
 
 ## Workflow Expectations
 - Before coding: read `README.md`, `SPEC.md`, and relevant services/components.
