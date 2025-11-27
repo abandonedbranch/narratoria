@@ -19,6 +19,7 @@
 
     <DockSection Side="DockSide.Bottom">
         <section class="home-panel home-editor">
+            <CommandHost ResetKey="@_activeSession?.SessionId" />
             <div class="home-editor__body">
                 <NarrationStatusIndicator CssClass="status-inline" />
                 <ReplyEditor OnSend="HandleSendAsync" />

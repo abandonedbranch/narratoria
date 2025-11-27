@@ -1,0 +1,97 @@
+@using NarratoriaClient.Services
+@implements IDisposable
+
+@if (_activeFragment is not null)
+{
+    <section class="command-host">
+        <header class="command-host__header">
+            <div class="command-host__title">
+                <span class="command-host__label">Slash command</span>
+                <strong>/@_activeToken</strong>
+                @if (!string.IsNullOrWhiteSpace(_activeArgs))
+                {
+                    <span class="command-host__args">@_activeArgs</span>
+                }
+            </div>
+            <button type="button" class="command-host__close" @onclick="Clear">Dismiss</button>
+        </header>
+        <div class="command-host__body">
+            <CascadingValue Value="_context" IsFixed="true">
+                @_activeFragment
+            </CascadingValue>
+        </div>
+    </section>
+}
+
+@code {
+    [Inject] private ICommandEventBus CommandEvents { get; set; } = default!;
+
+    [Parameter] public string? ResetKey { get; set; }
+
+    private RenderFragment? _activeFragment;
+    private string _activeToken = string.Empty;
+    private string? _activeArgs;
+    private CommandHostContext _context = default!;
+    private string? _lastResetKey;
+    private bool _disposed;
+
+    protected override void OnInitialized()
+    {
+        _context = new CommandHostContext(Clear);
+        CommandEvents.CommandReceived += HandleCommandReceived;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.Equals(_lastResetKey, ResetKey, StringComparison.Ordinal))
+        {
+            _lastResetKey = ResetKey;
+            Clear();
+        }
+    }
+
+    private void HandleCommandReceived(object? sender, CommandEvent e)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        var fragment = ChatCommandRegistry.TryCreateFragment(e.Token) ?? BuildUnknownFragment(e.Token);
+        _activeToken = e.Token;
+        _activeArgs = e.Args;
+        _activeFragment = fragment;
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void Clear()
+    {
+        _activeToken = string.Empty;
+        _activeArgs = null;
+        _activeFragment = null;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private static RenderFragment BuildUnknownFragment(string token)
+    {
+        return builder =>
+        {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "unknown-command");
+            builder.AddContent(2, $"Unknown command @{token}");
+            builder.CloseElement();
+        };
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        CommandEvents.CommandReceived -= HandleCommandReceived;
+    }
+}
