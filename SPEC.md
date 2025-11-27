@@ -69,7 +69,16 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 - **As a** player, **I want** my input rewritten into narration-friendly prose before it’s stored so the story feels cohesive without extra effort.
 - **Acceptance criteria:**
   - Add a pre-append pipeline stage (before `PlayerMessageRecorderStage`) that rewrites the player’s input (LLM or deterministic) into narrator-friendly text.
-  - The rewritten text is what gets persisted and sent to the narrator; optionally retain the original for audit/export.
+  - Persist both original and rewritten content; only the rewritten version is used for prompts/context and UI, while the original is retained for audit/export.
+  - Tests cover persistence of rewritten/original fields and ensuring PromptAssembler uses the rewritten content.
+
+## Player message rewriting stage
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** my input rewritten into narration-friendly prose before it’s stored so the story feels cohesive without extra effort.
+- **Acceptance criteria:**
+  - Add a pre-append pipeline stage (before `PlayerMessageRecorderStage`) that rewrites the player’s input (LLM or deterministic) into narrator-friendly text.
+  - The rewritten text is what gets persisted and sent to the narrator; retain the original for audit/export.
   - Provide a toggle to enable/disable rewriting per session; when disabled, the original input is stored as-is.
   - Tests cover enabled/disabled behavior, persistence of rewritten text, and ensuring PromptAssembler uses the rewritten content.
 
