@@ -63,6 +63,16 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - MemoryManager and any rolling summaries are updated to reflect the deletion; exports/imports honor the updated message history.
   - Tests cover deleting narrator/player messages, persistence changes, prompt/context exclusion, and UI refresh behavior.
 
+## Player message rewriting stage
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** my input rewritten into narration-friendly prose before it’s stored so the story feels cohesive without extra effort.
+- **Acceptance criteria:**
+  - Add a pre-append pipeline stage (before `PlayerMessageRecorderStage`) that rewrites the player’s input (LLM or deterministic) into narrator-friendly text.
+  - The rewritten text is what gets persisted and sent to the narrator; optionally retain the original for audit/export.
+  - Provide a toggle to enable/disable rewriting per session; when disabled, the original input is stored as-is.
+  - Tests cover enabled/disabled behavior, persistence of rewritten text, and ensuring PromptAssembler uses the rewritten content.
+
 ## OutputFormatter & UI streaming integration
 - **Status**: Proposed
 - **Assignee**: Unassigned
