@@ -1,8 +1,6 @@
 @using System.Collections.ObjectModel
 @using System.Collections.Specialized
-@using System.Text.RegularExpressions
 @using Microsoft.JSInterop
-@using NarratoriaClient.Services
 
 @inject IJSRuntime JS
 
@@ -12,36 +10,19 @@
 <div class="chat-scrollback" @ref="_scrollContainer">
     @foreach (var item in _items)
     {
-        <div class="chat-item @item.CssClass" @key="item.Key">
-            @if (item.Type == ChatItemType.Message)
-            {
-                <header class="chat-meta">
-                    <span class="chat-author">@item.Author</span>
-                </header>
-                <MarkdownRenderer Content="@item.Content" CssClass="chat-message" />
-            }
-            else if (item.Type == ChatItemType.Component)
-            {
-                <header class="chat-meta">
-                    <span class="chat-author">@item.Author</span>
-                    <span class="chat-command">@item.CommandLabel</span>
-                </header>
-                <div class="chat-component">
-                    @item.ComponentFragment
-                </div>
-            }
+        <div class="chat-item chat-item-message" @key="item.Key">
+            <header class="chat-meta">
+                <span class="chat-author">@item.Author</span>
+            </header>
+            <MarkdownRenderer Content="@item.Content" CssClass="chat-message" />
         </div>
     }
 </div>
 
 @code {
-    private static readonly Regex CommandPattern = new(@"@(?<command>[A-Za-z][\w-]*)", RegexOptions.Compiled);
-
     [Parameter] public IReadOnlyList<ChatMessage> Messages { get; set; } = Array.Empty<ChatMessage>();
 
     private readonly ObservableCollection<ChatItem> _items = new();
-    private IReadOnlyList<TransientCommandEntry> _transientCommands = Array.Empty<TransientCommandEntry>();
-    private string _activeSessionId = string.Empty;
     private bool _suppressCollectionChanged;
     private bool _isDisposed;
     private bool _shouldScroll;
@@ -51,13 +32,10 @@
     protected override void OnInitialized()
     {
         _items.CollectionChanged += HandleItemsChanged;
-        CommandLog.EntriesChanged += HandleLogChanged;
-        CommandEvents.CommandReceived += HandleCommandEvent;
     }
 
-    protected override async Task OnParametersSetAsync()
+    protected override void OnParametersSet()
     {
-        await LoadTransientCommandsAsync();
         BuildItems();
         _shouldScroll = true;
     }
@@ -77,80 +55,15 @@
         try
         {
             _items.Clear();
-            var commandIndex = 0;
 
             for (var messageIndex = 0; messageIndex < Messages.Count; messageIndex++)
             {
                 var message = Messages[messageIndex];
                 var content = message.Content ?? string.Empty;
-            var cursor = 0;
-            var segmentIndex = 0;
-
-            while (cursor < content.Length)
-            {
-                var match = CommandPattern.Match(content, cursor);
-                if (!match.Success)
+                if (!string.IsNullOrWhiteSpace(content))
                 {
-                    var remainder = content[cursor..];
-                    if (!string.IsNullOrWhiteSpace(remainder))
-                    {
-                        AddMessageSegment(message.Author, remainder, messageIndex, segmentIndex++);
-                    }
-                    break;
+                    _items.Add(ChatItem.ForMessage(message.Author, content, messageIndex, 0));
                 }
-
-                var matchIndex = match.Index;
-                var isEscaped = matchIndex > 0 && content[matchIndex - 1] == '\\';
-
-                if (isEscaped)
-                {
-                    var escapeIndex = matchIndex - 1;
-                    if (escapeIndex > cursor)
-                    {
-                        var preEscape = content[cursor..escapeIndex];
-                        if (!string.IsNullOrWhiteSpace(preEscape))
-                        {
-                            AddMessageSegment(message.Author, preEscape, messageIndex, segmentIndex++);
-                        }
-                    }
-
-                    var literal = content.Substring(matchIndex, match.Length);
-                    if (!string.IsNullOrWhiteSpace(literal))
-                    {
-                        AddMessageSegment(message.Author, literal, messageIndex, segmentIndex++);
-                    }
-
-                    cursor = matchIndex + match.Length;
-                    continue;
-                }
-
-                if (matchIndex > cursor)
-                {
-                    var preceding = content[cursor..matchIndex];
-                    if (!string.IsNullOrWhiteSpace(preceding))
-                    {
-                        AddMessageSegment(message.Author, preceding, messageIndex, segmentIndex++);
-                    }
-                }
-
-                var commandName = match.Groups["command"].Value;
-                var normalizedToken = ChatCommandRegistry.NormalizeToken(commandName);
-
-                if (!string.IsNullOrEmpty(normalizedToken))
-                {
-                    var fragment = ChatCommandRegistry.TryCreateFragment(normalizedToken) ?? CreateUnknownFragment(normalizedToken);
-                    _items.Add(ChatItem.ForComponent(message.Author, normalizedToken, normalizedToken, fragment, messageIndex, commandIndex++));
-                }
-
-                cursor = matchIndex + match.Length;
-            }
-            }
-
-            var transientIndex = Messages.Count;
-            foreach (var entry in _transientCommands)
-            {
-                var fragment = ChatCommandRegistry.TryCreateFragment(entry.Token) ?? CreateUnknownFragment(entry.Token);
-                _items.Add(ChatItem.ForComponent(entry.Author, entry.Token, entry.Token, fragment, transientIndex, commandIndex++));
             }
         }
         finally
@@ -159,31 +72,7 @@
         }
     }
 
-    private void AddMessageSegment(string author, string markdown, int messageIndex, int segmentIndex)
-    {
-        if (string.IsNullOrWhiteSpace(markdown))
-        {
-            return;
-        }
-
-        _items.Add(ChatItem.ForMessage(author, markdown, messageIndex, segmentIndex));
-    }
-
-    private static RenderFragment CreateUnknownFragment(string token)
-    {
-        return builder =>
-        {
-            builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "unknown-command");
-            builder.AddContent(2, $"Unknown command @{token}");
-            builder.CloseElement();
-        };
-    }
-
     public sealed record ChatMessage(string Author, string Content);
-    [Inject] private ITransientCommandLog CommandLog { get; set; } = default!;
-    [Inject] private ICommandEventBus CommandEvents { get; set; } = default!;
-    [Inject] private IAppDataService AppData { get; set; } = default!;
 
     private void HandleItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
@@ -205,7 +94,6 @@
 
         _isDisposed = true;
         _items.CollectionChanged -= HandleItemsChanged;
-        CommandLog.EntriesChanged -= HandleLogChanged;
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
@@ -225,74 +113,19 @@
         }
     }
 
-    private async Task LoadTransientCommandsAsync()
-    {
-        var session = await AppData.GetActiveSessionSummaryAsync();
-        _activeSessionId = session.SessionId;
-        _transientCommands = CommandLog.GetEntries(_activeSessionId);
-    }
-
-    private void HandleLogChanged(object? sender, EventArgs e)
-    {
-        _ = InvokeAsync(async () =>
-        {
-            await LoadTransientCommandsAsync();
-            BuildItems();
-            StateHasChanged();
-        });
-    }
-
-    private void HandleCommandEvent(object? sender, CommandEvent e)
-    {
-        _ = InvokeAsync(() =>
-        {
-            _transientCommands = CommandLog.GetEntries(_activeSessionId);
-            BuildItems();
-            StateHasChanged();
-            return Task.CompletedTask;
-        });
-    }
-
-    private enum ChatItemType
-    {
-        Message,
-        Component
-    }
-
     private sealed class ChatItem
     {
-        private ChatItem(ChatItemType type)
-        {
-            Type = type;
-        }
-
-        public ChatItemType Type { get; }
         public string Key { get; init; } = Guid.NewGuid().ToString("N");
         public string Author { get; init; } = string.Empty;
         public string? Content { get; init; }
-        public RenderFragment? ComponentFragment { get; init; }
-        public string CommandLabel { get; init; } = string.Empty;
-
-        public string CssClass => Type == ChatItemType.Component ? "chat-item-component" : "chat-item-message";
 
         public static ChatItem ForMessage(string author, string content, int messageIndex, int segmentIndex)
         {
-            return new ChatItem(ChatItemType.Message)
+            return new ChatItem
             {
                 Author = author,
                 Content = content,
                 Key = $"msg-{messageIndex}-{segmentIndex}"
-            };
-        }
-
-        public static ChatItem ForComponent(string author, string originalToken, string normalizedToken, RenderFragment fragment, int messageIndex, int commandIndex)
-        {
-            return new ChatItem(ChatItemType.Component)
-            {
-                Author = author,
-                ComponentFragment = fragment,
-                CommandLabel = originalToken,
-                Key = $"cmd-{messageIndex}-{commandIndex}-{normalizedToken.ToLowerInvariant()}"
             };
         }
     }
