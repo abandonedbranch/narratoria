@@ -6,11 +6,13 @@ namespace NarratoriaClient.Services;
 public sealed class BrowserClientStorageService : IClientStorageService
 {
     private readonly IJSRuntime _js;
+    private readonly ILogger<BrowserClientStorageService> _logger;
     private readonly Lazy<Task<IJSObjectReference>> _moduleTask;
 
-    public BrowserClientStorageService(IJSRuntime js)
+    public BrowserClientStorageService(IJSRuntime js, ILogger<BrowserClientStorageService> logger)
     {
         _js = js;
+        _logger = logger;
         _moduleTask = new(() => _js.InvokeAsync<IJSObjectReference>("import", "./js/storage.js").AsTask());
     }
 
@@ -59,7 +61,7 @@ public sealed class BrowserClientStorageService : IClientStorageService
             }
             catch (JSDisconnectedException)
             {
-                // Circuit ended; JS runtime is gone.
+                _logger.LogInformation("Client disconnected.");
             }
         }
     }
