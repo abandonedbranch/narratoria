@@ -110,6 +110,7 @@
 
 @code {
     [Inject] private IAppDataService AppData { get; set; } = default!;
+    [CascadingParameter] public CommandHostContext? CommandHost { get; set; }
 
     private ApiSettingsModel _formModel = new();
     private bool _initialized;
@@ -176,6 +177,7 @@
             };
 
             await AppData.UpdateApiSettingsAsync(payload);
+            CommandHost?.Close();
         }
         finally
         {

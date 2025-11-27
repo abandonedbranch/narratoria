@@ -24,6 +24,7 @@
 
 @code {
     [Inject] private IAppDataService AppData { get; set; } = default!;
+    [CascadingParameter] public CommandHostContext? CommandHost { get; set; }
 
     private const long MaxFileBytes = 1024 * 1024; // 1 MB cap to keep imports lightweight.
 
@@ -69,6 +70,7 @@
         {
             await AppData.ImportAsync(_pendingContent);
             _statusMessage = "Import complete. Your data has been merged.";
+            CommandHost?.Close();
         }
         catch
         {

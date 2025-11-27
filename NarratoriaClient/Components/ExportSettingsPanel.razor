@@ -14,6 +14,7 @@
 @code {
     [Inject] private IAppDataService AppData { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
+    [CascadingParameter] public CommandHostContext? CommandHost { get; set; }
 
     private bool _isExporting;
     private string? _statusMessage;
@@ -40,6 +41,7 @@
             var fileName = $"narratoria-settings-{DateTime.UtcNow:yyyyMMddHHmmss}.json";
             await _module.InvokeVoidAsync("downloadJson", fileName, json);
             _statusMessage = "Export complete.";
+            CommandHost?.Close();
         }
         catch (JSDisconnectedException)
         {

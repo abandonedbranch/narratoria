@@ -56,6 +56,7 @@
 
 @code {
     [Inject] private IAppDataService AppData { get; set; } = default!;
+    [CascadingParameter] public CommandHostContext? CommandHost { get; set; }
 
     private IReadOnlyList<ChatSessionSummary> _sessions = Array.Empty<ChatSessionSummary>();
     private bool _isBusy;
@@ -90,6 +91,7 @@
         try
         {
             await AppData.CreateSessionAsync();
+            CommandHost?.Close();
         }
         catch (Exception ex)
         {
@@ -114,6 +116,7 @@
         try
         {
             await AppData.SwitchSessionAsync(sessionId);
+            CommandHost?.Close();
         }
         catch (Exception ex)
         {
@@ -138,6 +141,7 @@
         try
         {
             await AppData.DeleteSessionAsync(sessionId);
+            CommandHost?.Close();
         }
         catch (Exception ex)
         {

@@ -114,6 +114,7 @@
 
 @code {
     [Inject] private IAppDataService AppData { get; set; } = default!;
+    [CascadingParameter] public CommandHostContext? CommandHost { get; set; }
 
     private PromptEditorModel _model = new();
     private bool _isSaving;
@@ -162,6 +163,7 @@
             };
 
             await AppData.UpdatePromptSettingsAsync(payload);
+            CommandHost?.Close();
         }
         finally
         {
