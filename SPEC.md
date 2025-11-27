@@ -53,6 +53,16 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - Ensure restored data drives PromptAssembler/ModelRouter immediately (no restart required) and that export/import integrates with existing export/import backlog expectations.
   - Tests include successful import, schema mismatch handling, and partial failure (e.g., missing image workflow config) with recovery guidance.
 
+## Message deletion
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** to delete a chat message so it is removed from stored data, memory, and the context sent to the narrator.
+- **Acceptance criteria:**
+  - Provide a UI affordance to delete individual messages in the active session; confirm before removal and update the scrollback immediately.
+  - Deleting a message removes it from `AppDataService` persistence and excludes it from future prompt assembly/context summaries.
+  - MemoryManager and any rolling summaries are updated to reflect the deletion; exports/imports honor the updated message history.
+  - Tests cover deleting narrator/player messages, persistence changes, prompt/context exclusion, and UI refresh behavior.
+
 ## OutputFormatter & UI streaming integration
 - **Status**: Proposed
 - **Assignee**: Unassigned
