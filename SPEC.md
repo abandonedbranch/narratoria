@@ -63,6 +63,16 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
   - MemoryManager and any rolling summaries are updated to reflect the deletion; exports/imports honor the updated message history.
   - Tests cover deleting narrator/player messages, persistence changes, prompt/context exclusion, and UI refresh behavior.
 
+## Transient command rendering
+- **Status**: Proposed
+- **Assignee**: Unassigned
+- **As a** player, **I want** slash commands to appear in the scrollback without persisting them so I see what happened without polluting history or LLM context.
+- **Acceptance criteria:**
+  - Add a transient command log (non-persistent) populated when the command handler runs; entries include token, args, author, and timestamp.
+  - Chat scrollback merges persisted messages with transient command entries for rendering; transient entries clear on session switch/reload and are bounded to prevent growth.
+  - Unknown command errors surface as transient entries/notifications instead of persisted chat.
+  - Tests cover rendering transient commands, clearing on session changes, and ensuring commands are excluded from persisted storage and LLM prompts.
+
 ## Player message rewriting stage
 - **Status**: Proposed
 - **Assignee**: Unassigned
