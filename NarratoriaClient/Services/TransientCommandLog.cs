@@ -22,19 +22,16 @@ public sealed class TransientCommandLog : ITransientCommandLog
 {
     private readonly object _gate = new();
     private readonly Dictionary<string, List<TransientCommandEntry>> _entries = new(StringComparer.OrdinalIgnoreCase);
+    private const string GlobalKey = "_global";
 
     public event EventHandler? EntriesChanged;
 
     public IReadOnlyList<TransientCommandEntry> GetEntries(string sessionId)
     {
-        if (string.IsNullOrWhiteSpace(sessionId))
-        {
-            return Array.Empty<TransientCommandEntry>();
-        }
-
         lock (_gate)
         {
-            return _entries.TryGetValue(sessionId, out var list)
+            var key = string.IsNullOrWhiteSpace(sessionId) ? GlobalKey : sessionId;
+            return _entries.TryGetValue(key, out var list)
                 ? list.OrderBy(e => e.Timestamp).ToList()
                 : Array.Empty<TransientCommandEntry>();
         }
@@ -42,17 +39,14 @@ public sealed class TransientCommandLog : ITransientCommandLog
 
     public void AddEntry(TransientCommandEntry entry)
     {
-        if (string.IsNullOrWhiteSpace(entry.SessionId))
-        {
-            return;
-        }
-
         lock (_gate)
         {
-            if (!_entries.TryGetValue(entry.SessionId, out var list))
+            var key = string.IsNullOrWhiteSpace(entry.SessionId) ? GlobalKey : entry.SessionId;
+
+            if (!_entries.TryGetValue(key, out var list))
             {
                 list = new List<TransientCommandEntry>();
-                _entries[entry.SessionId] = list;
+                _entries[key] = list;
             }
 
             list.Add(entry);
@@ -63,14 +57,10 @@ public sealed class TransientCommandLog : ITransientCommandLog
 
     public void Clear(string sessionId)
     {
-        if (string.IsNullOrWhiteSpace(sessionId))
-        {
-            return;
-        }
-
         lock (_gate)
         {
-            _entries.Remove(sessionId);
+            var key = string.IsNullOrWhiteSpace(sessionId) ? GlobalKey : sessionId;
+            _entries.Remove(key);
         }
 
         EntriesChanged?.Invoke(this, EventArgs.Empty);
