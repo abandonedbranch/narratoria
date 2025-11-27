@@ -87,7 +87,7 @@ public class NarrationPipelineTests
                 context.CommandName = "nope";
                 return Task.CompletedTask;
             }),
-            new CommandHandlerStage(new TestLogBuffer(), new TransientCommandLog())
+            new CommandHandlerStage(new TestLogBuffer(), new TransientCommandLog(), new CommandEventBus())
         };
 
         var pipeline = new NarrationPipeline(stages, NullLogger<NarrationPipeline>.Instance);

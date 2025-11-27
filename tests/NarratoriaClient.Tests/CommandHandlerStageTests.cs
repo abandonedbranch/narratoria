@@ -11,7 +11,7 @@ public class CommandHandlerStageTests
     [Fact]
     public async Task ThrowsOnUnknownCommand()
     {
-        var stage = new CommandHandlerStage(new TestLogBuffer(), new TransientCommandLog());
+        var stage = new CommandHandlerStage(new TestLogBuffer(), new TransientCommandLog(), new CommandEventBus());
         var context = new NarrationPipelineContext("/doesnotexist");
         context.IsCommand = true;
         context.CommandName = "doesnotexist";
@@ -23,7 +23,7 @@ public class CommandHandlerStageTests
     [Fact]
     public async Task ShortCircuitsOnKnownCommand()
     {
-        var stage = new CommandHandlerStage(new TestLogBuffer(), new TransientCommandLog());
+        var stage = new CommandHandlerStage(new TestLogBuffer(), new TransientCommandLog(), new CommandEventBus());
         var context = new NarrationPipelineContext("/help");
         context.IsCommand = true;
         context.CommandName = "help";

@@ -52,6 +52,7 @@
     {
         _items.CollectionChanged += HandleItemsChanged;
         CommandLog.EntriesChanged += HandleLogChanged;
+        CommandEvents.CommandReceived += HandleCommandEvent;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -181,6 +182,7 @@
 
     public sealed record ChatMessage(string Author, string Content);
     [Inject] private ITransientCommandLog CommandLog { get; set; } = default!;
+    [Inject] private ICommandEventBus CommandEvents { get; set; } = default!;
     [Inject] private IAppDataService AppData { get; set; } = default!;
 
     private void HandleItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -225,13 +227,8 @@
 
     private async Task LoadTransientCommandsAsync()
     {
-        if (string.IsNullOrWhiteSpace(_activeSessionId))
-        {
-            var session = await AppData.GetActiveSessionSummaryAsync();
-            _activeSessionId = session.SessionId;
-            CommandLog.EntriesChanged += HandleLogChanged;
-        }
-
+        var session = await AppData.GetActiveSessionSummaryAsync();
+        _activeSessionId = session.SessionId;
         _transientCommands = CommandLog.GetEntries(_activeSessionId);
     }
 
@@ -242,6 +239,17 @@
             await LoadTransientCommandsAsync();
             BuildItems();
             StateHasChanged();
+        });
+    }
+
+    private void HandleCommandEvent(object? sender, CommandEvent e)
+    {
+        _ = InvokeAsync(() =>
+        {
+            _transientCommands = CommandLog.GetEntries(_activeSessionId);
+            BuildItems();
+            StateHasChanged();
+            return Task.CompletedTask;
         });
     }
 

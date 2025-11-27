@@ -17,6 +17,7 @@ builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddSingleton<ITransientCommandLog, TransientCommandLog>();
 builder.Services.AddScoped<INarrationService, NarrationService>();
 builder.Services.AddScoped<INarrationPipeline, NarrationPipeline>();
+builder.Services.AddSingleton<ICommandEventBus, CommandEventBus>();
 builder.Services.AddScoped<INarrationPipelineStage, CommandHandlerStage>();
 builder.Services.AddScoped<INarrationPipelineStage, InputPreprocessorStage>();
 builder.Services.AddScoped<INarrationPipelineStage, PlayerMessageRecorderStage>();
@@ -25,6 +26,7 @@ builder.Services.AddScoped<INarrationPipelineStage, ModelRouterStage>();
 builder.Services.AddScoped<INarrationPipelineStage, LlmClientStage>();
 builder.Services.AddScoped<INarrationPipelineStage, PostProcessorStage>();
 builder.Services.AddScoped<INarrationPipelineStage, MemoryManagerStage>();
+
 
 if (builder.Configuration.GetValue<bool>("UseFakeChatService"))
 {
