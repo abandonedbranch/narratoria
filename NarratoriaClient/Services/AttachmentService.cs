@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 
 namespace NarratoriaClient.Services;
 
@@ -7,6 +8,8 @@ public interface IAttachmentService
     Task<IReadOnlyList<AttachmentRecord>> GetAttachmentsAsync(string sessionId, CancellationToken cancellationToken = default);
     Task<AttachmentRecord> AddAttachmentAsync(string sessionId, string fileName, string contentType, Stream content, CancellationToken cancellationToken = default);
     Task RemoveAttachmentAsync(string sessionId, string attachmentId, CancellationToken cancellationToken = default);
+    Task RemoveAllAsync(string sessionId, CancellationToken cancellationToken = default);
+    Task ReplaceAttachmentsAsync(string sessionId, IEnumerable<AttachmentRecord> attachments, CancellationToken cancellationToken = default);
 }
 
 public sealed record AttachmentRecord(
@@ -20,6 +23,8 @@ public sealed record AttachmentRecord(
 
 public sealed class AttachmentService : IAttachmentService
 {
+    private const string StoragePrefix = "narratoria/v1/attachments/";
+
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "text/plain",
@@ -29,17 +34,22 @@ public sealed class AttachmentService : IAttachmentService
 
     private const long MaxSizeBytes = 5 * 1024 * 1024; // 5 MB
 
-    private readonly ConcurrentDictionary<string, List<AttachmentRecord>> _store = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false
+    };
+
+    private readonly IClientStorageService _storage;
+
+    public AttachmentService(IClientStorageService storage)
+    {
+        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+    }
 
     public Task<IReadOnlyList<AttachmentRecord>> GetAttachmentsAsync(string sessionId, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(sessionId))
-        {
-            throw new ArgumentException("Session id must be provided.", nameof(sessionId));
-        }
-
-        _store.TryGetValue(sessionId, out var list);
-        return Task.FromResult<IReadOnlyList<AttachmentRecord>>(list?.ToList() ?? new List<AttachmentRecord>());
+        return LoadAsync(sessionId, cancellationToken);
     }
 
     public async Task<AttachmentRecord> AddAttachmentAsync(string sessionId, string fileName, string contentType, Stream content, CancellationToken cancellationToken = default)
@@ -78,11 +88,9 @@ public sealed class AttachmentService : IAttachmentService
             textContent,
             DateTimeOffset.UtcNow);
 
-        var list = _store.GetOrAdd(sessionId, _ => new List<AttachmentRecord>());
-        lock (list)
-        {
-            list.Add(record);
-        }
+        var list = (await LoadAsync(sessionId, cancellationToken).ConfigureAwait(false)).ToList();
+        list.Add(record);
+        await SaveAsync(sessionId, list, cancellationToken).ConfigureAwait(false);
 
         return record;
     }
@@ -94,14 +102,72 @@ public sealed class AttachmentService : IAttachmentService
             return Task.CompletedTask;
         }
 
-        if (_store.TryGetValue(sessionId, out var list))
+        return RemoveInternalAsync(sessionId, id => string.Equals(id, attachmentId, StringComparison.OrdinalIgnoreCase), cancellationToken);
+    }
+
+    public Task RemoveAllAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
         {
-            lock (list)
-            {
-                list.RemoveAll(a => string.Equals(a.Id, attachmentId, StringComparison.OrdinalIgnoreCase));
-            }
+            return Task.CompletedTask;
         }
 
-        return Task.CompletedTask;
+        return RemoveInternalAsync(sessionId, _ => true, cancellationToken);
+    }
+
+    public async Task ReplaceAttachmentsAsync(string sessionId, IEnumerable<AttachmentRecord> attachments, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            throw new ArgumentException("Session id must be provided.", nameof(sessionId));
+        }
+
+        var list = attachments?.Select(a => Clone(a)).ToList() ?? new List<AttachmentRecord>();
+        await SaveAsync(sessionId, list, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task RemoveInternalAsync(string sessionId, Func<string, bool> predicate, CancellationToken cancellationToken)
+    {
+        var list = (await LoadAsync(sessionId, cancellationToken).ConfigureAwait(false)).ToList();
+        var filtered = list.Where(a => !predicate(a.Id)).ToList();
+        await SaveAsync(sessionId, filtered, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<IReadOnlyList<AttachmentRecord>> LoadAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            throw new ArgumentException("Session id must be provided.", nameof(sessionId));
+        }
+
+        var key = BuildKey(sessionId);
+        var stored = await _storage.GetItemAsync(StorageArea.Local, key, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(stored))
+        {
+            return Array.Empty<AttachmentRecord>();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<AttachmentRecord>>(stored, SerializerOptions) ?? new List<AttachmentRecord>();
+        }
+        catch (JsonException)
+        {
+            return Array.Empty<AttachmentRecord>();
+        }
+    }
+
+    private async Task SaveAsync(string sessionId, IReadOnlyList<AttachmentRecord> attachments, CancellationToken cancellationToken)
+    {
+        var key = BuildKey(sessionId);
+        var payload = JsonSerializer.Serialize(attachments, SerializerOptions);
+        await _storage.SetItemAsync(StorageArea.Local, key, payload, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string BuildKey(string sessionId) => $"{StoragePrefix}{sessionId}";
+
+    private static AttachmentRecord Clone(AttachmentRecord record)
+    {
+        return record with { TextContent = record.TextContent };
     }
 }

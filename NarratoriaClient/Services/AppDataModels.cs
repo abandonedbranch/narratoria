@@ -147,6 +147,7 @@ public sealed record AppExportModel
     public int Version { get; init; } = 1;
     public AppSettings Settings { get; init; } = AppSettings.CreateDefault();
     public List<ChatSessionState> Sessions { get; init; } = new();
+    public List<AttachmentRecord> Attachments { get; init; } = new();
 }
 
 public sealed record PersonaProfile

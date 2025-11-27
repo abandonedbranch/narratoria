@@ -58,6 +58,7 @@ public sealed class AppDataService : IAppDataService
     };
 
     private readonly IClientStorageService _storage;
+    private readonly IAttachmentService _attachments;
     private readonly ILogBuffer _logBuffer;
     private readonly SemaphoreSlim _mutex = new(1, 1);
 
@@ -69,9 +70,10 @@ public sealed class AppDataService : IAppDataService
     private bool _sessionsLoaded;
     private bool _jsAvailable;
 
-    public AppDataService(IClientStorageService storage, ILogBuffer logBuffer)
+    public AppDataService(IClientStorageService storage, IAttachmentService attachments, ILogBuffer logBuffer)
     {
-        _storage = storage;
+        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _attachments = attachments ?? throw new ArgumentNullException(nameof(attachments));
         _logBuffer = logBuffer ?? throw new ArgumentNullException(nameof(logBuffer));
         _currentSession = Clone(_sessionsState.Sessions.First());
         Log(LogLevel.Information, "AppDataService initialized.", new Dictionary<string, object?>
@@ -403,6 +405,8 @@ public sealed class AppDataService : IAppDataService
                 ["sessionId"] = sessionId,
                 ["remainingSessions"] = _sessionsState.Sessions.Count
             });
+
+            await _attachments.RemoveAllAsync(sessionId, cancellationToken);
         }
         finally
         {
@@ -513,6 +517,14 @@ public sealed class AppDataService : IAppDataService
             Sessions = _sessionsState.Sessions.Select(Clone).ToList()
         };
 
+        var attachments = new List<AttachmentRecord>();
+        foreach (var session in _sessionsState.Sessions)
+        {
+            var list = await _attachments.GetAttachmentsAsync(session.SessionId, cancellationToken).ConfigureAwait(false);
+            attachments.AddRange(list.Select(a => a with { }));
+        }
+        export = export with { Attachments = attachments };
+
         var options = new JsonSerializerOptions(SerializerOptions) { WriteIndented = true };
         var payload = JsonSerializer.Serialize(export, options);
 
@@ -570,6 +582,15 @@ public sealed class AppDataService : IAppDataService
                     await PersistSessionsAsync(cancellationToken);
                     RaiseSessionsChanged();
                     RaiseChatSessionChanged();
+                }
+            }
+
+            if (importModel.Attachments is not null && importModel.Attachments.Count > 0)
+            {
+                var grouped = importModel.Attachments.GroupBy(a => a.SessionId, StringComparer.Ordinal);
+                foreach (var group in grouped)
+                {
+                    await _attachments.ReplaceAttachmentsAsync(group.Key, group, cancellationToken);
                 }
             }
 

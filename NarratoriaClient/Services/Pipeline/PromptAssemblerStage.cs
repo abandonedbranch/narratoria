@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using NarratoriaClient.Services;
 
 namespace NarratoriaClient.Services.Pipeline;
 
@@ -9,11 +10,13 @@ public sealed class PromptAssemblerStage : INarrationPipelineStage
     private static readonly Regex CommandPattern = new(@"@(?<command>[A-Za-z][\w-]*)", RegexOptions.Compiled);
 
     private readonly IAppDataService _appData;
+    private readonly IAttachmentService _attachments;
     private readonly ILogBuffer _logBuffer;
 
-    public PromptAssemblerStage(IAppDataService appData, ILogBuffer logBuffer)
+    public PromptAssemblerStage(IAppDataService appData, IAttachmentService attachments, ILogBuffer logBuffer)
     {
         _appData = appData ?? throw new ArgumentNullException(nameof(appData));
+        _attachments = attachments ?? throw new ArgumentNullException(nameof(attachments));
         _logBuffer = logBuffer ?? throw new ArgumentNullException(nameof(logBuffer));
     }
 
@@ -28,7 +31,10 @@ public sealed class PromptAssemblerStage : INarrationPipelineStage
         var filteredHistory = context.TargetWorkflow.Equals("system", StringComparison.OrdinalIgnoreCase)
             ? Array.Empty<ChatMessageEntry>()
             : FilterSystemCommands(history);
-        var contextSummary = await BuildContextSummaryAsync(filteredHistory, cancellationToken).ConfigureAwait(false);
+        var attachments = context.ActiveSessionId is null
+            ? Array.Empty<AttachmentRecord>()
+            : await _attachments.GetAttachmentsAsync(context.ActiveSessionId, cancellationToken).ConfigureAwait(false);
+        var contextSummary = await BuildContextSummaryAsync(filteredHistory, attachments, cancellationToken).ConfigureAwait(false);
 
         var messages = new List<ChatPromptMessage>();
         var workflowPrompt = context.TargetWorkflow.Equals("system", StringComparison.OrdinalIgnoreCase)
@@ -77,7 +83,7 @@ public sealed class PromptAssemblerStage : INarrationPipelineStage
         });
     }
 
-    private async Task<string> BuildContextSummaryAsync(IReadOnlyList<ChatMessageEntry> history, CancellationToken cancellationToken)
+    private async Task<string> BuildContextSummaryAsync(IReadOnlyList<ChatMessageEntry> history, IReadOnlyList<AttachmentRecord> attachments, CancellationToken cancellationToken)
     {
         var session = await _appData.GetSessionStateAsync(cancellationToken).ConfigureAwait(false);
         var personas = await _appData.GetPersonasAsync(cancellationToken).ConfigureAwait(false);
@@ -118,6 +124,24 @@ public sealed class PromptAssemblerStage : INarrationPipelineStage
             foreach (var entry in history)
             {
                 AppendScrollbackEntry(builder, entry);
+            }
+        }
+
+        if (attachments.Count > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine("Attachments:");
+            foreach (var attachment in attachments)
+            {
+                builder.AppendLine($"- {attachment.FileName} ({attachment.ContentType}, {attachment.Size} bytes, uploaded {attachment.UploadedAt:u})");
+                var normalized = NormalizeLineEndings(attachment.TextContent ?? string.Empty);
+                var lines = normalized.Split('\n');
+                foreach (var line in lines)
+                {
+                    builder.Append("  ");
+                    builder.AppendLine(line);
+                }
+                builder.AppendLine();
             }
         }
 
