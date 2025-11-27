@@ -51,11 +51,12 @@
     protected override void OnInitialized()
     {
         _items.CollectionChanged += HandleItemsChanged;
+        CommandLog.EntriesChanged += HandleLogChanged;
     }
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        _ = LoadTransientCommandsAsync();
+        await LoadTransientCommandsAsync();
         BuildItems();
         _shouldScroll = true;
     }
