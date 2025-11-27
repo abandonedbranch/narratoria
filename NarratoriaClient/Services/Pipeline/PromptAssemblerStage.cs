@@ -25,7 +25,9 @@ public sealed class PromptAssemblerStage : INarrationPipelineStage
     {
         var promptSettings = await _appData.GetPromptSettingsAsync(cancellationToken).ConfigureAwait(false);
         var history = await _appData.GetChatHistoryAsync(cancellationToken).ConfigureAwait(false);
-        var filteredHistory = FilterSystemCommands(history);
+        var filteredHistory = context.TargetWorkflow.Equals("system", StringComparison.OrdinalIgnoreCase)
+            ? Array.Empty<ChatMessageEntry>()
+            : FilterSystemCommands(history);
         var contextSummary = await BuildContextSummaryAsync(filteredHistory, cancellationToken).ConfigureAwait(false);
 
         var messages = new List<ChatPromptMessage>();
@@ -53,15 +55,18 @@ public sealed class PromptAssemblerStage : INarrationPipelineStage
             });
         }
 
-        foreach (var entry in filteredHistory)
+        if (!context.TargetWorkflow.Equals("system", StringComparison.OrdinalIgnoreCase))
         {
-            var role = entry.Role == ChatMessageRole.Player ? "user" : "assistant";
-            messages.Add(new ChatPromptMessage
+            foreach (var entry in filteredHistory)
             {
-                Role = role,
-                Content = entry.Content,
-                Name = BuildMessageName(entry.Author)
-            });
+                var role = entry.Role == ChatMessageRole.Player ? "user" : "assistant";
+                messages.Add(new ChatPromptMessage
+                {
+                    Role = role,
+                    Content = entry.Content,
+                    Name = BuildMessageName(entry.Author)
+                });
+            }
         }
 
         context.PromptMessages = messages;
