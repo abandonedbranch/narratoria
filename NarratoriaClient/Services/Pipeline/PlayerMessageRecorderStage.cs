@@ -19,6 +19,15 @@ public sealed class PlayerMessageRecorderStage : INarrationPipelineStage
 
     public async Task ExecuteAsync(NarrationPipelineContext context, CancellationToken cancellationToken)
     {
+        if (context.IsCommand)
+        {
+            _logBuffer.Log(StageName, LogLevel.Debug, "Command detected; player message not persisted.", new Dictionary<string, object?>
+            {
+                ["input"] = context.NormalizedInput ?? context.PlayerInput
+            });
+            return;
+        }
+
         var message = context.NormalizedInput ?? context.PlayerInput;
         await _appData.AppendPlayerMessageAsync(message, cancellationToken).ConfigureAwait(false);
 
