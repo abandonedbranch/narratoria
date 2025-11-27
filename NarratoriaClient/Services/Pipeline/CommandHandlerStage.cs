@@ -6,10 +6,12 @@ namespace NarratoriaClient.Services.Pipeline;
 public sealed class CommandHandlerStage : INarrationPipelineStage
 {
     private readonly ILogBuffer _logBuffer;
+    private readonly ITransientCommandLog _commandLog;
 
-    public CommandHandlerStage(ILogBuffer logBuffer)
+    public CommandHandlerStage(ILogBuffer logBuffer, ITransientCommandLog commandLog)
     {
         _logBuffer = logBuffer ?? throw new ArgumentNullException(nameof(logBuffer));
+        _commandLog = commandLog ?? throw new ArgumentNullException(nameof(commandLog));
     }
 
     public string StageName => "command-handler";
@@ -29,6 +31,7 @@ public sealed class CommandHandlerStage : INarrationPipelineStage
 
             if (!ChatCommandRegistry.TryGetComponentType(commandToken, out _))
             {
+                LogCommand(context, commandToken, isError: true, message: $"Unknown command '/{commandToken}'.");
                 throw new InvalidOperationException($"Unknown command '/{commandToken}'.");
             }
 
@@ -38,8 +41,24 @@ public sealed class CommandHandlerStage : INarrationPipelineStage
                 ["command"] = commandToken,
                 ["args"] = context.CommandArgs ?? string.Empty
             });
+
+            LogCommand(context, commandToken, isError: false, message: context.CommandArgs);
         }
 
         return Task.CompletedTask;
+    }
+
+    private void LogCommand(NarrationPipelineContext context, string token, bool isError, string? message)
+    {
+        var sessionId = context.ActiveSessionId ?? string.Empty;
+        _commandLog.AddEntry(new TransientCommandEntry(
+            Guid.NewGuid().ToString("N"),
+            sessionId,
+            "Player",
+            token,
+            context.CommandArgs,
+            DateTimeOffset.UtcNow,
+            isError,
+            message));
     }
 }

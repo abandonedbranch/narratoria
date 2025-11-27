@@ -43,6 +43,8 @@ public sealed class NarrationPipelineContext
 
     public string? CommandArgs { get; set; }
 
+    public string? ActiveSessionId { get; set; }
+
     public IReadOnlyDictionary<string, object?> Items => _items;
 
     public void SetItem(string key, object? value)

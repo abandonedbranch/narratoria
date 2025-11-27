@@ -10,9 +10,10 @@ public interface INarrationService
     Task ProcessPlayerMessageAsync(string content, CancellationToken cancellationToken = default);
 }
 
-public sealed class NarrationService(INarrationPipeline pipeline, ILogger<NarrationService> logger, ILogBuffer logBuffer) : INarrationService
+public sealed class NarrationService(INarrationPipeline pipeline, IAppDataService appData, ILogger<NarrationService> logger, ILogBuffer logBuffer) : INarrationService
 {
     private readonly INarrationPipeline _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
+    private readonly IAppDataService _appData = appData ?? throw new ArgumentNullException(nameof(appData));
     private readonly ILogBuffer _logBuffer = logBuffer ?? throw new ArgumentNullException(nameof(logBuffer));
     private readonly ILogger<NarrationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -26,6 +27,15 @@ public sealed class NarrationService(INarrationPipeline pipeline, ILogger<Narrat
         }
 
         var context = new NarrationPipelineContext(content, NotifyStatus);
+        try
+        {
+            var session = await _appData.GetActiveSessionSummaryAsync(cancellationToken);
+            context.ActiveSessionId = session.SessionId;
+        }
+        catch
+        {
+            // If session lookup fails, continue without ActiveSessionId.
+        }
         var execution = _pipeline.Execute(context, cancellationToken);
 
         try
