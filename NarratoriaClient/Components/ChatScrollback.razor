@@ -15,12 +15,14 @@
                 <span class="chat-author">@item.Author</span>
             </header>
             <MarkdownRenderer Content="@item.Content" CssClass="chat-message" />
+            <ChatMessageActions MessageId="@item.Id" OnDelete="@HandleDeleteMessageAsync" />
         </div>
     }
 </div>
 
 @code {
     [Parameter] public IReadOnlyList<ChatMessage> Messages { get; set; } = Array.Empty<ChatMessage>();
+    [Parameter] public EventCallback<string> OnDeleteMessage { get; set; }
 
     private readonly ObservableCollection<ChatItem> _items = new();
     private bool _suppressCollectionChanged;
@@ -62,7 +64,7 @@
                 var content = message.Content ?? string.Empty;
                 if (!string.IsNullOrWhiteSpace(content))
                 {
-                    _items.Add(ChatItem.ForMessage(message.Author, content, messageIndex, 0));
+                    _items.Add(ChatItem.ForMessage(message.Id, message.Author, content, messageIndex, 0));
                 }
             }
         }
@@ -72,7 +74,7 @@
         }
     }
 
-    public sealed record ChatMessage(string Author, string Content);
+    public sealed record ChatMessage(string Id, string Author, string Content);
 
     private void HandleItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
@@ -113,19 +115,36 @@
         }
     }
 
+    private async Task HandleDeleteMessageAsync(string messageId)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+        {
+            return;
+        }
+
+        if (OnDeleteMessage.HasDelegate)
+        {
+            await OnDeleteMessage.InvokeAsync(messageId);
+        }
+    }
+
     private sealed class ChatItem
     {
+        public string Id { get; init; } = string.Empty;
         public string Key { get; init; } = Guid.NewGuid().ToString("N");
         public string Author { get; init; } = string.Empty;
         public string? Content { get; init; }
 
-        public static ChatItem ForMessage(string author, string content, int messageIndex, int segmentIndex)
+        public static ChatItem ForMessage(string id, string author, string content, int messageIndex, int segmentIndex)
         {
             return new ChatItem
             {
+                Id = id,
                 Author = author,
                 Content = content,
-                Key = $"msg-{messageIndex}-{segmentIndex}"
+                Key = string.IsNullOrWhiteSpace(id)
+                    ? $"msg-{messageIndex}-{segmentIndex}"
+                    : id
             };
         }
     }

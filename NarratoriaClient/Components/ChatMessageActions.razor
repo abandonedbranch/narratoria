@@ -1,0 +1,48 @@
+@using Microsoft.JSInterop
+
+<div class="chat-message__actions">
+    <button type="button"
+            class="chat-action chat-action--delete"
+            title="Delete message"
+            @onclick="ConfirmAndDelete">
+        Delete
+        <span class="sr-only">Delete</span>
+    </button>
+</div>
+
+@code {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    [Parameter] public string MessageId { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnDelete { get; set; }
+    [Parameter] public string ConfirmText { get; set; } = "Delete this message?";
+
+    private async Task ConfirmAndDelete()
+    {
+        if (string.IsNullOrWhiteSpace(MessageId))
+        {
+            return;
+        }
+
+        var confirmed = true;
+
+        try
+        {
+            confirmed = await JS.InvokeAsync<bool>("confirm", ConfirmText);
+        }
+        catch (JSDisconnectedException)
+        {
+            confirmed = false;
+        }
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        if (OnDelete.HasDelegate)
+        {
+            await OnDelete.InvokeAsync(MessageId);
+        }
+    }
+}

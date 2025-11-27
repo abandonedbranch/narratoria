@@ -13,7 +13,8 @@
                 <h2>@SessionHeading</h2>
                 <p>@SessionSubheading</p>
             </div>
-            <ChatScrollback Messages="@ChatHistory" />
+            <ChatScrollback Messages="@ChatHistory"
+                            OnDeleteMessage="HandleDeleteMessageAsync" />
         </section>
     </DockSection>
 
@@ -124,8 +125,18 @@
         _chatHistory.Clear();
         foreach (var entry in messages)
         {
-            _chatHistory.Add(new ChatScrollback.ChatMessage(entry.Author, entry.Content));
+            _chatHistory.Add(new ChatScrollback.ChatMessage(entry.Id, entry.Author, entry.Content));
         }
+    }
+
+    private async Task HandleDeleteMessageAsync(string messageId)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+        {
+            return;
+        }
+
+        await AppData.DeleteMessageAsync(messageId);
     }
 
     private string BuildSessionSubheading()

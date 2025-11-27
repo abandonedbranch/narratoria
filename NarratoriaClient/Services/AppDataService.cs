@@ -25,6 +25,7 @@ public interface IAppDataService
     Task<IReadOnlyList<ChatMessageEntry>> GetChatHistoryAsync(CancellationToken cancellationToken = default);
     Task<ChatMessageEntry> AppendPlayerMessageAsync(string content, CancellationToken cancellationToken = default);
     Task<ChatMessageEntry> AppendNarratorMessageAsync(string content, CancellationToken cancellationToken = default);
+    Task DeleteMessageAsync(string messageId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ChatSessionSummary>> GetSessionsAsync(CancellationToken cancellationToken = default);
     Task<ChatSessionSummary> GetActiveSessionSummaryAsync(CancellationToken cancellationToken = default);
@@ -181,6 +182,55 @@ public sealed class AppDataService : IAppDataService
     public Task<ChatMessageEntry> AppendNarratorMessageAsync(string content, CancellationToken cancellationToken = default)
     {
         return AppendMessageAsync("Narrator", content, ChatMessageRole.Narrator, cancellationToken);
+    }
+
+    public async Task DeleteMessageAsync(string messageId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+        {
+            return;
+        }
+
+        await _mutex.WaitAsync(cancellationToken);
+        try
+        {
+            await EnsureSessionsLoadedAsync(cancellationToken);
+
+            var active = _sessionsState.Sessions.First(s => string.Equals(s.SessionId, _sessionsState.ActiveSessionId, StringComparison.Ordinal));
+            var filtered = active.Messages
+                .Where(m => !string.Equals(m.Id, messageId, StringComparison.Ordinal))
+                .Select(Clone)
+                .ToList();
+
+            if (filtered.Count == active.Messages.Count)
+            {
+                return;
+            }
+
+            var updated = active with
+            {
+                Messages = filtered,
+                UpdatedAt = filtered.Count > 0 ? filtered.Max(m => m.Timestamp) : active.UpdatedAt
+            };
+
+            ReplaceSession(updated);
+            _currentSession = Clone(updated);
+
+            await PersistSessionsAsync(cancellationToken);
+            RaiseSessionsChanged();
+            RaiseChatSessionChanged();
+
+            Log(LogLevel.Warning, "Chat message deleted.", new Dictionary<string, object?>
+            {
+                ["messageId"] = messageId,
+                ["sessionId"] = updated.SessionId,
+                ["remainingMessages"] = updated.Messages.Count
+            });
+        }
+        finally
+        {
+            _mutex.Release();
+        }
     }
 
     public async Task<IReadOnlyList<ChatSessionSummary>> GetSessionsAsync(CancellationToken cancellationToken = default)
