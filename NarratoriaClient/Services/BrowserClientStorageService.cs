@@ -52,8 +52,15 @@ public sealed class BrowserClientStorageService : IClientStorageService
     {
         if (_moduleTask.IsValueCreated)
         {
-            var module = await _moduleTask.Value;
-            await module.DisposeAsync();
+            try
+            {
+                var module = await _moduleTask.Value;
+                await module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit ended; JS runtime is gone.
+            }
         }
     }
 
