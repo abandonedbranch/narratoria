@@ -32,6 +32,28 @@ public class CommandHandlerStageTests
 
         Assert.False(context.ShouldContinue);
     }
+
+    [Fact]
+    public async Task PublishesCommandEvent()
+    {
+        var bus = new CommandEventBus();
+        CommandEvent? received = null;
+        bus.CommandReceived += (_, e) => received = e;
+
+        var stage = new CommandHandlerStage(new TestLogBuffer(), new TransientCommandLog(), bus);
+        var context = new NarrationPipelineContext("/help");
+        context.IsCommand = true;
+        context.CommandName = "help";
+        context.CommandArgs = "abc";
+        context.ActiveSessionId = "session-1";
+
+        await stage.ExecuteAsync(context, CancellationToken.None);
+
+        Assert.NotNull(received);
+        Assert.Equal("help", received!.Token);
+        Assert.Equal("abc", received.Args);
+        Assert.Equal("session-1", received.SessionId);
+    }
 }
 
 internal sealed class TestLogBuffer : ILogBuffer
