@@ -66,7 +66,7 @@ The following backlog items use Scrum-style acceptance criteria to clarify expec
 ## Transient command rendering
 - **Status**: Proposed
 - **Assignee**: Unassigned
-- **As a** player, **I want** slash commands to appear in the scrollback without persisting them so I see what happened without polluting history or LLM context.
+- **As a** player, **I want** slash commands to surface a temporary UI near the reply editor (not in scrollback) so I can act on them without polluting history or LLM context.
 - **Acceptance criteria:**
   - Add a transient command log (non-persistent) populated when the command handler runs; entries include token, args, author, and timestamp.
   - Chat scrollback merges persisted messages with transient command entries for rendering; transient entries clear on session switch/reload and are bounded to prevent growth.
