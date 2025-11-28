@@ -1,78 +1,6 @@
-## Scenario file attachments component
-
-You are implementing one isolated behavior.
-
-Behavior:
-- WHAT: Attach text files to a scenario
-- INPUT: .txt or .md files ≤ 5 MB from the active session
-- OUTPUT: Attachment metadata bound to ScenarioId
-- FAILS: Non-text files or files > 5 MB are rejected
-- NEVER: File contents sent to LLM by default
-
-Invariants:
-- No cross-scenario leakage
-- No file body in LLM context by default
-
-Write the minimal implementation.
-No commentary. No extras.
-
-## Scenario import & restoration
-
-You are implementing one isolated behavior.
-
-Behavior:
-- WHAT: Import a saved scenario snapshot
-- INPUT: Exported scenario file with schema version
-- OUTPUT: Sessions, personas, settings, and summaries restored
-- FAILS: Schema mismatch or corrupted snapshot
-- NEVER: Require app restart after import
-
-Invariants:
-- Restored data immediately drives the pipeline
-- Import never partially mutates active state on failure
-
-Write the minimal implementation.
-No commentary. No extras.
-
-## Message deletion
-
-You are implementing one isolated behavior.
-
-Behavior:
-- WHAT: Delete a single chat message
-- INPUT: MessageId within the active session
-- OUTPUT: Message removed from UI, storage, and prompt context
-- FAILS: Invalid or nonexistent MessageId
-- NEVER: Deleted messages appear in prompts or summaries
-
-Invariants:
-- Deletion updates persistence and memory together
-- UI reflects deletion immediately
-
-Write the minimal implementation.
-No commentary. No extras.
-
-## Transient command rendering
-
-You are implementing one isolated behavior.
-
-Behavior:
-- WHAT: Render slash commands as transient UI entries
-- INPUT: Parsed slash command invocation
-- OUTPUT: Temporary UI entry near the editor
-- FAILS: Unknown command
-- NEVER: Persist transient commands to storage or LLM context
-
-Invariants:
-- Transient entries clear on session change or reload
-- Persisted chat history is never polluted
-
-Write the minimal implementation.
-No commentary. No extras.
-
 ## Player message rewriting stage
 
-You are implementing one isolated behavior.
+Mode: Isolated behavior (default)
 
 Behavior:
 - WHAT: Rewrite player input into narration-friendly prose
@@ -84,27 +12,9 @@ Behavior:
 Invariants:
 - Rewritten text is what the narrator sees
 - Original text is always retained for audit/export
+- Rewritten text is what the player sees
 
-Write the minimal implementation.
-No commentary. No extras.
-
-## Player message rewriting stage
-
-You are implementing one isolated behavior.
-
-Behavior:
-- WHAT: Rewrite player input into narration-friendly prose
-- INPUT: Raw player text
-- OUTPUT: Rewritten text stored and sent to narrator
-- FAILS: Rewriting model unavailable or rewrite error
-- NEVER: Lose the original player input
-
-Invariants:
-- Rewritten text is what the narrator sees
-- Original text is always retained for audit/export
-
-Write the minimal implementation.
-No commentary. No extras.
+Output: Minimal implementation only. No commentary.
 
 ## OutputFormatter & UI streaming integration
 
