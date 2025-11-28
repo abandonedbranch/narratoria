@@ -3,19 +3,13 @@ using Microsoft.Extensions.Logging;
 
 namespace NarratoriaClient.Services.Pipeline;
 
-public sealed class NarrationPipeline : INarrationPipeline
+public sealed class NarrationPipeline(IEnumerable<INarrationPipelineStage> stages, ILogger<NarrationPipeline> logger) : INarrationPipeline
 {
-    private readonly IReadOnlyList<INarrationPipelineStage> _stages;
-    private readonly ILogger<NarrationPipeline> _logger;
-
-    public NarrationPipeline(IEnumerable<INarrationPipelineStage> stages, ILogger<NarrationPipeline> logger)
-    {
-        _stages = stages
+    private readonly IReadOnlyList<INarrationPipelineStage> _stages = stages
             .OrderBy(stage => stage.Order)
             .ToList()
             .AsReadOnly();
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+    private readonly ILogger<NarrationPipeline> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public NarrationPipelineExecution Execute(NarrationPipelineContext context, CancellationToken cancellationToken = default)
     {
