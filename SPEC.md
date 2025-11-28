@@ -7,6 +7,7 @@ RULE: All implementations must comply with the rules in CONTRIB.md.
 - All specs live in `specs/`.
 - Template: `specs/_template.spec.md`.
 - Current specs:
+  - `specs/indexeddb-storage-service.spec.md`
   - `specs/openai-api-service.spec.md`
   - `specs/narrator-pipeline-service.spec.md`
 - Add any new spec to `specs/` and link it here.
