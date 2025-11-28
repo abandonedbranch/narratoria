@@ -1,7 +1,0 @@
-.grid {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    min-height: var(--grid-min-row-height, auto);
-    gap: var(--grid-row-gap, 1.5rem);
-}
