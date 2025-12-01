@@ -1,21 +1,28 @@
-using System.Net;
-using System.Text;
+using System.Text.Json;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Narratoria.OpenAi;
+using OpenAI.Chat;
 
 namespace Narratoria.Tests;
+
+#pragma warning disable OPENAI001
 
 [TestClass]
 public sealed class OpenAiApiServiceTests
 {
     [TestMethod]
-    public async Task StreamAsync_YieldsTokensFromProvider()
+    public async Task StreamAsync_YieldsProviderTokens()
     {
-        var handler = new DelegateHandler((_, _) => Task.FromResult(HttpResponse(HttpStatusCode.OK, "{\"content\":\"hello\",\"isFinal\":false}\n{\"content\":\"world\",\"isFinal\":true}")));
-        using var client = new HttpClient(handler);
         var metrics = new TestMetricsRecorder();
-        var context = CreateContext(client, metrics);
+        var provider = new TestStreamingProvider((_, ct) => StreamUpdates(new[]
+            {
+                OpenAIChatModelFactory.StreamingChatCompletionUpdate(contentUpdate: new ChatMessageContent("hello")),
+                OpenAIChatModelFactory.StreamingChatCompletionUpdate(contentUpdate: new ChatMessageContent("world"), finishReason: ChatFinishReason.Stop)
+        }));
+
+        var context = CreateContext(provider, metrics);
         var service = new OpenAiApiService();
 
         var tokens = new List<StreamedToken>();
@@ -35,10 +42,9 @@ public sealed class OpenAiApiServiceTests
     [TestMethod]
     public async Task StreamAsync_EmitsHttpError()
     {
-        var handler = new DelegateHandler((_, _) => Task.FromResult(HttpResponse(HttpStatusCode.BadRequest, "boom")));
-        using var client = new HttpClient(handler);
         var metrics = new TestMetricsRecorder();
-        var context = CreateContext(client, metrics);
+        var provider = new TestStreamingProvider((_, ct) => Throw(new HttpRequestException("boom"), ct));
+        var context = CreateContext(provider, metrics);
         var service = new OpenAiApiService();
 
         var exception = await Assert.ThrowsExceptionAsync<OpenAiApiException>(async () =>
@@ -56,14 +62,9 @@ public sealed class OpenAiApiServiceTests
     [TestMethod]
     public async Task StreamAsync_TimeoutsRaiseNetworkTimeout()
     {
-        var handler = new DelegateHandler(async (_, cancellationToken) =>
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
-            return HttpResponse(HttpStatusCode.OK, "{\"content\":\"payload\",\"isFinal\":true}");
-        });
-        using var client = new HttpClient(handler);
         var metrics = new TestMetricsRecorder();
-        var context = CreateContext(client, metrics, timeout: TimeSpan.FromMilliseconds(10));
+        var provider = new TestStreamingProvider((_, ct) => TimeoutStream(ct));
+        var context = CreateContext(provider, metrics, timeout: TimeSpan.FromMilliseconds(10));
         var service = new OpenAiApiService();
 
         var exception = await Assert.ThrowsExceptionAsync<OpenAiApiException>(async () =>
@@ -80,10 +81,9 @@ public sealed class OpenAiApiServiceTests
     [TestMethod]
     public async Task StreamAsync_DecodeErrorsPropagate()
     {
-        var handler = new DelegateHandler((_, _) => Task.FromResult(HttpResponse(HttpStatusCode.OK, "not json")));
-        using var client = new HttpClient(handler);
         var metrics = new TestMetricsRecorder();
-        var context = CreateContext(client, metrics);
+        var provider = new TestStreamingProvider((_, ct) => Throw(new JsonException("boom"), ct));
+        var context = CreateContext(provider, metrics);
         var service = new OpenAiApiService();
 
         var exception = await Assert.ThrowsExceptionAsync<OpenAiApiException>(async () =>
@@ -97,31 +97,63 @@ public sealed class OpenAiApiServiceTests
         Assert.AreEqual("failure", metrics.LastRequestStatus);
     }
 
-    private static OpenAiRequestContext CreateContext(HttpClient client, IOpenAiApiServiceMetrics metrics, TimeSpan? timeout = null)
+    private static async IAsyncEnumerable<StreamingChatCompletionUpdate> StreamUpdates(
+        IEnumerable<StreamingChatCompletionUpdate> updates,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        foreach (var update in updates)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return update;
+            await Task.Yield();
+        }
+    }
+
+    private static async IAsyncEnumerable<StreamingChatCompletionUpdate> TimeoutStream([EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+            yield return OpenAIChatModelFactory.StreamingChatCompletionUpdate(contentUpdate: new ChatMessageContent(string.Empty));
+        }
+    }
+
+    private static async IAsyncEnumerable<StreamingChatCompletionUpdate> Throw(Exception exception, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await Task.Yield();
+        if (cancellationToken.IsCancellationRequested)
+        {
+            yield break;
+        }
+
+        throw exception;
+    }
+
+    private static OpenAiRequestContext CreateContext(IOpenAiStreamingProvider provider, IOpenAiApiServiceMetrics metrics, TimeSpan? timeout = null)
     {
         return new OpenAiRequestContext(
-            client,
+            new HttpClient(),
             new Uri("https://api.example.com/llm"),
             new OpenAiProviderCredentials("secret"),
             new OpenAiRequestPolicy(timeout ?? TimeSpan.FromSeconds(30), true),
             NullLogger<OpenAiApiService>.Instance,
             metrics,
-            new TraceMetadata("trace-id", "request-id"));
+            new TraceMetadata("trace-id", "request-id"),
+            provider);
     }
 
-    private static HttpResponseMessage HttpResponse(HttpStatusCode statusCode, string body)
+    private sealed class TestStreamingProvider : IOpenAiStreamingProvider
     {
-        return new HttpResponseMessage(statusCode)
+        private readonly Func<SerializedPrompt, CancellationToken, IAsyncEnumerable<StreamingChatCompletionUpdate>> _stream;
+
+        public TestStreamingProvider(Func<SerializedPrompt, CancellationToken, IAsyncEnumerable<StreamingChatCompletionUpdate>> stream)
         {
-            Content = new StringContent(body, Encoding.UTF8, "application/json")
-        };
-    }
+            _stream = stream;
+        }
 
-    private sealed class DelegateHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _send = send;
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => _send(request, cancellationToken);
+        public IAsyncEnumerable<StreamingChatCompletionUpdate> StreamAsync(SerializedPrompt prompt, CancellationToken cancellationToken)
+            => _stream(prompt, cancellationToken);
     }
 
     private sealed class TestMetricsRecorder : IOpenAiApiServiceMetrics
@@ -144,4 +176,6 @@ public sealed class OpenAiApiServiceTests
 
         public void RecordBytesReceived(long bytes) => BytesReceived += bytes;
     }
+#pragma warning restore OPENAI001
+
 }

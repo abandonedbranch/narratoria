@@ -7,4 +7,9 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="OpenAI" Version="2.7.0" />
+    <PackageReference Include="System.ClientModel" Version="1.8.1" />
+  </ItemGroup>
+
 </Project>

@@ -1,9 +1,8 @@
 using System.Diagnostics;
-using System.Net.Http.Headers;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using OpenAI.Chat;
 
 namespace Narratoria.OpenAi;
 
@@ -12,11 +11,6 @@ public sealed class OpenAiApiService : IOpenAiApiService
     private static readonly JsonSerializerOptions RequestSerializerOptions = new()
     {
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-    };
-
-    private static readonly JsonSerializerOptions TokenSerializerOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
     };
 
     public IAsyncEnumerable<StreamedToken> StreamAsync(SerializedPrompt prompt, OpenAiRequestContext context, CancellationToken cancellationToken)
@@ -54,29 +48,22 @@ public sealed class OpenAiApiService : IOpenAiApiService
 
         try
         {
-            var request = BuildRequest(prompt, context, out var payloadSize);
+            var streamingProvider = context.StreamingProvider ?? throw new InvalidOperationException("Streaming provider is required.");
+            var payloadSize = CalculatePayloadSize(prompt);
             context.Metrics.RecordBytesSent(payloadSize);
-
-            using var response = await SendAsync(context.Client, request, linkedCts.Token);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = new OpenAiApiError(
-                    OpenAiApiErrorClass.HttpError,
-                    "Provider returned non-success status",
-                    (int)response.StatusCode,
-                    await ReadBodySafely(response.Content, linkedCts.Token));
-                errorClass = error.ErrorClass.ToString();
-                context.Logger.LogError("OpenAI provider failure trace={TraceId} request={RequestId} status={StatusCode}", trace.TraceId, trace.RequestId, (int)response.StatusCode);
-                completionException = new OpenAiApiException(error);
-                return;
-            }
 
             context.Logger.LogInformation("OpenAI streaming trace={TraceId} request={RequestId} stage=streaming", trace.TraceId, trace.RequestId);
 
-            await foreach (var token in ReadTokensAsync(response.Content, context.Metrics, context.Logger, trace, linkedCts.Token))
+            await foreach (var update in streamingProvider.StreamAsync(prompt, linkedCts.Token).ConfigureAwait(false))
             {
-                await writer.WriteAsync(token, cancellationToken).ConfigureAwait(false);
+                var content = ExtractContent(update);
+                if (content.Length > 0)
+                {
+                    context.Metrics.RecordBytesReceived(Encoding.UTF8.GetByteCount(content));
+                }
+
+                var isFinal = update?.FinishReason is not null;
+                await writer.WriteAsync(new StreamedToken(content, isFinal, DateTimeOffset.UtcNow), cancellationToken).ConfigureAwait(false);
             }
 
             success = true;
@@ -93,6 +80,13 @@ public sealed class OpenAiApiService : IOpenAiApiService
         {
             errorClass = "OperationCanceled";
             completionException = oce;
+        }
+        catch (JsonException ex)
+        {
+            var error = new OpenAiApiError(OpenAiApiErrorClass.DecodeError, "Unable to decode provider token", Details: ex.Message);
+            errorClass = error.ErrorClass.ToString();
+            context.Logger.LogError(ex, "OpenAI decode failure trace={TraceId} request={RequestId}", trace.TraceId, trace.RequestId);
+            completionException = new OpenAiApiException(error, ex);
         }
         catch (OpenAiApiException ex)
         {
@@ -130,99 +124,31 @@ public sealed class OpenAiApiService : IOpenAiApiService
         }
     }
 
-    private static HttpRequestMessage BuildRequest(SerializedPrompt prompt, OpenAiRequestContext context, out long payloadSize)
+    private static long CalculatePayloadSize(SerializedPrompt prompt)
     {
         var payload = new OpenAiRequestPayload(prompt.Payload, prompt.Id, prompt.Metadata);
         var payloadJson = JsonSerializer.Serialize(payload, RequestSerializerOptions);
-        payloadSize = Encoding.UTF8.GetByteCount(payloadJson);
+        return Encoding.UTF8.GetByteCount(payloadJson);
+    }
 
-        var request = new HttpRequestMessage(HttpMethod.Post, context.Endpoint)
+    private static string ExtractContent(StreamingChatCompletionUpdate? update)
+    {
+        if (update?.ContentUpdate is not { Count: > 0 } content)
         {
-            Content = new StringContent(payloadJson, Encoding.UTF8, "application/json")
-        };
+            return string.Empty;
+        }
 
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.Credentials.ApiKey);
-
-        if (context.AdditionalHeaders is { Count: > 0 })
+        var builder = new StringBuilder(content.Count * 8);
+        foreach (var part in content)
         {
-            foreach (var header in context.AdditionalHeaders)
+            if (part.Kind == ChatMessageContentPartKind.Text && !string.IsNullOrEmpty(part.Text))
             {
-                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                builder.Append(part.Text);
             }
         }
 
-        return request;
-    }
-
-    private static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            throw new OpenAiApiException(new OpenAiApiError(OpenAiApiErrorClass.HttpError, "Request send failed", Details: ex.Message), ex);
-        }
-    }
-
-    private static async Task<string?> ReadBodySafely(HttpContent content, CancellationToken cancellationToken)
-    {
-        if (content is null) return null;
-
-        try
-        {
-            var text = await content.ReadAsStringAsync(cancellationToken);
-            if (text is null) return null;
-            return text.Length > 512 ? text[..512] : text;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static async IAsyncEnumerable<StreamedToken> ReadTokensAsync(
-        HttpContent content,
-        IOpenAiApiServiceMetrics metrics,
-        ILogger logger,
-        TraceMetadata trace,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        await using var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-
-        while (true)
-        {
-            var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-            if (line is null) break;
-            if (string.IsNullOrWhiteSpace(line)) continue;
-
-            metrics.RecordBytesReceived(line.Length);
-
-            StreamedTokenPayload? payload;
-            try
-            {
-                payload = JsonSerializer.Deserialize<StreamedTokenPayload>(line, TokenSerializerOptions);
-            }
-            catch (JsonException ex)
-            {
-                var error = new OpenAiApiError(OpenAiApiErrorClass.DecodeError, "Unable to decode provider token", Details: ex.Message);
-                logger.LogError(ex, "OpenAI decode failure trace={TraceId} request={RequestId}", trace.TraceId, trace.RequestId);
-                throw new OpenAiApiException(error, ex);
-            }
-
-            if (payload is null) continue;
-
-            yield return new StreamedToken(payload.Content ?? string.Empty, payload.IsFinal, DateTimeOffset.UtcNow);
-        }
+        return builder.ToString();
     }
 
     private sealed record OpenAiRequestPayload(string Prompt, Guid PromptId, IReadOnlyDictionary<string, string>? Metadata);
-
-    private sealed record StreamedTokenPayload(string? Content, bool IsFinal);
 }

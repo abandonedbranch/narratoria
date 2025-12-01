@@ -15,4 +15,5 @@ public sealed record OpenAiRequestContext(
     ILogger Logger,
     IOpenAiApiServiceMetrics Metrics,
     TraceMetadata Trace,
+    IOpenAiStreamingProvider StreamingProvider,
     IReadOnlyDictionary<string, string>? AdditionalHeaders = null);
