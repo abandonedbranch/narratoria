@@ -64,7 +64,8 @@ public sealed class IndexedDbStorageService : IIndexedDbStorageService, IAsyncDi
         var requestedBytes = serialized.SizeBytes;
         if (_quota is not null)
         {
-            var quotaResult = await _quota.CheckAsync(request.Scope, requestedBytes, cancellationToken).ConfigureAwait(false);
+            var hints = new StorageQuotaEstimationHints(request.Store.Name, null);
+            var quotaResult = await _quota.CheckAsync(request.Scope, requestedBytes, hints, cancellationToken).ConfigureAwait(false);
             if (!quotaResult.Ok)
             {
                 var error = quotaResult.Error ?? StorageError.QuotaUnavailable("Quota provider unavailable");

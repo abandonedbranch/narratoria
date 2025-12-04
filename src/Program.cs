@@ -1,10 +1,12 @@
 using Narratoria.Components;
+using Narratoria.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddStorageQuotaAwareness();
 
 var app = builder.Build();
 
