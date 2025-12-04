@@ -20,6 +20,17 @@ behavior:
 state:
   - session_state: persisted per-session context
 
+context:
+  - NarrationContext:
+      - SessionId
+      - PlayerPrompt
+      - PriorNarration: ordered narration already emitted for the session
+      - WorkingNarration: narration collected during the current run
+      - Metadata: trace identifiers and provider configuration
+  - mutation:
+      - Middleware receives a NarrationContext and may mutate it; the mutated context flows to the next stage.
+      - Only the final context from the completed chain is eligible for persistence.
+
 preconditions:
   - Session exists or can be created for the SessionId.
   - Provider configuration is available.
@@ -32,6 +43,7 @@ invariants:
   - Every step of the pipeline is semantically logged.
   - LLM context is always derived from persisted session state.
   - LLM context contains only player input and prior narration output.
+  - Middleware ordering is deterministic and preserves registration order.
   - Pipeline is thread-safe under concurrent callers.
 
 failure_modes:
@@ -40,6 +52,13 @@ failure_modes:
   - DecodeError :: provider response cannot be decoded :: emit structured decode error and stop streaming
 
 policies:
+  - Pipeline is constructed as middleware chain; each middleware takes NarrationContext, a next delegate, and CancellationToken.
+  - MiddlewareResult contains StreamedNarration and updated NarrationContext.
+  - Middleware must call next unless intentionally short-circuiting with a failure result.
+  - Middleware execution order follows registration; built-in required middleware is appended in fixed order.
+  - Required middleware stages:
+      - provider_dispatch: transforms context into provider request and streams narration tokens.
+      - persist_context: writes the completed transformed NarrationContext (including new narration) to storage.
   - Lifecycle listeners may attach at any time.
   - Pipeline stages may be added dynamically.
   - Concurrency: thread-safe execution under concurrent callers.
