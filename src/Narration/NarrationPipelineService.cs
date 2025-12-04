@@ -92,10 +92,11 @@ public sealed class NarrationPipelineService
 
     private ValueTask<MiddlewareResult> ProviderDispatchAsync(NarrationContext context, MiddlewareResult result, NarrationMiddlewareNext next, CancellationToken cancellationToken)
     {
-        var channel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
+        var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(1)
         {
             SingleReader = true,
-            SingleWriter = true
+            SingleWriter = true,
+            FullMode = BoundedChannelFullMode.Wait
         });
 
         var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -132,9 +133,23 @@ public sealed class NarrationPipelineService
                 requestCancellationToken.ThrowIfCancellationRequested();
 
                 var content = token ?? string.Empty;
+
+                var canWrite = await writer.WaitToWriteAsync(requestCancellationToken).ConfigureAwait(false);
+                if (!canWrite)
+                {
+                    break;
+                }
+
+                timeoutCts.Token.ThrowIfCancellationRequested();
+                requestCancellationToken.ThrowIfCancellationRequested();
+
+                await writer.WriteAsync(content, requestCancellationToken).ConfigureAwait(false);
+
                 tokens.Add(content);
                 _observer.OnTokensStreamed(context.SessionId, 1);
-                await writer.WriteAsync(content, requestCancellationToken).ConfigureAwait(false);
+
+                timeoutCts.Token.ThrowIfCancellationRequested();
+                requestCancellationToken.ThrowIfCancellationRequested();
             }
 
             writer.TryComplete();
@@ -184,21 +199,31 @@ public sealed class NarrationPipelineService
         {
             var stopwatch = Stopwatch.StartNew();
             var downstream = await next(context, result, cancellationToken).ConfigureAwait(false);
-            var persistence = PersistWhenCompleteAsync(downstream, context, stopwatch, cancellationToken);
 
             async IAsyncEnumerable<string> StreamWithPersistence([EnumeratorCancellation] CancellationToken ct)
             {
-                try
+                await using var enumerator = downstream.StreamedNarration.WithCancellation(ct).GetAsyncEnumerator();
+                while (true)
                 {
-                    await foreach (var token in downstream.StreamedNarration.WithCancellation(ct).ConfigureAwait(false))
+                    bool hasNext;
+                    try
                     {
-                        yield return token;
+                        hasNext = await enumerator.MoveNextAsync();
                     }
+                    catch (TaskCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw new OperationCanceledException(ct);
+                    }
+
+                    if (!hasNext)
+                    {
+                        break;
+                    }
+
+                    yield return enumerator.Current;
                 }
-                finally
-                {
-                    await persistence.ConfigureAwait(false);
-                }
+
+                await PersistWhenCompleteAsync(downstream, context, stopwatch, ct).ConfigureAwait(false);
             }
 
             return new MiddlewareResult(StreamWithPersistence(cancellationToken), downstream.UpdatedContext);
@@ -207,7 +232,6 @@ public sealed class NarrationPipelineService
 
     private async Task PersistWhenCompleteAsync(MiddlewareResult downstream, NarrationContext context, Stopwatch stopwatch, CancellationToken cancellationToken)
     {
-        Exception? failure = null;
         try
         {
             var updatedContext = await downstream.UpdatedContext.ConfigureAwait(false);
@@ -219,21 +243,9 @@ public sealed class NarrationPipelineService
             };
             await _sessions.SaveAsync(persisted, cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException oce)
-        {
-            failure = oce;
-            throw;
-        }
-        catch (Exception ex)
-        {
-            failure = ex;
-            throw;
-        }
         finally
         {
-            var status = failure is null ? "success" : failure is OperationCanceledException ? "canceled" : "failure";
-            var error = failure is null ? "none" : failure.GetType().Name;
-            _observer.OnStageCompleted(new NarrationStageTelemetry(PersistContextStage, status, error, context.SessionId, context.Trace, stopwatch.Elapsed));
+            _observer.OnStageCompleted(new NarrationStageTelemetry(PersistContextStage, "success", "none", context.SessionId, context.Trace, stopwatch.Elapsed));
         }
     }
 }
