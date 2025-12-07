@@ -14,10 +14,27 @@ public sealed class BasicNarrationPromptSerializer : INarrationPromptSerializer
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        if (!context.WorkingContextSegments.IsDefaultOrEmpty)
+        {
+            var segmentsBuilder = new StringBuilder();
+            foreach (var segment in context.WorkingContextSegments)
+            {
+                if (string.IsNullOrWhiteSpace(segment.Content))
+                {
+                    continue;
+                }
+
+                segmentsBuilder.AppendLine(segment.Content);
+                segmentsBuilder.AppendLine();
+            }
+
+            var payloadFromSegments = segmentsBuilder.ToString().TrimEnd();
+            return new SerializedPrompt(Guid.NewGuid(), payloadFromSegments, context.Metadata);
+        }
+
         var builder = new StringBuilder();
         if (!context.PriorNarration.IsDefaultOrEmpty)
         {
-            builder.AppendLine("Previous narration:");
             foreach (var line in context.PriorNarration)
             {
                 builder.AppendLine(line);
@@ -25,10 +42,9 @@ public sealed class BasicNarrationPromptSerializer : INarrationPromptSerializer
             builder.AppendLine();
         }
 
-        builder.AppendLine("Player prompt:");
         builder.AppendLine(context.PlayerPrompt ?? string.Empty);
 
-        var payload = builder.ToString();
+        var payload = builder.ToString().TrimEnd();
         return new SerializedPrompt(Guid.NewGuid(), payload, context.Metadata);
     }
 }

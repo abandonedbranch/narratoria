@@ -10,6 +10,7 @@ public sealed record NarrationContext
     public ImmutableArray<string> PriorNarration { get; init; } = [];
     public ImmutableArray<string> WorkingNarration { get; init; } = [];
     public IReadOnlyDictionary<string, string> Metadata { get; init; } = ImmutableDictionary<string, string>.Empty;
+    public ImmutableArray<ContextSegment> WorkingContextSegments { get; init; } = [];
     public required TraceMetadata Trace { get; init; }
 }
 

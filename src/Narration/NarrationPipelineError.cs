@@ -7,7 +7,8 @@ public enum NarrationPipelineErrorClass
     ProviderError,
     MissingSession,
     DecodeError,
-    PersistenceError
+    PersistenceError,
+    ContextError
 }
 
 public sealed record NarrationPipelineError(

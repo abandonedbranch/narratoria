@@ -66,6 +66,7 @@ builder.Services.AddSingleton<IOpenAiStreamingProvider>(sp =>
 builder.Services.AddSingleton<INarrationPromptSerializer, BasicNarrationPromptSerializer>();
 builder.Services.AddSingleton<INarrationOpenAiContextFactory, NarrationOpenAiContextFactory>();
 builder.Services.AddSingleton<INarrationProvider, OpenAiNarrationProvider>();
+builder.Services.AddSingleton<NarrationContentGuardianMiddleware>();
 
 builder.Services.AddSingleton<ProviderDispatchMiddleware>(sp =>
 {
@@ -80,10 +81,12 @@ builder.Services.AddSingleton<NarrationPersistenceMiddleware>(sp =>
 builder.Services.AddSingleton<NarrationPipelineService>(sp =>
 {
     var persistence = sp.GetRequiredService<NarrationPersistenceMiddleware>();
+    var guardian = sp.GetRequiredService<NarrationContentGuardianMiddleware>();
     var dispatch = sp.GetRequiredService<ProviderDispatchMiddleware>();
     return new NarrationPipelineService(new NarrationMiddleware[]
     {
         persistence.InvokeAsync,
+        guardian.InvokeAsync,
         dispatch.InvokeAsync
     });
 });
