@@ -1,5 +1,12 @@
+using System.Linq;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Narratoria.Components;
+using Narratoria.Narration;
+using Narratoria.Narration.Attachments;
+using Narratoria.OpenAi;
 using Narratoria.Storage;
+using Narratoria.Storage.IndexedDb;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +14,79 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddStorageQuotaAwareness();
+builder.Services.AddOptions<NarrationOpenAiOptions>().Bind(builder.Configuration.GetSection("OpenAi"));
+builder.Services.AddOptions<ProviderDispatchOptions>().Bind(builder.Configuration.GetSection("ProviderDispatch"));
+builder.Services.AddHttpClient("openai");
+
+builder.Services.AddSingleton<IIndexedDbStorageMetrics, LoggingIndexedDbStorageMetrics>();
+builder.Services.AddSingleton(sp =>
+{
+    var attachmentsStore = ProcessedAttachmentStore.CreateStoreDefinition();
+    var narrationStore = IndexedDbNarrationSessionStore.CreateStoreDefinition();
+    return new IndexedDbSchema
+    {
+        DatabaseName = "narratoria",
+        Version = 1,
+        Stores = new[] { attachmentsStore, narrationStore }
+    };
+});
+builder.Services.AddIndexedDbStorageService();
+
+builder.Services.AddScoped<IIndexedDbValueSerializer<NarrationContext>, NarrationContextSerializer>();
+builder.Services.AddScoped<INarrationSessionStore>(sp =>
+{
+    var storage = sp.GetRequiredService<IIndexedDbStorageService>();
+    var schema = sp.GetRequiredService<IndexedDbSchema>();
+    var store = schema.Stores.Single(s => s.Name == "narration_sessions");
+    var serializer = sp.GetRequiredService<IIndexedDbValueSerializer<NarrationContext>>();
+    var logger = sp.GetRequiredService<ILogger<IndexedDbNarrationSessionStore>>();
+    var scope = new StorageScope(schema.DatabaseName, store.Name);
+    return new IndexedDbNarrationSessionStore(storage, store, scope, logger, serializer);
+});
+builder.Services.AddSingleton<INarrationPipelineObserver>(_ => NullNarrationPipelineObserver.Instance);
+
+builder.Services.AddSingleton<IOpenAiApiService, OpenAiApiService>();
+builder.Services.AddSingleton<IOpenAiApiServiceMetrics, LoggingOpenAiApiServiceMetrics>();
+builder.Services.AddSingleton<IOpenAiStreamingProvider>(sp =>
+{
+    var opts = sp.GetRequiredService<IOptions<NarrationOpenAiOptions>>().Value;
+    var credentials = new OpenAiProviderCredentials(opts.ApiKey);
+    var endpoint = new Uri(opts.Endpoint);
+    var headers = new Dictionary<string, string>();
+    if (!string.IsNullOrWhiteSpace(opts.OrganizationId))
+    {
+        headers["OpenAI-Organization"] = opts.OrganizationId!;
+    }
+    if (!string.IsNullOrWhiteSpace(opts.ProjectId))
+    {
+        headers["OpenAI-Project"] = opts.ProjectId!;
+    }
+    return new OpenAiChatStreamingProvider(opts.Model, credentials, endpoint, headers);
+});
+builder.Services.AddSingleton<INarrationPromptSerializer, BasicNarrationPromptSerializer>();
+builder.Services.AddSingleton<INarrationOpenAiContextFactory, NarrationOpenAiContextFactory>();
+builder.Services.AddSingleton<INarrationProvider, OpenAiNarrationProvider>();
+
+builder.Services.AddSingleton<ProviderDispatchMiddleware>(sp =>
+{
+    var provider = sp.GetRequiredService<INarrationProvider>();
+    var observer = sp.GetRequiredService<INarrationPipelineObserver>();
+    var options = sp.GetRequiredService<IOptions<ProviderDispatchOptions>>().Value;
+    var logger = sp.GetRequiredService<ILogger<ProviderDispatchMiddleware>>();
+    return new ProviderDispatchMiddleware(provider, options, observer, logger);
+});
+builder.Services.AddSingleton<NarrationPersistenceMiddleware>(sp =>
+    new NarrationPersistenceMiddleware(sp.GetRequiredService<INarrationSessionStore>(), sp.GetRequiredService<INarrationPipelineObserver>()));
+builder.Services.AddSingleton<NarrationPipelineService>(sp =>
+{
+    var persistence = sp.GetRequiredService<NarrationPersistenceMiddleware>();
+    var dispatch = sp.GetRequiredService<ProviderDispatchMiddleware>();
+    return new NarrationPipelineService(new NarrationMiddleware[]
+    {
+        persistence.InvokeAsync,
+        dispatch.InvokeAsync
+    });
+});
 
 var app = builder.Build();
 
