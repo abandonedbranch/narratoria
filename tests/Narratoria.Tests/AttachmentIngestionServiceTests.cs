@@ -72,15 +72,25 @@ public sealed class AttachmentIngestionServiceTests
             }
         });
 
-        var provider = new ThrowingProvider();
+        var provider = new ProviderDispatchMiddleware(new ThrowingProvider());
         var failingService = new FailingIngestionService();
         var middleware = new AttachmentIngestionMiddleware("missing", failingService);
-        var pipeline = new NarrationPipelineService(store, provider, middleware: new NarrationMiddleware[] { middleware.InvokeAsync });
-        var request = new NarrationRequest(sessionId, "prompt", new TraceMetadata("trace", "request"));
+        var persistence = new NarrationPersistenceMiddleware(store);
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, middleware.InvokeAsync, provider.InvokeAsync });
+        var context = new NarrationContext
+        {
+            SessionId = sessionId,
+            PlayerPrompt = "prompt",
+            PriorNarration = [],
+            WorkingNarration = [],
+            Metadata = ImmutableDictionary<string, string>.Empty,
+            Trace = new TraceMetadata("trace", "request")
+        };
 
         await Assert.ThrowsExceptionAsync<NarrationPipelineException>(async () =>
         {
-            await foreach (var _ in await pipeline.RunAsync(request, CancellationToken.None))
+            var result = await pipeline.RunAsync(context, CancellationToken.None);
+            await foreach (var _ in result.StreamedNarration)
             {
             }
         });

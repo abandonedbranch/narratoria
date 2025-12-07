@@ -6,7 +6,8 @@ public enum NarrationPipelineErrorClass
 {
     ProviderError,
     MissingSession,
-    DecodeError
+    DecodeError,
+    PersistenceError
 }
 
 public sealed record NarrationPipelineError(

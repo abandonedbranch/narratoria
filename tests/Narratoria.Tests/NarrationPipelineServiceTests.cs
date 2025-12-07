@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Narratoria.Narration;
 using Narratoria.OpenAi;
@@ -20,13 +23,25 @@ public sealed class NarrationPipelineServiceTests
         {
             CreateContext(sessionId, "prior line")
         });
-        var provider = new StubNarrationProvider(["line-one", "line-two"]);
-        var observer = new RecordingObserver();
-        var service = new NarrationPipelineService(store, provider, observer: observer);
 
-        var request = new NarrationRequest(sessionId, "player prompt", new TraceMetadata("trace", "request"));
+        var observer = new RecordingObserver();
+        var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(["line-one", "line-two"]), observer: observer);
+        var persistence = new NarrationPersistenceMiddleware(store, observer);
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, provider.InvokeAsync });
+
+        var initialContext = new NarrationContext
+        {
+            SessionId = sessionId,
+            PlayerPrompt = "player prompt",
+            PriorNarration = [],
+            WorkingNarration = [],
+            Metadata = ImmutableDictionary<string, string>.Empty,
+            Trace = new TraceMetadata("trace", "request")
+        };
+
+        var result = await pipeline.RunAsync(initialContext, CancellationToken.None);
         var received = new List<string>();
-        await foreach (var token in await service.RunAsync(request, CancellationToken.None))
+        await foreach (var token in result.StreamedNarration)
         {
             received.Add(token);
         }
@@ -38,9 +53,7 @@ public sealed class NarrationPipelineServiceTests
         Assert.AreEqual(0, persisted.WorkingNarration.Length);
         Assert.AreEqual("player prompt", persisted.PlayerPrompt);
 
-        Assert.AreEqual(2, observer.StageTelemetries.Count);
-        Assert.AreEqual("provider_dispatch", observer.StageTelemetries[0].Stage);
-        Assert.AreEqual("persist_context", observer.StageTelemetries[1].Stage);
+        CollectionAssert.AreEqual(new[] { "session_load", "provider_dispatch", "persist_context" }, observer.StageTelemetries.Select(t => t.Stage).ToArray());
         Assert.AreEqual(2, observer.StreamedTokens);
     }
 
@@ -49,7 +62,6 @@ public sealed class NarrationPipelineServiceTests
     {
         var sessionId = Guid.NewGuid();
         var store = InMemorySessionStore.WithSessions(new[] { CreateContext(sessionId) });
-        var provider = new StubNarrationProvider(["a"]);
         var observer = new RecordingObserver();
         var order = new List<string>();
 
@@ -59,14 +71,27 @@ public sealed class NarrationPipelineServiceTests
             return next(context, result, cancellationToken);
         }
 
-        var service = new NarrationPipelineService(store, provider, middleware: new NarrationMiddleware[] { Recorder }, observer: observer);
-        var request = new NarrationRequest(sessionId, "prompt", new TraceMetadata("trace", "req"));
-        await foreach (var _ in await service.RunAsync(request, CancellationToken.None))
+        var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(["a"]), observer: observer);
+        var persistence = new NarrationPersistenceMiddleware(store, observer);
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, Recorder, provider.InvokeAsync });
+
+        var context = new NarrationContext
+        {
+            SessionId = sessionId,
+            PlayerPrompt = "prompt",
+            PriorNarration = [],
+            WorkingNarration = [],
+            Metadata = ImmutableDictionary<string, string>.Empty,
+            Trace = new TraceMetadata("trace", "req")
+        };
+
+        var result = await pipeline.RunAsync(context, CancellationToken.None);
+        await foreach (var _ in result.StreamedNarration)
         {
         }
 
         CollectionAssert.AreEqual(new[] { "custom" }, order);
-        CollectionAssert.AreEqual(new[] { "provider_dispatch", "persist_context" }, observer.StageTelemetries.Select(t => t.Stage).ToArray());
+        CollectionAssert.AreEqual(new[] { "session_load", "provider_dispatch", "persist_context" }, observer.StageTelemetries.Select(t => t.Stage).ToArray());
     }
 
     [TestMethod]
@@ -74,7 +99,6 @@ public sealed class NarrationPipelineServiceTests
     {
         var sessionId = Guid.NewGuid();
         var store = InMemorySessionStore.WithSessions(new[] { CreateContext(sessionId) });
-        var provider = new StubNarrationProvider(["unused"], onStream: () => Assert.Fail("Provider should not be invoked"));
         var observer = new RecordingObserver();
 
         ValueTask<MiddlewareResult> ShortCircuit(NarrationContext context, MiddlewareResult result, NarrationMiddlewareNext next, CancellationToken cancellationToken)
@@ -84,11 +108,23 @@ public sealed class NarrationPipelineServiceTests
             return ValueTask.FromResult(new MiddlewareResult(stream, updated));
         }
 
-        var service = new NarrationPipelineService(store, provider, middleware: new NarrationMiddleware[] { ShortCircuit }, observer: observer);
-        var request = new NarrationRequest(sessionId, "prompt", new TraceMetadata("trace", "req"));
+        var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(["unused"], onStream: () => Assert.Fail("Provider should not be invoked")), observer: observer);
+        var persistence = new NarrationPersistenceMiddleware(store, observer);
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { ShortCircuit, persistence.InvokeAsync, provider.InvokeAsync });
 
+        var context = new NarrationContext
+        {
+            SessionId = sessionId,
+            PlayerPrompt = "prompt",
+            PriorNarration = [],
+            WorkingNarration = [],
+            Metadata = ImmutableDictionary<string, string>.Empty,
+            Trace = new TraceMetadata("trace", "req")
+        };
+
+        var result = await pipeline.RunAsync(context, CancellationToken.None);
         var tokens = new List<string>();
-        await foreach (var token in await service.RunAsync(request, CancellationToken.None))
+        await foreach (var token in result.StreamedNarration)
         {
             tokens.Add(token);
         }
@@ -103,24 +139,41 @@ public sealed class NarrationPipelineServiceTests
     {
         var sessionId = Guid.NewGuid();
         var store = InMemorySessionStore.WithSessions(new[] { CreateContext(sessionId) });
-        var provider = CancelAfter("first", "second");
         var observer = new RecordingObserver();
         var cts = new CancellationTokenSource();
 
-        var service = new NarrationPipelineService(store, provider, observer: observer, options: new NarrationPipelineOptions { ProviderTimeout = Timeout.InfiniteTimeSpan });
-        var request = new NarrationRequest(sessionId, "prompt", new TraceMetadata("trace", "req"));
+        var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(StreamUntilCanceled), observer: observer, options: new ProviderDispatchOptions { Timeout = Timeout.InfiniteTimeSpan });
+        var persistence = new NarrationPersistenceMiddleware(store, observer);
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, provider.InvokeAsync });
+
+        var context = new NarrationContext
+        {
+            SessionId = sessionId,
+            PlayerPrompt = "prompt",
+            PriorNarration = [],
+            WorkingNarration = [],
+            Metadata = ImmutableDictionary<string, string>.Empty,
+            Trace = new TraceMetadata("trace", "req")
+        };
+
+        var tokens = new List<string>();
 
         await Assert.ThrowsExceptionAsync<OperationCanceledException>(async () =>
         {
-            await foreach (var token in (await service.RunAsync(request, cts.Token)).WithCancellation(cts.Token))
+            var result = await pipeline.RunAsync(context, cts.Token);
+            await foreach (var token in result.StreamedNarration.WithCancellation(cts.Token))
             {
-                Assert.AreEqual("first", token);
+                tokens.Add(token);
                 cts.Cancel();
             }
         });
 
+        CollectionAssert.AreEqual(new[] { "first" }, tokens);
         Assert.IsFalse(store.HasSaved);
-        Assert.AreEqual("provider_dispatch", observer.StageTelemetries.Single().Stage);
+        var stages = observer.StageTelemetries.Select(t => t.Stage).ToArray();
+        CollectionAssert.AreEqual(new[] { "session_load", "provider_dispatch", "persist_context" }, stages, string.Join(",", stages));
+        Assert.AreEqual("canceled", observer.StageTelemetries[1].Status);
+        Assert.AreEqual("canceled", observer.StageTelemetries[2].Status);
     }
 
     [TestMethod]
@@ -134,23 +187,41 @@ public sealed class NarrationPipelineServiceTests
             CreateContext(secondSession)
         });
 
-        var provider = new StubNarrationProvider(["one"], ["two"]);
         var observer = new RecordingObserver();
-        var service = new NarrationPipelineService(store, provider, observer: observer);
+        var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(["one"], ["two"]), observer: observer);
+        var persistence = new NarrationPersistenceMiddleware(store, observer);
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, provider.InvokeAsync });
 
-        var firstRequest = new NarrationRequest(firstSession, "prompt-1", new TraceMetadata("trace-1", "req-1"));
-        var secondRequest = new NarrationRequest(secondSession, "prompt-2", new TraceMetadata("trace-2", "req-2"));
+        var firstContext = new NarrationContext
+        {
+            SessionId = firstSession,
+            PlayerPrompt = "prompt-1",
+            PriorNarration = [],
+            WorkingNarration = [],
+            Metadata = ImmutableDictionary<string, string>.Empty,
+            Trace = new TraceMetadata("trace-1", "req-1")
+        };
 
-        var firstRun = ConsumeAsync(await service.RunAsync(firstRequest, CancellationToken.None));
-        var secondRun = ConsumeAsync(await service.RunAsync(secondRequest, CancellationToken.None));
+        var secondContext = new NarrationContext
+        {
+            SessionId = secondSession,
+            PlayerPrompt = "prompt-2",
+            PriorNarration = [],
+            WorkingNarration = [],
+            Metadata = ImmutableDictionary<string, string>.Empty,
+            Trace = new TraceMetadata("trace-2", "req-2")
+        };
+
+        var firstRun = ConsumeAsync((await pipeline.RunAsync(firstContext, CancellationToken.None)).StreamedNarration);
+        var secondRun = ConsumeAsync((await pipeline.RunAsync(secondContext, CancellationToken.None)).StreamedNarration);
 
         await Task.WhenAll(firstRun, secondRun);
 
-        var firstContext = store.Get(firstSession);
-        var secondContext = store.Get(secondSession);
+        var firstPersisted = store.Get(firstSession);
+        var secondPersisted = store.Get(secondSession);
 
-        CollectionAssert.AreEqual(new[] { "one" }, firstContext.PriorNarration.ToArray());
-        CollectionAssert.AreEqual(new[] { "two" }, secondContext.PriorNarration.ToArray());
+        CollectionAssert.AreEqual(new[] { "one" }, firstPersisted.PriorNarration.ToArray());
+        CollectionAssert.AreEqual(new[] { "two" }, secondPersisted.PriorNarration.ToArray());
     }
 
     private static NarrationContext CreateContext(Guid sessionId, string? prior = null)
@@ -166,25 +237,20 @@ public sealed class NarrationPipelineServiceTests
         };
     }
 
-    private static StubNarrationProvider CancelAfter(params string[] tokens)
-    {
-        return new StubNarrationProvider(cancellationToken => CancelAfterCore(tokens, cancellationToken));
-    }
-
-    private static async IAsyncEnumerable<string> CancelAfterCore(IEnumerable<string> tokens, [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        foreach (var token in tokens)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            yield return token;
-            await Task.Yield();
-        }
-    }
-
     private static async Task ConsumeAsync(IAsyncEnumerable<string> stream)
     {
         await foreach (var _ in stream)
         {
+        }
+    }
+
+    private static async IAsyncEnumerable<string> StreamUntilCanceled([EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        yield return "first";
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Delay(10, cancellationToken);
         }
     }
 
