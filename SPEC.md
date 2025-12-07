@@ -11,6 +11,7 @@ RULE: All implementations must comply with the rules in CONTRIB.md.
   - `specs/storage-quota-awareness-service.spec.md`
   - `specs/openai-api-service.spec.md`
   - `specs/narrator-pipeline-service.spec.md`
+  - `specs/narration-system-prompt-middleware.spec.md`
   - `specs/narration-attachment-ingestion-service.spec.md`
 - Add any new spec to `specs/` and link it here.
 
