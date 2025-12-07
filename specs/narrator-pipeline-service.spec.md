@@ -12,6 +12,7 @@ behavior:
   - caller_obligations:
       - Provide the middleware chain in the intended order (including persistence/provider middleware as needed).
       - Supply an initial NarrationContext and a CancellationToken.
+      - Compose the chain at application startup via DI (e.g., Program.cs) and invoke it from the UI/Blazor interaction flow (no HTTP endpoint required).
   - side_effects_allowed:
       - None by the pipeline itself; all effects are owned by middleware.
 
