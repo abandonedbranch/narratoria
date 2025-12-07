@@ -13,6 +13,7 @@ RULE: All implementations must comply with the rules in CONTRIB.md.
   - `specs/narrator-pipeline-service.spec.md`
   - `specs/narration-persistence-middleware.spec.md`
   - `specs/narration-provider-dispatch-middleware.spec.md`
+  - `specs/narration-content-guardian-middleware.spec.md`
   - `specs/narration-system-prompt-middleware.spec.md`
   - `specs/narration-attachment-ingestion-service.spec.md`
 - Add any new spec to `specs/` and link it here.
