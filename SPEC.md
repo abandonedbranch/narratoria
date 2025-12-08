@@ -6,7 +6,7 @@ RULE: All implementations must comply with the rules in CONTRIB.md.
 
 - All specs live in `specs/`.
 - Template: `specs/_template.spec.md`.
-- Current specs:
+- Completed specs:
   - `specs/indexeddb-storage-service.spec.md`
   - `specs/storage-quota-awareness-service.spec.md`
   - `specs/openai-api-service.spec.md`
@@ -16,7 +16,8 @@ RULE: All implementations must comply with the rules in CONTRIB.md.
   - `specs/narration-content-guardian-middleware.spec.md`
   - `specs/narration-system-prompt-middleware.spec.md`
   - `specs/narration-attachment-ingestion-service.spec.md`
-- Add any new spec to `specs/` and link it here.
+- If any spec is not yet complete, add it under a "Not completed" list with owner and expected completion date.
+- Implementors must explicitly state what is complete and what remains when updating this file.
 
 ## Format
 

@@ -118,3 +118,6 @@ SECTION: Testing
 RULE: Use table-driven tests ([Theory]/[InlineData]/[MemberData]).
 RULE: Fake collaborators via small interfaces; avoid global state.
 RULE: Deterministic tests only: inject time/random/IO; no real clocks or external IO.
+
+SECTION: StatusReporting
+RULE: When updating specs or implementations, explicitly report what is complete and what remains; mark completed specs in SPEC.md and note outstanding work.
