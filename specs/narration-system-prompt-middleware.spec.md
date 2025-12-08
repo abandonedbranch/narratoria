@@ -8,11 +8,11 @@ behavior:
   - input:
       - NarrationContext: Session-scoped pipeline context carrying PlayerPrompt, PriorNarration, WorkingNarration, Metadata, Trace.
       - SystemPromptProfile: profile_id, prompt_text, instructions (ordered strings), version/etag.
-      - WorkingContextContents: ordered context segments accumulated for the provider request (player prompt, attachments, narration history).
+      - WorkingContextSegments: ordered context segments accumulated for the provider request (player prompt, attachments, narration history).
   - output:
       - MiddlewareResult: Downstream result with NarrationContext updated to include system prompt and instructions as highest-priority segments plus metadata annotations.
   - caller_obligations:
-      - Register middleware ahead of provider_dispatch and after any context-building middleware that populates WorkingContextContents.
+      - Register middleware ahead of provider_dispatch and after any context-building middleware that populates WorkingContextSegments.
       - Supply a non-empty SystemPromptProfile per session/request (static config or injected resolver).
       - Propagate the pipeline CancellationToken.
   - side_effects_allowed:
@@ -24,7 +24,7 @@ state:
   - none: stateless middleware with no persistence or cross-session cache
 
 context:
-  - WorkingContextContents:
+  - WorkingContextSegments:
       - Ordered ImmutableArray<ContextSegment> representing the prompt passed to provider_dispatch.
       - ContextSegment: { Role: system | instruction | user | attachment | history, Content: string, Source: string }.
   - mutation:
@@ -32,13 +32,13 @@ context:
 
 preconditions:
   - SystemPromptProfile resolves and prompt_text is non-empty.
-  - WorkingContextContents exists (may be empty) on NarrationContext or in Metadata under a reserved key.
+  - WorkingContextSegments exists (may be empty) on NarrationContext or in Metadata under a reserved key.
   - CancellationToken is not already canceled.
 
 postconditions:
-  - On success, WorkingContextContents begins with the system prompt segment followed by instruction segments; remaining segments retain their original order and content.
+  - On success, WorkingContextSegments begins with the system prompt segment followed by instruction segments; remaining segments retain their original order and content.
   - Metadata includes system_prompt_profile_id and system_prompt_version entries for downstream observability.
-  - MiddlewareResult.StreamedNarration is passed through unchanged; UpdatedContext carries the modified WorkingContextContents.
+  - MiddlewareResult.StreamedNarration is passed through unchanged; UpdatedContext carries the modified WorkingContextSegments.
   - On failure, emit a structured NarrationPipelineError (stage=system_prompt_injection) and do not invoke downstream middleware.
 
 invariants:
@@ -49,11 +49,11 @@ invariants:
 
 failure_modes:
   - PromptUnavailable :: System prompt profile missing or prompt_text empty :: emit NarrationPipelineError (stage=system_prompt_injection) and short-circuit.
-  - ContextMissing :: WorkingContextContents unavailable or null :: emit NarrationPipelineError (stage=system_prompt_injection) and short-circuit.
+  - ContextMissing :: WorkingContextSegments unavailable or null :: emit NarrationPipelineError (stage=system_prompt_injection) and short-circuit.
   - Cancellation :: CancellationToken signaled :: propagate cancellation without invoking downstream middleware.
 
 policies:
-  - Ordering: must execute before provider_dispatch; should follow any middleware that builds WorkingContextContents (attachments, history, templating).
+  - Ordering: must execute before provider_dispatch; should follow any middleware that builds WorkingContextSegments (attachments, history, templating).
   - Idempotency: if Metadata indicates the same profile_id/version already injected, skip reinsertion to avoid duplicates.
   - Retry: none; failures are terminal for the pipeline run.
   - Concurrency: safe under concurrent sessions; no shared mutable state.

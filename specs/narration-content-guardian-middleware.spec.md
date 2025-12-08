@@ -7,11 +7,11 @@ behavior:
   - what: Inject a safety/system prompt that requires the downstream provider to act as a “Narratoria Content Guardian” that inspects and cleans mature/NSFW context before narration.
   - input:
       - NarrationContext: SessionId, PlayerPrompt, PriorNarration, WorkingNarration, Metadata, Trace.
-      - WorkingContextContents: ordered context segments accumulated for the provider request (player prompt, attachments, narration history).
+      - WorkingContextSegments: ordered context segments accumulated for the provider request (player prompt, attachments, narration history).
   - output:
-      - MiddlewareResult: Downstream result with NarrationContext updated to include the content-guardian system prompt segment prepended to WorkingContextContents.
+      - MiddlewareResult: Downstream result with NarrationContext updated to include the content-guardian system prompt segment prepended to WorkingContextSegments.
   - caller_obligations:
-      - Register this middleware before provider_dispatch and after any middleware that builds WorkingContextContents.
+      - Register this middleware before provider_dispatch and after any middleware that builds WorkingContextSegments.
       - Supply a CancellationToken.
   - side_effects_allowed:
       - Mutate the flowing NarrationContext (immutable copy) to prepend the system prompt segment and update Metadata.
@@ -21,20 +21,20 @@ state:
   - none: stateless middleware
 
 context:
-  - WorkingContextContents:
+  - WorkingContextSegments:
       - Ordered ImmutableArray<ContextSegment> representing the prompt passed to provider_dispatch.
       - ContextSegment: { Role: system | instruction | user | attachment | history, Content: string, Source: string }.
   - mutation:
       - Prepend a single system ContextSegment containing the content-guardian prompt; preserve all existing segments and their order after the insertion.
 
 preconditions:
-  - WorkingContextContents exists (may be empty) on NarrationContext or in Metadata under a reserved key.
+  - WorkingContextSegments exists (may be empty) on NarrationContext or in Metadata under a reserved key.
   - CancellationToken is not already canceled.
 
 postconditions:
-  - On success, WorkingContextContents begins with the content-guardian system prompt segment; remaining segments retain their original order and content.
+  - On success, WorkingContextSegments begins with the content-guardian system prompt segment; remaining segments retain their original order and content.
   - Metadata marks the content-guardian prompt as applied (e.g., metadata key `content_guardian_applied=true`).
-  - MiddlewareResult.StreamedNarration is passed through unchanged; UpdatedContext carries the modified WorkingContextContents.
+  - MiddlewareResult.StreamedNarration is passed through unchanged; UpdatedContext carries the modified WorkingContextSegments.
   - On failure, emit a structured NarrationPipelineError (stage=content_guardian_injection) and do not invoke downstream middleware.
 
 invariants:
@@ -44,11 +44,11 @@ invariants:
   - Thread-safe and side-effect free beyond context mutation and observability hooks.
 
 failure_modes:
-  - ContextMissing :: WorkingContextContents unavailable or null :: emit NarrationPipelineError (stage=content_guardian_injection) and short-circuit.
+  - ContextMissing :: WorkingContextSegments unavailable or null :: emit NarrationPipelineError (stage=content_guardian_injection) and short-circuit.
   - Cancellation :: CancellationToken signaled :: propagate cancellation without invoking downstream middleware.
 
 policies:
-  - Ordering: must execute before provider_dispatch; should follow any middleware that builds WorkingContextContents (attachments, history, templating, system prompt).
+  - Ordering: must execute before provider_dispatch; should follow any middleware that builds WorkingContextSegments (attachments, history, templating, system prompt).
   - Idempotency: if Metadata indicates content-guardian prompt already applied, skip reinsertion.
   - Retry: none; failures are terminal for the pipeline run.
   - Concurrency: safe under concurrent sessions; no shared mutable state.
