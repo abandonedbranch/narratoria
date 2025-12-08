@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Logging;
 
 namespace Narratoria.Narration;
@@ -21,6 +22,10 @@ public sealed class NarrationSystemPromptMiddleware
     private const string Source = "system_prompt_middleware";
     private const string MetadataKeyProfileId = "system_prompt_profile_id";
     private const string MetadataKeyVersion = "system_prompt_version";
+
+    private static readonly Meter Meter = new("Narratoria.Narration.SystemPrompt");
+    private static readonly Histogram<double> InjectionLatency = Meter.CreateHistogram<double>("system_prompt_injection_latency_ms");
+    private static readonly Counter<long> InjectionCount = Meter.CreateCounter<long>("system_prompt_injection_count");
 
     private readonly ISystemPromptProfileResolver _resolver;
     private readonly INarrationPipelineObserver _observer;
@@ -50,6 +55,7 @@ public sealed class NarrationSystemPromptMiddleware
                 var error = new NarrationPipelineError(NarrationPipelineErrorClass.ContextError, "WorkingContextSegments is unavailable", context.SessionId, context.Trace, Stage);
                 _observer.OnError(error);
                 _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "failure", NarrationPipelineErrorClass.ContextError.ToString(), context.SessionId, context.Trace, stopwatch.Elapsed));
+                RecordMetrics("failure", NarrationPipelineErrorClass.ContextError.ToString(), profileId: null, version: null, stopwatch.Elapsed);
                 throw new NarrationPipelineException(error);
             }
 
@@ -61,6 +67,7 @@ public sealed class NarrationSystemPromptMiddleware
                 var error = new NarrationPipelineError(NarrationPipelineErrorClass.ContextError, "System prompt profile unavailable or prompt text is empty", context.SessionId, context.Trace, Stage);
                 _observer.OnError(error);
                 _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "failure", NarrationPipelineErrorClass.ContextError.ToString(), context.SessionId, context.Trace, stopwatch.Elapsed));
+                RecordMetrics("failure", NarrationPipelineErrorClass.ContextError.ToString(), profileId: null, version: null, stopwatch.Elapsed);
                 throw new NarrationPipelineException(error);
             }
 
@@ -78,6 +85,7 @@ public sealed class NarrationSystemPromptMiddleware
                     profile.ProfileId,
                     profile.Version);
                 _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "skipped", "none", context.SessionId, context.Trace, stopwatch.Elapsed));
+                RecordMetrics("skipped", "none", profile.ProfileId, profile.Version, stopwatch.Elapsed);
                 return await next(context, result, cancellationToken).ConfigureAwait(false);
             }
 
@@ -120,6 +128,7 @@ public sealed class NarrationSystemPromptMiddleware
                 profile.ProfileId,
                 profile.Version);
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "success", "none", context.SessionId, context.Trace, stopwatch.Elapsed));
+            RecordMetrics("success", "none", profile.ProfileId, profile.Version, stopwatch.Elapsed);
             return await next(updatedContext, result, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -127,5 +136,27 @@ public sealed class NarrationSystemPromptMiddleware
     private static ImmutableDictionary<string, string> AsImmutable(IReadOnlyDictionary<string, string> metadata)
     {
         return metadata as ImmutableDictionary<string, string> ?? metadata.ToImmutableDictionary(StringComparer.Ordinal);
+    }
+
+    private static void RecordMetrics(string status, string errorClass, string? profileId, string? version, TimeSpan elapsed)
+    {
+        var tags = new List<KeyValuePair<string, object?>>(5)
+        {
+            new("status", status),
+            new("error_class", errorClass)
+        };
+
+        if (!string.IsNullOrEmpty(profileId))
+        {
+            tags.Add(new KeyValuePair<string, object?>("profile_id", profileId));
+        }
+
+        if (!string.IsNullOrEmpty(version))
+        {
+            tags.Add(new KeyValuePair<string, object?>("profile_version", version));
+        }
+
+        InjectionLatency.Record(elapsed.TotalMilliseconds, tags.ToArray());
+        InjectionCount.Add(1, tags.ToArray());
     }
 }

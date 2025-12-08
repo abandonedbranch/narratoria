@@ -16,6 +16,13 @@ builder.Services.AddRazorComponents()
 builder.Services.AddStorageQuotaAwareness();
 builder.Services.AddOptions<NarrationOpenAiOptions>().Bind(builder.Configuration.GetSection("OpenAi"));
 builder.Services.AddOptions<ProviderDispatchOptions>().Bind(builder.Configuration.GetSection("ProviderDispatch"));
+builder.Services.AddOptions<NarrationOpenAiOptions>()
+    .Validate(o => !string.IsNullOrWhiteSpace(o.ApiKey), "OpenAI ApiKey is required")
+    .Validate(o => !string.IsNullOrWhiteSpace(o.Model), "OpenAI model is required")
+    .ValidateOnStart();
+builder.Services.AddOptions<ProviderDispatchOptions>()
+    .Validate(o => o.Timeout > TimeSpan.Zero || o.Timeout == Timeout.InfiniteTimeSpan, "Provider timeout must be positive or infinite")
+    .ValidateOnStart();
 builder.Services.AddHttpClient("openai");
 
 builder.Services.AddSingleton<IIndexedDbStorageMetrics, LoggingIndexedDbStorageMetrics>();
@@ -67,6 +74,7 @@ builder.Services.AddSingleton<INarrationPromptSerializer, BasicNarrationPromptSe
 builder.Services.AddSingleton<INarrationOpenAiContextFactory, NarrationOpenAiContextFactory>();
 builder.Services.AddSingleton<INarrationProvider, OpenAiNarrationProvider>();
 builder.Services.AddSingleton<NarrationContentGuardianMiddleware>();
+builder.Services.AddSingleton<NarrationSystemPromptMiddleware>();
 
 builder.Services.AddSingleton<ProviderDispatchMiddleware>(sp =>
 {
@@ -81,11 +89,13 @@ builder.Services.AddSingleton<NarrationPersistenceMiddleware>(sp =>
 builder.Services.AddSingleton<NarrationPipelineService>(sp =>
 {
     var persistence = sp.GetRequiredService<NarrationPersistenceMiddleware>();
+    var systemPrompt = sp.GetRequiredService<NarrationSystemPromptMiddleware>();
     var guardian = sp.GetRequiredService<NarrationContentGuardianMiddleware>();
     var dispatch = sp.GetRequiredService<ProviderDispatchMiddleware>();
     return new NarrationPipelineService(new NarrationMiddleware[]
     {
         persistence.InvokeAsync,
+        systemPrompt.InvokeAsync,
         guardian.InvokeAsync,
         dispatch.InvokeAsync
     });

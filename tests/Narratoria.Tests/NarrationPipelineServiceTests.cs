@@ -27,8 +27,9 @@ public sealed class NarrationPipelineServiceTests
         var observer = new RecordingObserver();
         var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(["line-one", "line-two"]), observer: observer);
         var persistence = new NarrationPersistenceMiddleware(store, observer);
+        var systemPrompt = new NarrationSystemPromptMiddleware(new StaticSystemPromptResolver(), observer);
         var guardian = new NarrationContentGuardianMiddleware(observer);
-        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, guardian.InvokeAsync, provider.InvokeAsync });
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, systemPrompt.InvokeAsync, guardian.InvokeAsync, provider.InvokeAsync });
 
         var initialContext = new NarrationContext
         {
@@ -54,7 +55,7 @@ public sealed class NarrationPipelineServiceTests
         Assert.AreEqual(0, persisted.WorkingNarration.Length);
         Assert.AreEqual("player prompt", persisted.PlayerPrompt);
 
-        CollectionAssert.AreEqual(new[] { "session_load", "content_guardian_injection", "provider_dispatch", "persist_context" }, observer.StageTelemetries.Select(t => t.Stage).ToArray());
+        CollectionAssert.AreEqual(new[] { "session_load", "system_prompt_injection", "content_guardian_injection", "provider_dispatch", "persist_context" }, observer.StageTelemetries.Select(t => t.Stage).ToArray());
         Assert.AreEqual(2, observer.StreamedTokens);
     }
 
@@ -74,8 +75,9 @@ public sealed class NarrationPipelineServiceTests
 
         var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(["a"]), observer: observer);
         var persistence = new NarrationPersistenceMiddleware(store, observer);
+        var systemPrompt = new NarrationSystemPromptMiddleware(new StaticSystemPromptResolver(), observer);
         var guardian = new NarrationContentGuardianMiddleware(observer);
-        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, Recorder, guardian.InvokeAsync, provider.InvokeAsync });
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, systemPrompt.InvokeAsync, Recorder, guardian.InvokeAsync, provider.InvokeAsync });
 
         var context = new NarrationContext
         {
@@ -84,6 +86,7 @@ public sealed class NarrationPipelineServiceTests
             PriorNarration = [],
             WorkingNarration = [],
             Metadata = ImmutableDictionary<string, string>.Empty,
+            WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
             Trace = new TraceMetadata("trace", "req")
         };
 
@@ -93,7 +96,7 @@ public sealed class NarrationPipelineServiceTests
         }
 
         CollectionAssert.AreEqual(new[] { "custom" }, order);
-        CollectionAssert.AreEqual(new[] { "session_load", "content_guardian_injection", "provider_dispatch", "persist_context" }, observer.StageTelemetries.Select(t => t.Stage).ToArray());
+        CollectionAssert.AreEqual(new[] { "session_load", "system_prompt_injection", "content_guardian_injection", "provider_dispatch", "persist_context" }, observer.StageTelemetries.Select(t => t.Stage).ToArray());
     }
 
     [TestMethod]
@@ -112,8 +115,9 @@ public sealed class NarrationPipelineServiceTests
 
         var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(["unused"], onStream: () => Assert.Fail("Provider should not be invoked")), observer: observer);
         var persistence = new NarrationPersistenceMiddleware(store, observer);
+        var systemPrompt = new NarrationSystemPromptMiddleware(new StaticSystemPromptResolver(), observer);
         var guardian = new NarrationContentGuardianMiddleware(observer);
-        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { ShortCircuit, persistence.InvokeAsync, guardian.InvokeAsync, provider.InvokeAsync });
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { ShortCircuit, persistence.InvokeAsync, systemPrompt.InvokeAsync, guardian.InvokeAsync, provider.InvokeAsync });
 
         var context = new NarrationContext
         {
@@ -122,6 +126,7 @@ public sealed class NarrationPipelineServiceTests
             PriorNarration = [],
             WorkingNarration = [],
             Metadata = ImmutableDictionary<string, string>.Empty,
+            WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
             Trace = new TraceMetadata("trace", "req")
         };
 
@@ -147,8 +152,9 @@ public sealed class NarrationPipelineServiceTests
 
         var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(StreamUntilCanceled), observer: observer, options: new ProviderDispatchOptions { Timeout = Timeout.InfiniteTimeSpan });
         var persistence = new NarrationPersistenceMiddleware(store, observer);
+        var systemPrompt = new NarrationSystemPromptMiddleware(new StaticSystemPromptResolver(), observer);
         var guardian = new NarrationContentGuardianMiddleware(observer);
-        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, guardian.InvokeAsync, provider.InvokeAsync });
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, systemPrompt.InvokeAsync, guardian.InvokeAsync, provider.InvokeAsync });
 
         var context = new NarrationContext
         {
@@ -157,6 +163,7 @@ public sealed class NarrationPipelineServiceTests
             PriorNarration = [],
             WorkingNarration = [],
             Metadata = ImmutableDictionary<string, string>.Empty,
+            WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
             Trace = new TraceMetadata("trace", "req")
         };
 
@@ -175,10 +182,11 @@ public sealed class NarrationPipelineServiceTests
         CollectionAssert.AreEqual(new[] { "first" }, tokens);
         Assert.IsFalse(store.HasSaved);
         var stages = observer.StageTelemetries.Select(t => t.Stage).ToArray();
-        CollectionAssert.AreEqual(new[] { "session_load", "content_guardian_injection", "provider_dispatch", "persist_context" }, stages, string.Join(",", stages));
+        CollectionAssert.AreEqual(new[] { "session_load", "system_prompt_injection", "content_guardian_injection", "provider_dispatch", "persist_context" }, stages, string.Join(",", stages));
         Assert.AreEqual("success", observer.StageTelemetries[1].Status);
-        Assert.AreEqual("canceled", observer.StageTelemetries[2].Status);
+        Assert.AreEqual("success", observer.StageTelemetries[2].Status);
         Assert.AreEqual("canceled", observer.StageTelemetries[3].Status);
+        Assert.AreEqual("canceled", observer.StageTelemetries[4].Status);
     }
 
     [TestMethod]
@@ -195,8 +203,9 @@ public sealed class NarrationPipelineServiceTests
         var observer = new RecordingObserver();
         var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(["one"], ["two"]), observer: observer);
         var persistence = new NarrationPersistenceMiddleware(store, observer);
+        var systemPrompt = new NarrationSystemPromptMiddleware(new StaticSystemPromptResolver(), observer);
         var guardian = new NarrationContentGuardianMiddleware(observer);
-        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, guardian.InvokeAsync, provider.InvokeAsync });
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[] { persistence.InvokeAsync, systemPrompt.InvokeAsync, guardian.InvokeAsync, provider.InvokeAsync });
 
         var firstContext = new NarrationContext
         {
@@ -205,6 +214,7 @@ public sealed class NarrationPipelineServiceTests
             PriorNarration = [],
             WorkingNarration = [],
             Metadata = ImmutableDictionary<string, string>.Empty,
+            WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
             Trace = new TraceMetadata("trace-1", "req-1")
         };
 
@@ -215,6 +225,7 @@ public sealed class NarrationPipelineServiceTests
             PriorNarration = [],
             WorkingNarration = [],
             Metadata = ImmutableDictionary<string, string>.Empty,
+            WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
             Trace = new TraceMetadata("trace-2", "req-2")
         };
 
@@ -239,6 +250,7 @@ public sealed class NarrationPipelineServiceTests
             PriorNarration = prior is null ? ImmutableArray<string>.Empty : ImmutableArray.Create(prior),
             WorkingNarration = ImmutableArray<string>.Empty,
             Metadata = ImmutableDictionary<string, string>.Empty,
+            WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
             Trace = new TraceMetadata("trace", "request")
         };
     }
@@ -362,5 +374,16 @@ public sealed class NarrationPipelineServiceTests
         public void OnStageCompleted(NarrationStageTelemetry telemetry) => _telemetries.Add(telemetry);
 
         public void OnTokensStreamed(Guid sessionId, int tokenCount) => StreamedTokens += tokenCount;
+    }
+
+    private sealed class StaticSystemPromptResolver : ISystemPromptProfileResolver
+    {
+        private readonly SystemPromptProfile _profile = new("default", "You are the narrator.", ImmutableArray<string>.Empty, "v1");
+
+        public ValueTask<SystemPromptProfile?> ResolveAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult<SystemPromptProfile?>(_profile);
+        }
     }
 }

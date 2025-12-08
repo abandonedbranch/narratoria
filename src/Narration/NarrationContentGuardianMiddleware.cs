@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace Narratoria.Narration;
 
@@ -8,6 +9,9 @@ public sealed class NarrationContentGuardianMiddleware
     private const string Stage = "content_guardian_injection";
     private const string Source = "content_guardian_middleware";
     private const string MetadataKey = "content_guardian_applied";
+    private static readonly Meter Meter = new("Narratoria.Narration.ContentGuardian");
+    private static readonly Histogram<double> InjectionLatency = Meter.CreateHistogram<double>("content_guardian_injection_latency_ms");
+    private static readonly Counter<long> InjectionCount = Meter.CreateCounter<long>("content_guardian_injection_count");
 
     private const string Prompt = """
 You are the Narratoria Content Guardian, a middleware model that inspects and cleans role-playing game context before it is sent to the final OpenAI "narrator" model.
@@ -80,10 +84,12 @@ Additional constraints:
 """;
 
     private readonly INarrationPipelineObserver _observer;
+    private readonly ILogger<NarrationContentGuardianMiddleware> _logger;
 
-    public NarrationContentGuardianMiddleware(INarrationPipelineObserver? observer = null)
+    public NarrationContentGuardianMiddleware(INarrationPipelineObserver? observer = null, ILogger<NarrationContentGuardianMiddleware>? logger = null)
     {
         _observer = observer ?? NullNarrationPipelineObserver.Instance;
+        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<NarrationContentGuardianMiddleware>.Instance;
     }
 
     public ValueTask<MiddlewareResult> InvokeAsync(NarrationContext context, MiddlewareResult result, NarrationMiddlewareNext next, CancellationToken cancellationToken)
@@ -100,6 +106,7 @@ Additional constraints:
                 var error = new NarrationPipelineError(NarrationPipelineErrorClass.ContextError, "WorkingContextSegments is unavailable", context.SessionId, context.Trace, Stage);
                 _observer.OnError(error);
                 _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "failure", NarrationPipelineErrorClass.ContextError.ToString(), context.SessionId, context.Trace, stopwatch.Elapsed));
+                RecordMetrics("failure", NarrationPipelineErrorClass.ContextError.ToString(), stopwatch.Elapsed);
                 throw new NarrationPipelineException(error);
             }
 
@@ -107,6 +114,7 @@ Additional constraints:
             if (metadata.TryGetValue(MetadataKey, out var applied) && string.Equals(applied, "true", StringComparison.OrdinalIgnoreCase))
             {
                 _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "skipped", "none", context.SessionId, context.Trace, stopwatch.Elapsed));
+                RecordMetrics("skipped", "none", stopwatch.Elapsed);
                 return await next(context, result, cancellationToken).ConfigureAwait(false);
             }
 
@@ -120,7 +128,13 @@ Additional constraints:
                 Metadata = updatedMetadata
             };
 
+            _logger.LogInformation(
+                "Content guardian injected trace={TraceId} request={RequestId} session={SessionId}",
+                context.Trace.TraceId,
+                context.Trace.RequestId,
+                context.SessionId);
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "success", "none", context.SessionId, context.Trace, stopwatch.Elapsed));
+            RecordMetrics("success", "none", stopwatch.Elapsed);
             return await next(updatedContext, result, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -153,5 +167,17 @@ Additional constraints:
     private static ImmutableDictionary<string, string> AsImmutable(IReadOnlyDictionary<string, string> metadata)
     {
         return metadata as ImmutableDictionary<string, string> ?? metadata.ToImmutableDictionary(StringComparer.Ordinal);
+    }
+
+    private static void RecordMetrics(string status, string errorClass, TimeSpan elapsed)
+    {
+        var tags = new KeyValuePair<string, object?>[]
+        {
+            new("status", status),
+            new("error_class", errorClass)
+        };
+
+        InjectionLatency.Record(elapsed.TotalMilliseconds, tags);
+        InjectionCount.Add(1, tags);
     }
 }
