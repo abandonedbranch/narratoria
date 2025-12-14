@@ -48,4 +48,24 @@ public sealed record IndexedDbListRequest<T>
     public required StorageScope Scope { get; init; }
 }
 
+public sealed record IndexedDbGetRequest<T>
+{
+    public required IndexedDbStoreDefinition Store { get; init; }
+
+    public required string Key { get; init; }
+
+    public required IIndexedDbValueSerializer<T> Serializer { get; init; }
+
+    public required StorageScope Scope { get; init; }
+}
+
+public sealed record IndexedDbDeleteRequest
+{
+    public required IndexedDbStoreDefinition Store { get; init; }
+
+    public required string Key { get; init; }
+
+    public required StorageScope Scope { get; init; }
+}
+
 public readonly record struct IndexedDbRecord<T>(string Key, T Value);

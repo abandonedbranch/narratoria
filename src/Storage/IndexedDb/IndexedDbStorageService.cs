@@ -186,6 +186,113 @@ public sealed class IndexedDbStorageService : IIndexedDbStorageService, IAsyncDi
         }
     }
 
+    public async ValueTask<StorageResult<T?>> GetAsync<T>(IndexedDbGetRequest<T> request, CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Serializer);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var traceId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        var module = await EnsureModuleAsync(cancellationToken).ConfigureAwait(false);
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            var args = new GetArgs(_schema, request.Store.Name, request.Store.KeyPath, request.Key);
+            var rawRecord = await module.InvokeAsync<SerializedRecord?>("get", cancellationToken, args).ConfigureAwait(false);
+
+            if (rawRecord is null)
+            {
+                stopwatch.Stop();
+                _metrics.RecordLatency("get", request.Store.Name, stopwatch.Elapsed);
+                _metrics.RecordResult("get", request.Store.Name, "success", StorageErrorClass.None.ToString());
+                _logger.LogInformation("IndexedDB get miss trace={TraceId} request={RequestId} store={Store} key={Key} elapsedMs={ElapsedMs}", traceId, requestId, request.Store.Name, request.Key, stopwatch.Elapsed.TotalMilliseconds);
+                return StorageResult<T?>.Success(default);
+            }
+
+            try
+            {
+                var serialized = new IndexedDbSerializedValue(rawRecord.Payload ?? Array.Empty<byte>(), rawRecord.Payload?.Length);
+                var value = await request.Serializer.DeserializeAsync(serialized, cancellationToken).ConfigureAwait(false);
+                _metrics.RecordBytesRead(serialized.Payload.Length);
+
+                stopwatch.Stop();
+                _metrics.RecordLatency("get", request.Store.Name, stopwatch.Elapsed);
+                _metrics.RecordResult("get", request.Store.Name, "success", StorageErrorClass.None.ToString());
+                _logger.LogInformation("IndexedDB get hit trace={TraceId} request={RequestId} store={Store} key={Key} elapsedMs={ElapsedMs}", traceId, requestId, request.Store.Name, request.Key, stopwatch.Elapsed.TotalMilliseconds);
+                return StorageResult<T?>.Success(value);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                var error = StorageError.Serialization("Failed to deserialize payload", ex.Message);
+                _metrics.RecordResult("get", request.Store.Name, "failure", error.ErrorClass.ToString());
+                _logger.LogError(ex, "IndexedDB get deserialize failure trace={TraceId} request={RequestId} store={Store} key={Key}", traceId, requestId, request.Store.Name, request.Key);
+                return StorageResult<T?>.Failure(error);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+            _metrics.RecordResult("get", request.Store.Name, "failure", StorageErrorClass.TransactionFailure.ToString());
+            _logger.LogWarning("IndexedDB get canceled trace={TraceId} request={RequestId} store={Store} key={Key}", traceId, requestId, request.Store.Name, request.Key);
+            throw;
+        }
+        catch (JSException ex)
+        {
+            stopwatch.Stop();
+            var error = MapJsError(ex);
+            _metrics.RecordResult("get", request.Store.Name, "failure", error.ErrorClass.ToString());
+            _logger.LogError(ex, "IndexedDB get failure trace={TraceId} request={RequestId} store={Store} key={Key} errorClass={ErrorClass}", traceId, requestId, request.Store.Name, request.Key, error.ErrorClass);
+            return StorageResult<T?>.Failure(error);
+        }
+    }
+
+    public async ValueTask<StorageResult<Unit>> DeleteAsync(IndexedDbDeleteRequest request, CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var traceId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        var module = await EnsureModuleAsync(cancellationToken).ConfigureAwait(false);
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            var args = new DeleteArgs(_schema, request.Store.Name, request.Key);
+            _ = await module.InvokeAsync<bool>("del", cancellationToken, args).ConfigureAwait(false);
+            stopwatch.Stop();
+
+            _metrics.RecordLatency("delete", request.Store.Name, stopwatch.Elapsed);
+            _metrics.RecordResult("delete", request.Store.Name, "success", StorageErrorClass.None.ToString());
+            _logger.LogInformation("IndexedDB delete success trace={TraceId} request={RequestId} store={Store} key={Key} elapsedMs={ElapsedMs}", traceId, requestId, request.Store.Name, request.Key, stopwatch.Elapsed.TotalMilliseconds);
+            return StorageResult<Unit>.Success(Unit.Value);
+        }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+            _metrics.RecordResult("delete", request.Store.Name, "failure", StorageErrorClass.TransactionFailure.ToString());
+            _logger.LogWarning("IndexedDB delete canceled trace={TraceId} request={RequestId} store={Store} key={Key}", traceId, requestId, request.Store.Name, request.Key);
+            throw;
+        }
+        catch (JSException ex)
+        {
+            stopwatch.Stop();
+            var error = MapJsError(ex);
+            _metrics.RecordResult("delete", request.Store.Name, "failure", error.ErrorClass.ToString());
+            _logger.LogError(ex, "IndexedDB delete failure trace={TraceId} request={RequestId} store={Store} key={Key} errorClass={ErrorClass}", traceId, requestId, request.Store.Name, request.Key, error.ErrorClass);
+            return StorageResult<Unit>.Failure(error);
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
@@ -254,6 +361,10 @@ public sealed class IndexedDbStorageService : IIndexedDbStorageService, IAsyncDi
     private sealed record PutArgs(IndexedDbSchema Schema, string StoreName, string KeyPath, bool AutoIncrement, string Key, byte[] Payload, IReadOnlyDictionary<string, object?> IndexValues);
 
     private sealed record ListArgs(IndexedDbSchema Schema, string StoreName, string KeyPath, IndexedDbQueryOptions Query);
+
+    private sealed record GetArgs(IndexedDbSchema Schema, string StoreName, string KeyPath, string Key);
+
+    private sealed record DeleteArgs(IndexedDbSchema Schema, string StoreName, string Key);
 
     private sealed record SerializedRecord(string Key, byte[] Payload);
 }

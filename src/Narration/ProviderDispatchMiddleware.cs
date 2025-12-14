@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Logging;
 
 namespace Narratoria.Narration;
@@ -11,6 +12,11 @@ namespace Narratoria.Narration;
 public sealed class ProviderDispatchMiddleware
 {
     private const string Stage = "provider_dispatch";
+
+    private static readonly Meter Meter = new("Narratoria.Narration.ProviderDispatch");
+    private static readonly Histogram<double> ProviderLatency = Meter.CreateHistogram<double>("provider_latency_ms");
+    private static readonly Counter<long> ProviderErrorCount = Meter.CreateCounter<long>("provider_error_count");
+    private static readonly Counter<long> TokensStreamed = Meter.CreateCounter<long>("tokens_streamed");
 
     private readonly INarrationProvider _provider;
     private readonly ProviderDispatchOptions _options;
@@ -143,6 +149,7 @@ public sealed class ProviderDispatchMiddleware
 
                 tokens.Add(content);
                 _observer.OnTokensStreamed(context.SessionId, 1);
+                TokensStreamed.Add(1);
 
                 runCts.Token.ThrowIfCancellationRequested();
                 requestCancellationToken.ThrowIfCancellationRequested();
@@ -150,6 +157,7 @@ public sealed class ProviderDispatchMiddleware
 
             writer.TryComplete();
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "success", errorClass, context.SessionId, context.Trace, stopwatch.Elapsed));
+            RecordMetrics("success", errorClass, stopwatch.Elapsed);
             return context with { WorkingNarration = tokens.ToImmutable() };
         }
         catch (OperationCanceledException oce) when (timeoutOnlyCts.IsCancellationRequested && !requestCancellationToken.IsCancellationRequested)
@@ -159,12 +167,15 @@ public sealed class ProviderDispatchMiddleware
             _observer.OnError(error);
             writer.TryComplete(new NarrationPipelineException(error, oce));
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "failure", errorClass, context.SessionId, context.Trace, stopwatch.Elapsed));
+            RecordMetrics("failure", errorClass, stopwatch.Elapsed);
+            ProviderErrorCount.Add(1, new TagList { { "error_class", errorClass } });
             throw new NarrationPipelineException(error, oce);
         }
         catch (OperationCanceledException oce)
         {
             writer.TryComplete(oce);
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "canceled", "OperationCanceled", context.SessionId, context.Trace, stopwatch.Elapsed));
+            RecordMetrics("canceled", "OperationCanceled", stopwatch.Elapsed);
             throw;
         }
         catch (JsonException ex)
@@ -174,6 +185,8 @@ public sealed class ProviderDispatchMiddleware
             _observer.OnError(error);
             writer.TryComplete(new NarrationPipelineException(error, ex));
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "failure", errorClass, context.SessionId, context.Trace, stopwatch.Elapsed));
+            RecordMetrics("failure", errorClass, stopwatch.Elapsed);
+            ProviderErrorCount.Add(1, new TagList { { "error_class", errorClass } });
             throw new NarrationPipelineException(error, ex);
         }
         catch (Exception ex)
@@ -183,6 +196,8 @@ public sealed class ProviderDispatchMiddleware
             _observer.OnError(error);
             writer.TryComplete(new NarrationPipelineException(error, ex));
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "failure", errorClass, context.SessionId, context.Trace, stopwatch.Elapsed));
+            RecordMetrics("failure", errorClass, stopwatch.Elapsed);
+            ProviderErrorCount.Add(1, new TagList { { "error_class", errorClass } });
             throw new NarrationPipelineException(error, ex);
         }
         finally
@@ -190,5 +205,16 @@ public sealed class ProviderDispatchMiddleware
             runCts.Dispose();
             timeoutOnlyCts.Dispose();
         }
+    }
+
+    private static void RecordMetrics(string status, string errorClass, TimeSpan elapsed)
+    {
+        var tags = new TagList
+        {
+            { "status", status },
+            { "error_class", errorClass }
+        };
+
+        ProviderLatency.Record(elapsed.TotalMilliseconds, tags);
     }
 }

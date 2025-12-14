@@ -131,3 +131,44 @@ export async function list(args) {
 
   return results;
 }
+
+export async function get(args) {
+  const db = await openDatabase(args.Schema);
+  const storeName = args.StoreName;
+  const keyPath = args.KeyPath;
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([storeName], "readonly");
+    const store = transaction.objectStore(storeName);
+    const request = store.get(args.Key);
+
+    request.onerror = () => reject(request.error ?? new Error("Get failed"));
+    request.onsuccess = () => {
+      const record = request.result;
+      if (!record) {
+        resolve(null);
+        return;
+      }
+      resolve({ Key: record[keyPath], Payload: record.Payload ?? new Uint8Array() });
+    };
+
+    transaction.onabort = () => reject(transaction.error ?? new Error("Transaction aborted"));
+    transaction.onerror = () => reject(transaction.error ?? new Error("Transaction failed"));
+  });
+}
+
+export async function del(args) {
+  const db = await openDatabase(args.Schema);
+  const storeName = args.StoreName;
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([storeName], "readwrite");
+    const store = transaction.objectStore(storeName);
+    const request = store.delete(args.Key);
+
+    request.onerror = () => reject(request.error ?? new Error("Delete failed"));
+    transaction.onabort = () => reject(transaction.error ?? new Error("Transaction aborted"));
+    transaction.onerror = () => reject(transaction.error ?? new Error("Transaction failed"));
+    transaction.oncomplete = () => resolve(true);
+  });
+}

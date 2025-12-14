@@ -17,5 +17,9 @@ public interface IIndexedDbStorageService
 
     ValueTask<StorageResult<Unit>> PutSerializedAsync(IndexedDbPutSerializedRequest request, CancellationToken cancellationToken);
 
+    ValueTask<StorageResult<T?>> GetAsync<T>(IndexedDbGetRequest<T> request, CancellationToken cancellationToken);
+
+    ValueTask<StorageResult<Unit>> DeleteAsync(IndexedDbDeleteRequest request, CancellationToken cancellationToken);
+
     ValueTask<StorageResult<IReadOnlyList<IndexedDbRecord<T>>>> ListAsync<T>(IndexedDbListRequest<T> request, CancellationToken cancellationToken);
 }
