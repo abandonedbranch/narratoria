@@ -18,6 +18,17 @@ RULE: All implementations must comply with the rules in CONTRIB.md.
   - `specs/narration-attachment-ingestion-service.spec.md`
 - If any spec is not yet complete, add it under a "Not completed" list with owner and expected completion date.
 - Implementors must explicitly state what is complete and what remains when updating this file.
+- IMPORTANT: After any work on a spec/implementation pair (including drift reduction), update this file with an explicit status note. Listing a spec as “Completed” is not sufficient unless “what remains” is explicitly “none”.
+
+## Status Reporting (Required)
+
+When you touch a spec or its implementation, you must also update this file with a brief status note.
+
+Minimum required update (pick one):
+- Add/refresh a “What remains” list (even if the answer is “none”).
+- Or, if the work is partial, move the spec under a “Not completed” list with an owner.
+
+The goal is to keep SPEC.md truthful about drift and remaining work, not just about whether a spec document exists.
 
 ## Format
 
