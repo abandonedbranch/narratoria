@@ -112,22 +112,37 @@ public sealed class NarrationPersistenceMiddleware
         Stopwatch stopwatch,
         CancellationToken cancellationToken)
     {
+        NarrationContext updatedContext;
         try
         {
-            var updatedContext = await downstream.UpdatedContext.ConfigureAwait(false);
-            var targetTrace = updatedContext.Trace;
-            var targetSessionId = updatedContext.SessionId;
-            var mergedNarration = updatedContext.PriorNarration.AddRange(updatedContext.WorkingNarration);
+            updatedContext = await downstream.UpdatedContext.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            _observer.OnStageCompleted(new NarrationStageTelemetry(PersistStage, "canceled", "OperationCanceled", context.SessionId, context.Trace, stopwatch.Elapsed));
+            throw;
+        }
+        catch (NarrationPipelineException ex)
+        {
+            _observer.OnStageCompleted(new NarrationStageTelemetry(PersistStage, "skipped", ex.Error.ErrorClass.ToString(), context.SessionId, context.Trace, stopwatch.Elapsed));
+            throw;
+        }
 
-            var persistMetadata = StripEphemeralMetadata(updatedContext.Metadata);
-            var persistable = updatedContext with
-            {
-                PriorNarration = mergedNarration,
-                WorkingNarration = ImmutableArray<string>.Empty,
-                WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
-                Metadata = persistMetadata
-            };
+        var targetTrace = updatedContext.Trace;
+        var targetSessionId = updatedContext.SessionId;
+        var mergedNarration = updatedContext.PriorNarration.AddRange(updatedContext.WorkingNarration);
 
+        var persistMetadata = StripEphemeralMetadata(updatedContext.Metadata);
+        var persistable = updatedContext with
+        {
+            PriorNarration = mergedNarration,
+            WorkingNarration = ImmutableArray<string>.Empty,
+            WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
+            Metadata = persistMetadata
+        };
+
+        try
+        {
             await _sessions.SaveAsync(persistable, cancellationToken).ConfigureAwait(false);
             _observer.OnStageCompleted(new NarrationStageTelemetry(PersistStage, "success", "none", targetSessionId, targetTrace, stopwatch.Elapsed));
             return persistable;

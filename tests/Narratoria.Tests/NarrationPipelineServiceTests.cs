@@ -262,6 +262,57 @@ public sealed class NarrationPipelineServiceTests
     }
 
     [TestMethod]
+    public async Task ProviderTimeout_StopsStreaming_AndSkipsPersistence()
+    {
+        var sessionId = Guid.NewGuid();
+        var store = InMemorySessionStore.WithSessions(new[] { CreateContext(sessionId) });
+        var observer = new RecordingObserver();
+
+        var provider = new ProviderDispatchMiddleware(
+            new StubNarrationProvider(DelayThenYield),
+            observer: observer,
+            options: new ProviderDispatchOptions { Timeout = TimeSpan.FromMilliseconds(25) });
+
+        var pipeline = new NarrationPipelineService(new NarrationMiddleware[]
+        {
+            new NarrationPersistenceMiddleware(store, observer).InvokeAsync,
+            new NarrationSystemPromptMiddleware(new StaticSystemPromptResolver(), observer).InvokeAsync,
+            new NarrationContentGuardianMiddleware(observer).InvokeAsync,
+            provider.InvokeAsync
+        });
+
+        var context = new NarrationContext
+        {
+            SessionId = sessionId,
+            PlayerPrompt = "prompt",
+            PriorNarration = [],
+            WorkingNarration = [],
+            Metadata = ImmutableDictionary<string, string>.Empty,
+            WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
+            Trace = new TraceMetadata("trace", "req")
+        };
+
+        await Assert.ThrowsExceptionAsync<NarrationPipelineException>(async () =>
+        {
+            var result = await pipeline.RunAsync(context, CancellationToken.None);
+            await ConsumeAsync(result.StreamedNarration);
+        });
+
+        Assert.IsFalse(store.HasSaved);
+
+        var timeoutError = observer.Errors.Single(e => e.Stage == "provider_dispatch");
+        Assert.AreEqual(NarrationPipelineErrorClass.ProviderTimeout, timeoutError.ErrorClass);
+
+        var providerStage = observer.StageTelemetries.Single(t => t.Stage == "provider_dispatch");
+        Assert.AreEqual("failure", providerStage.Status);
+        Assert.AreEqual(NarrationPipelineErrorClass.ProviderTimeout.ToString(), providerStage.ErrorClass);
+
+        var persistStage = observer.StageTelemetries.Single(t => t.Stage == "persist_context");
+        Assert.AreEqual("skipped", persistStage.Status);
+        Assert.AreEqual(NarrationPipelineErrorClass.ProviderTimeout.ToString(), persistStage.ErrorClass);
+    }
+
+    [TestMethod]
     public async Task ConcurrentRuns_DoNotShareContext()
     {
         var firstSession = Guid.NewGuid();
@@ -342,6 +393,12 @@ public sealed class NarrationPipelineServiceTests
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Delay(10, cancellationToken);
         }
+    }
+
+    private static async IAsyncEnumerable<string> DelayThenYield([EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await Task.Delay(250, cancellationToken);
+        yield return "late";
     }
 
     private sealed class StubNarrationProvider : INarrationProvider

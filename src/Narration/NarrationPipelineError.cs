@@ -5,6 +5,7 @@ namespace Narratoria.Narration;
 public enum NarrationPipelineErrorClass
 {
     ProviderError,
+    ProviderTimeout,
     MissingSession,
     DecodeError,
     PersistenceError,

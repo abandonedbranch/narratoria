@@ -44,22 +44,72 @@ public sealed class ProviderDispatchMiddleware
                 FullMode = BoundedChannelFullMode.Wait
             });
 
-            var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var timeoutOnlyCts = new CancellationTokenSource();
             if (_options.Timeout != Timeout.InfiniteTimeSpan)
             {
-                timeoutCts.CancelAfter(_options.Timeout);
+                timeoutOnlyCts.CancelAfter(_options.Timeout);
             }
 
-            var completion = PumpProviderAsync(channel.Writer, context, timeoutCts, cancellationToken);
-            var providerResult = new MiddlewareResult(channel.Reader.ReadAllAsync(cancellationToken), new ValueTask<NarrationContext>(completion));
+            var runCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutOnlyCts.Token);
+            var completion = PumpProviderAsync(channel.Writer, context, runCts, timeoutOnlyCts, cancellationToken);
+
+            var stream = ReadAllWithUpstreamCancellation(channel.Reader, runCts, cancellationToken);
+            var providerResult = new MiddlewareResult(stream, new ValueTask<NarrationContext>(completion));
             return next(context, providerResult, cancellationToken);
+        }
+    }
+
+    private static async IAsyncEnumerable<string> ReadAllWithUpstreamCancellation(
+        ChannelReader<string> reader,
+        CancellationTokenSource upstream,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var completed = false;
+        await using var enumerator = reader.ReadAllAsync(cancellationToken).GetAsyncEnumerator();
+
+        try
+        {
+            while (true)
+            {
+                bool hasNext;
+                try
+                {
+                    hasNext = await enumerator.MoveNextAsync();
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+
+                if (!hasNext)
+                {
+                    completed = true;
+                    yield break;
+                }
+
+                yield return enumerator.Current;
+            }
+        }
+        finally
+        {
+            if (!completed)
+            {
+                try
+                {
+                    upstream.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                }
+            }
         }
     }
 
     private async Task<NarrationContext> PumpProviderAsync(
         ChannelWriter<string> writer,
         NarrationContext context,
-        CancellationTokenSource timeoutCts,
+        CancellationTokenSource runCts,
+        CancellationTokenSource timeoutOnlyCts,
         CancellationToken requestCancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -73,9 +123,9 @@ public sealed class ProviderDispatchMiddleware
                 context.Trace.RequestId,
                 context.SessionId);
 
-            await foreach (var token in _provider.StreamNarrationAsync(context, timeoutCts.Token).ConfigureAwait(false))
+            await foreach (var token in _provider.StreamNarrationAsync(context, runCts.Token).ConfigureAwait(false))
             {
-                timeoutCts.Token.ThrowIfCancellationRequested();
+                runCts.Token.ThrowIfCancellationRequested();
                 requestCancellationToken.ThrowIfCancellationRequested();
 
                 var content = token ?? string.Empty;
@@ -86,7 +136,7 @@ public sealed class ProviderDispatchMiddleware
                     break;
                 }
 
-                timeoutCts.Token.ThrowIfCancellationRequested();
+                runCts.Token.ThrowIfCancellationRequested();
                 requestCancellationToken.ThrowIfCancellationRequested();
 
                 await writer.WriteAsync(content, requestCancellationToken).ConfigureAwait(false);
@@ -94,7 +144,7 @@ public sealed class ProviderDispatchMiddleware
                 tokens.Add(content);
                 _observer.OnTokensStreamed(context.SessionId, 1);
 
-                timeoutCts.Token.ThrowIfCancellationRequested();
+                runCts.Token.ThrowIfCancellationRequested();
                 requestCancellationToken.ThrowIfCancellationRequested();
             }
 
@@ -102,10 +152,10 @@ public sealed class ProviderDispatchMiddleware
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "success", errorClass, context.SessionId, context.Trace, stopwatch.Elapsed));
             return context with { WorkingNarration = tokens.ToImmutable() };
         }
-        catch (OperationCanceledException oce) when (timeoutCts.IsCancellationRequested && !requestCancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException oce) when (timeoutOnlyCts.IsCancellationRequested && !requestCancellationToken.IsCancellationRequested)
         {
-            errorClass = NarrationPipelineErrorClass.ProviderError.ToString();
-            var error = new NarrationPipelineError(NarrationPipelineErrorClass.ProviderError, "Provider call timed out", context.SessionId, context.Trace, Stage);
+            errorClass = NarrationPipelineErrorClass.ProviderTimeout.ToString();
+            var error = new NarrationPipelineError(NarrationPipelineErrorClass.ProviderTimeout, "Provider call timed out", context.SessionId, context.Trace, Stage);
             _observer.OnError(error);
             writer.TryComplete(new NarrationPipelineException(error, oce));
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "failure", errorClass, context.SessionId, context.Trace, stopwatch.Elapsed));
@@ -134,6 +184,11 @@ public sealed class ProviderDispatchMiddleware
             writer.TryComplete(new NarrationPipelineException(error, ex));
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "failure", errorClass, context.SessionId, context.Trace, stopwatch.Elapsed));
             throw new NarrationPipelineException(error, ex);
+        }
+        finally
+        {
+            runCts.Dispose();
+            timeoutOnlyCts.Dispose();
         }
     }
 }
