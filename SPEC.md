@@ -2,6 +2,13 @@
 
 RULE: All implementations must comply with the rules in [CONTRIB.md](CONTRIB.md).
 
+RULE: Audience and intent
+- All specs and project documentation (EXCEPT `README.md`) are written for GPT-5.x models only.
+- Optimize for deterministic regeneration of the project in a blank workspace.
+- Treat specs as the authoritative implementation; code is a derived byproduct.
+- Prefer precise, machine-checkable constraints (MUST/SHOULD/MAY), explicit failure modes, and explicit observability fields.
+- Do not spend effort on human-friendly narrative, pedagogy, or stylistic prose.
+
 ## Spec Directory
 
 - All specs live in `specs/`.
@@ -29,6 +36,12 @@ Minimum required update (pick one):
 - Or, if the work is partial, move the spec under a “Not completed” list with an owner.
 
 The goal is to keep SPEC.md truthful about drift and remaining work, not just about whether a spec document exists.
+
+## What remains
+
+- Provider dispatch: ensure metrics match spec and review any remaining drift around stream composition vs terminal-stage semantics.
+- Attachment ingestion: drop or properly implement PDF support; ensure purge semantics remain best-effort but reliable.
+- IndexedDB storage: fill out remaining CRUD surface (e.g., Get/Delete) and align observability fields where practical.
 
 ## Format
 

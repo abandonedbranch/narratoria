@@ -2,6 +2,12 @@ TARGET: dotnet_10, csharp_14
 
 INTERPRETATION: All RULE entries are mandatory constraints for code generation.
 
+SECTION: DocumentationAudience
+RULE: All specs and project documentation (EXCEPT README.md) are written for GPT-5.x models only.
+RULE: Optimize docs for deterministic regeneration of the system in a blank project; avoid human-oriented narrative.
+RULE: Specs are authoritative; code should be treated as a derived byproduct of the specs.
+RULE: Prefer normative, testable wording (MUST/SHOULD/MAY), explicit inputs/outputs, failure modes, invariants, and observability fields.
+
 SECTION: CorePrinciples
 RULE: Keep interfaces tiny (1-3 members). No hierarchies except framework-required.
 RULE: Compose with fields/delegation; avoid inheritance unless framework requires.
