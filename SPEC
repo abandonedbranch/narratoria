@@ -1,18 +1,26 @@
 ## Rules
 
-RULE: All implementations must comply with the rules in [CONTRIB](CONTRIB.md).
+RULE: All implementations MUST comply with [CONTRIB.md](CONTRIB.md).
 
-RULE: Audience and intent
-- All specs and project documentation (EXCEPT `README.md`) are written for GPT-5.x models only.
-- Optimize for deterministic regeneration of the project in a blank workspace.
-- Treat specs as the authoritative implementation; code is a derived byproduct.
-- Prefer precise, machine-checkable constraints (MUST/SHOULD/MAY), explicit failure modes, and explicit observability fields.
-- Do not spend effort on human-friendly narrative, pedagogy, or stylistic prose.
+RULE: Audience
+- All documents in this repository EXCEPT `README` are written for GPT-5.x models only.
+- Optimize for deterministic regeneration of the system in a blank workspace.
+
+RULE: Spec-first authority
+- Specs are the authoritative implementation definition.
+- Code is a derived byproduct.
+- When spec and code conflict, the spec wins (until the spec is updated).
+
+RULE: Style (machine-oriented)
+- Prefer normative, testable wording: MUST / SHOULD / MAY.
+- Prefer explicit types, inputs/outputs, invariants, failure modes, cancellation semantics, and observability fields.
+- Avoid human-oriented narrative or pedagogy.
 
 ## Spec Directory
 
 - All specs live in `specs/`.
 - Template: `specs/_template.spec.md`.
+- RULE: Before creating a new spec file, the coding agent MUST read `specs/_template.spec.md` and follow its structure verbatim (headings/sections), only replacing placeholders.
 - Completed specs:
   - `specs/indexeddb-storage-service.spec.md`
   - `specs/storage-quota-awareness-service.spec.md`
@@ -32,16 +40,26 @@ RULE: Audience and intent
 When you touch a spec or its implementation, you must also update this file with a brief status note.
 
 Minimum required update (pick one):
-- Add/refresh a “What remains” list (even if the answer is “none”).
+- Add/refresh the “What remains” section (even if the answer is “none”).
 - Or, if the work is partial, move the spec under a “Not completed” list with an owner.
 
-The goal is to keep SPEC.md truthful about drift and remaining work, not just about whether a spec document exists.
+The goal is to keep this file truthful about drift and remaining work, not just about whether a spec document exists.
+
+RULE: Drift tracking
+- The “What remains” section MUST track BOTH:
+  - current drift (known mismatches between specs and code)
+  - potential drift (high-risk areas where drift is likely or expected soon)
+- Each bullet SHOULD name the affected spec/component and the nature of the drift.
+- If drift is fully resolved for a component, explicitly state “none” for that component (do not omit).
 
 ## What remains
 
-- Provider dispatch: ensure metrics match spec and review any remaining drift around stream composition vs terminal-stage semantics.
-- Attachment ingestion: drop or properly implement PDF support; ensure purge semantics remain best-effort but reliable.
-- IndexedDB storage: fill out remaining CRUD surface (e.g., Get/Delete) and align observability fields where practical.
+- Provider dispatch (current drift): metrics/log fields not fully aligned with spec; verify terminal/stream-composition semantics remain consistent with the streaming contract.
+- Attachment ingestion (current drift): `application/pdf` allowlisted without true PDF-to-text extraction; purge on cancellation is best-effort (caller-token-bound).
+- IndexedDB storage (current drift): CRUD surface incomplete (e.g., no Get/Delete); observability field completeness varies by operation.
+
+- Provider dispatch (potential drift): future middleware additions that wrap streams must preserve early-dispose cancellation propagation upstream.
+- Persistence (potential drift): any future changes must preserve “skip persistence on downstream failure” and must not reintroduce persistence of per-run prompt state.
 
 ## Format
 

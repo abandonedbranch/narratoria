@@ -1,0 +1,132 @@
+TARGET: dotnet_10, csharp_14
+
+INTERPRETATION: All RULE entries are mandatory constraints for code generation.
+
+SECTION: DocumentationAudience
+RULE: All specs and project documentation (EXCEPT README.md) are written for GPT-5.x models only.
+RULE: Optimize docs for deterministic regeneration of the system in a blank project; avoid human-oriented narrative.
+RULE: Specs are authoritative; code should be treated as a derived byproduct of the specs.
+RULE: Prefer normative, testable wording (MUST/SHOULD/MAY), explicit inputs/outputs, failure modes, invariants, and observability fields.
+
+SECTION: CorePrinciples
+RULE: Keep interfaces tiny (1-3 members). No hierarchies except framework-required.
+RULE: Compose with fields/delegation; avoid inheritance unless framework requires.
+RULE: Default to immutability (record, readonly struct, init, required). Mutation must be explicit.
+RULE: Keep logic pure; isolate IO/time/random behind interfaces.
+RULE: Exceptions for exceptional failures; Result style for expected outcomes.
+RULE: Generics only when clarity improves; concrete types otherwise.
+RULE: Concurrency via async/await, Channel<T>, CancellationToken; avoid shared mutable state.
+
+SECTION: Interfaces
+RULE: Prefer focused contracts; split mixed concerns.
+EXAMPLE:
+```csharp
+public interface IClock { DateTimeOffset Now { get; } }
+public sealed class UtcClock : IClock { public DateTimeOffset Now => DateTimeOffset.UtcNow; }
+public static TimeSpan Age(IClock clock, DateTimeOffset bornOn) => clock.Now - bornOn;
+```
+
+SECTION: Composition
+RULE: Use collaborators as fields; avoid deep bases.
+EXAMPLE:
+```csharp
+public sealed class OrderPricer
+{
+    private readonly ITaxCalculator _tax;
+    private readonly IDiscountEngine _discounts;
+    public OrderPricer(ITaxCalculator tax, IDiscountEngine discounts) { _tax = tax; _discounts = discounts; }
+    public Money Price(Order order) => _tax.Apply(_discounts.Apply(order.Subtotal), order.Region);
+}
+```
+
+SECTION: FunctionsAsBehaviors
+RULE: Represent policies/callbacks with delegates or Func/Action.
+EXAMPLE:
+```csharp
+public delegate bool Authorize(string user, string resource);
+public static RequestDelegate Protect(RequestDelegate next, Authorize can) =>
+    async context =>
+    {
+        if (!can(context.User.Identity?.Name ?? string.Empty, context.Request.Path))
+        { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+        await next(context);
+    };
+```
+
+SECTION: Immutability
+RULE: Prefer immutable data; copy via with expressions.
+EXAMPLE:
+```csharp
+public readonly record struct Money(decimal Amount, string Currency);
+public sealed record Order
+{
+    public required Guid Id { get; init; }
+    public required Money Subtotal { get; init; }
+    public ImmutableArray<LineItem> Lines { get; init; } = [];
+}
+```
+
+SECTION: ErrorsAndResults
+RULE: Expected outcomes use Result; exceptional cases use exceptions with context.
+EXAMPLE:
+```csharp
+public readonly record struct Result<T>(bool Ok, T? Value, string? Error)
+{
+    public static Result<T> Success(T value) => new(true, value, null);
+    public static Result<T> Failure(string error) => new(false, default, error);
+}
+public static Result<Order> TryLoad(Guid id, IOrderStore store)
+{
+    if (!store.TryGet(id, out var order)) return Result<Order>.Failure($"Order {id} not found");
+    return Result<Order>.Success(order);
+}
+```
+RULE: Wrap exceptions with context before rethrowing.
+
+SECTION: Generics
+RULE: Use type parameters to remove duplication without hiding intent.
+EXAMPLE:
+```csharp
+public static IReadOnlyList<U> Map<T, U>(IReadOnlyList<T> input, Func<T, U> map)
+{
+    var result = new U[input.Count];
+    for (var i = 0; i < input.Count; i++) result[i] = map(input[i]);
+    return result;
+}
+```
+
+SECTION: Concurrency
+RULE: Own goroutines/tasks; pass CancellationToken; avoid fire-and-forget unless self-managed.
+EXAMPLE:
+```csharp
+public static ChannelReader<WorkResult> RunPipeline(ChannelReader<WorkItem> input, CancellationToken ct)
+{
+    var output = Channel.CreateUnbounded<WorkResult>();
+    _ = Task.Run(async () =>
+    {
+        await foreach (var item in input.ReadAllAsync(ct))
+        {
+            if (ct.IsCancellationRequested) break;
+            await output.Writer.WriteAsync(Process(item), ct);
+        }
+        output.Writer.TryComplete();
+    }, ct);
+    return output;
+}
+```
+
+SECTION: Packaging
+RULE: Align namespaces with folders; one concept per file.
+RULE: Minimize public surface; prefer internal/file-scoped.
+RULE: Constructors/factories must enforce invariants; return interfaces when caller only needs behavior.
+
+SECTION: Testing
+RULE: Use table-driven tests ([Theory]/[InlineData]/[MemberData]).
+RULE: Fake collaborators via small interfaces; avoid global state.
+RULE: Deterministic tests only: inject time/random/IO; no real clocks or external IO.
+
+SECTION: StatusReporting
+RULE: When updating specs or implementations, explicitly report what is complete and what remains; mark completed specs in SPEC.md and note outstanding work.
+
+SECTION: SpecAuthoring
+RULE: Before creating a new spec in specs/, the coding agent MUST read specs/_template.spec.md and follow its structure verbatim (headings/sections), only replacing placeholders.
