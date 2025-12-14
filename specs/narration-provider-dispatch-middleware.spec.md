@@ -27,7 +27,14 @@ preconditions:
 
 postconditions:
   - On success, narration tokens are streamed to downstream middleware/consumers; WorkingNarration reflects streamed tokens.
-  - On failure, a structured NarrationPipelineError is emitted and downstream middleware is not invoked.
+  - On failure, a structured NarrationPipelineError is emitted and the stream terminates faulted; downstream stops receiving tokens.
+
+streaming_contract:
+  - This middleware is a streaming source (provider) that returns immediately with:
+      - StreamedNarration: an async stream of tokens.
+      - UpdatedContext: a task that completes when streaming completes (success/fault/cancellation).
+  - Downstream middleware may be invoked during composition so it can wrap/observe the stream; this does not imply tokens were produced.
+  - If the returned stream is canceled or disposed early by the caller, the provider call must be canceled promptly.
 
 invariants:
   - Provider timeout is enforced per run.
@@ -44,7 +51,7 @@ failure_modes:
 policies:
   - Timeout: enforce ProviderDispatchOptions.Timeout (or infinite when configured).
   - Retry: none; caller may compose a retrying provider if desired.
-  - Ordering: should be terminal before persistence middleware so persisted context includes streamed tokens.
+  - Ordering: should be terminal inside the persistence wrapper so persistence can load context before provider calls and persist only after the stream completes successfully.
   - Cancellation: check token before/after provider calls and between token writes.
   - Idempotency: none; each invocation triggers a provider call.
 

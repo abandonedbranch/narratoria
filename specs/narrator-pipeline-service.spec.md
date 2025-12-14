@@ -28,6 +28,26 @@ postconditions:
   - Middleware executes in registration order until completion or short-circuit; the final MiddlewareResult is returned to the caller.
   - If middleware throws or short-circuits, the pipeline surfaces that result/exception without additional mutation.
 
+streaming_contract:
+  - model: streaming async-enumerable pipeline (two-phase: composition + execution).
+  - note: “GStreamer-like” is an intuition aid only; the rules below are normative.
+  - phases:
+      - composition: middleware may be invoked to construct a StreamedNarration pipeline (IAsyncEnumerable) and an UpdatedContext task.
+      - execution: tokens flow only while the returned stream is being consumed.
+  - normative_rules:
+    - Composition MAY invoke downstream middleware to obtain StreamedNarration/UpdatedContext; this does not imply tokens were produced.
+    - Execution begins when the caller enumerates StreamedNarration; tokens MUST be yielded in the order produced by the active source stage.
+    - Errors during execution MUST surface by terminating StreamedNarration faulted (enumeration throws) and by faulting UpdatedContext.
+    - A stage failure MUST stop further tokens from being emitted downstream.
+    - If the caller cancels the pipeline CancellationToken, all in-flight work MUST stop promptly and no further tokens are emitted.
+    - If the caller disposes/stops enumerating StreamedNarration early, upstream streaming work MUST be canceled promptly (via cancellation and/or backpressure).
+    - Partial tokens MAY be emitted before a fault; after the first fault, no additional tokens may be emitted.
+  - error_propagation:
+      - if any stage faults during execution, the stream terminates faulted and downstream stages stop receiving tokens.
+      - fault or cancellation should propagate upstream promptly (via cancellation/backpressure) so sources stop producing.
+  - cancellation_propagation:
+      - canceling the caller token, or disposing the stream enumerator early, should cause in-flight streaming work to stop promptly.
+
 invariants:
   - Middleware ordering is deterministic and preserves registration order.
   - Pipeline does not perform provider calls, persistence, or context mutation outside middleware.

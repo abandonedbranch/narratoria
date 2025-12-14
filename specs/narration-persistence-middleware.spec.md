@@ -27,6 +27,7 @@ preconditions:
 postconditions:
   - On success, the stored context is updated with PlayerPrompt, merged PriorNarration + WorkingNarration, WorkingNarration cleared, and Trace/Metadata refreshed.
   - On MissingSession or persistence failure, a structured NarrationPipelineError is emitted and the pipeline short-circuits with an exception.
+  - If downstream middleware fails (e.g., provider dispatch), persistence is skipped and the original downstream error propagates.
 
 invariants:
   - Session scoping is preserved; no cross-session reads/writes.
