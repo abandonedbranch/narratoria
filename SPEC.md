@@ -1,6 +1,6 @@
 ## Rules
 
-RULE: All implementations must comply with the rules in CONTRIB.md.
+RULE: All implementations must comply with the rules in [CONTRIB.md](CONTRIB.md).
 
 ## Spec Directory
 
