@@ -10,3 +10,30 @@ Narratoria is a project to experiment with a couple of interesting uses for "AI.
 The very first piece of software I wrote when I was a little kid was a text-adventure game. It was first drafted in assembly (ouch), then ported to QBASIC. Part of me always wondered, what if the underlying machine was smart enough to respond with outcomes of the player's decisions without me explicitly coding decision trees.
 
 Well, here we are. With this neat thing everyone keeps calling AI (which it isn't), I can actually build that idea! However I'm busy. Very busy. Stupidly busy. So I don't have to type to write, test, and verify every single piece of code. That's the idea with a agent-first spec driven develoment workspace. Whether that's a great idea or a dumb one I'll leave for future me to figure out. (Hi future me.)
+
+## Project structure
+
+This repo is intentionally spec-driven: the specs are the authoritative definition of the system, and the code is the implementation output.
+
+### Root files
+
+- `README`: Human-facing overview and context.
+- `SPEC.md`: Index of specs and project status reporting (what’s complete vs what remains).
+- `CONTRIB.md`: Non-negotiable code-generation constraints (target framework, style rules, architectural rules).
+- `LICENSE`: Project license.
+
+### `specs/`
+
+Machine-oriented specifications for the system. Each `*.spec.md` file describes one component’s contract:
+
+- Required inputs/outputs
+- Failure modes and error taxonomy
+- Ordering, cancellation, idempotency, and concurrency rules
+- Observability requirements (log fields + metrics)
+
+If you’re trying to understand “what the system is supposed to do,” start here.
+
+Notable files:
+
+- `_template.spec.md`: The spec template used when adding new components.
+- `narrator-pipeline-service.spec.md`: The core pipeline execution/streaming semantics.
