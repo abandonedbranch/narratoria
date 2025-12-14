@@ -31,6 +31,7 @@ public sealed class NarrationContextSerializer : IIndexedDbValueSerializer<Narra
 public sealed class IndexedDbNarrationSessionStore : INarrationSessionStore
 {
     private readonly IIndexedDbStorageService _storage;
+    private readonly IIndexedDbStorageWithQuota _quotaStorage;
     private readonly IIndexedDbValueSerializer<NarrationContext> _serializer;
     private readonly IndexedDbStoreDefinition _store;
     private readonly StorageScope _scope;
@@ -38,12 +39,14 @@ public sealed class IndexedDbNarrationSessionStore : INarrationSessionStore
 
     public IndexedDbNarrationSessionStore(
         IIndexedDbStorageService storage,
+        IIndexedDbStorageWithQuota quotaStorage,
         IndexedDbStoreDefinition store,
         StorageScope scope,
         ILogger<IndexedDbNarrationSessionStore> logger,
         IIndexedDbValueSerializer<NarrationContext>? serializer = null)
     {
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _quotaStorage = quotaStorage ?? throw new ArgumentNullException(nameof(quotaStorage));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _scope = scope;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -92,7 +95,7 @@ public sealed class IndexedDbNarrationSessionStore : INarrationSessionStore
             }
         };
 
-        var result = await _storage.PutAsync(request, cancellationToken).ConfigureAwait(false);
+        var result = await _quotaStorage.PutIfCanAccommodateAsync(request, cancellationToken).ConfigureAwait(false);
         if (!result.Ok)
         {
             var errorClass = result.Error?.ErrorClass.ToString() ?? "Unknown";

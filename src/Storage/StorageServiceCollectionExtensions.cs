@@ -29,8 +29,15 @@ public static class StorageServiceCollectionExtensions
             var schema = sp.GetRequiredService<IndexedDbSchema>();
             var metrics = sp.GetRequiredService<IIndexedDbStorageMetrics>();
             var logger = sp.GetRequiredService<ILogger<IndexedDbStorageService>>();
-            var quota = sp.GetService<IStorageQuotaAwareness>();
-            return new IndexedDbStorageService(jsRuntime, schema, metrics, logger, quota);
+            return new IndexedDbStorageService(jsRuntime, schema, metrics, logger);
+        });
+
+        services.AddScoped<IIndexedDbStorageWithQuota>(sp =>
+        {
+            var storage = sp.GetRequiredService<IIndexedDbStorageService>();
+            var quota = sp.GetRequiredService<IStorageQuotaAwareness>();
+            var logger = sp.GetRequiredService<ILogger<IndexedDbStorageWithQuota>>();
+            return new IndexedDbStorageWithQuota(storage, quota, logger);
         });
 
         return services;

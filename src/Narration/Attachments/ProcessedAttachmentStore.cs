@@ -31,6 +31,7 @@ public sealed class ProcessedAttachmentSerializer : IIndexedDbValueSerializer<Pr
 public sealed class ProcessedAttachmentStore : IProcessedAttachmentStore
 {
     private readonly IIndexedDbStorageService _storage;
+    private readonly IIndexedDbStorageWithQuota _quotaStorage;
     private readonly IIndexedDbValueSerializer<ProcessedAttachment> _serializer;
     private readonly IndexedDbStoreDefinition _store;
     private readonly StorageScope _scope;
@@ -38,12 +39,14 @@ public sealed class ProcessedAttachmentStore : IProcessedAttachmentStore
 
     public ProcessedAttachmentStore(
         IIndexedDbStorageService storage,
+        IIndexedDbStorageWithQuota quotaStorage,
         IndexedDbStoreDefinition store,
         StorageScope scope,
         ILogger<ProcessedAttachmentStore> logger,
         IIndexedDbValueSerializer<ProcessedAttachment>? serializer = null)
     {
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _quotaStorage = quotaStorage ?? throw new ArgumentNullException(nameof(quotaStorage));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _scope = scope;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -93,7 +96,7 @@ public sealed class ProcessedAttachmentStore : IProcessedAttachmentStore
             }
         };
 
-        return _storage.PutAsync(request, cancellationToken);
+        return _quotaStorage.PutIfCanAccommodateAsync(request, cancellationToken);
     }
 
     public static IndexedDbStoreDefinition CreateStoreDefinition(string name = "attachments")

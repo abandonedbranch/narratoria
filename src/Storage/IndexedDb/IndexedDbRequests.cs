@@ -22,6 +22,21 @@ public sealed record IndexedDbPutRequest<T>
     public required StorageScope Scope { get; init; }
 }
 
+public sealed record IndexedDbPutSerializedRequest
+{
+    public required IndexedDbStoreDefinition Store { get; init; }
+
+    public required string Key { get; init; }
+
+    public required byte[] Payload { get; init; }
+
+    public long SizeBytes { get; init; }
+
+    public IReadOnlyDictionary<string, object?>? IndexValues { get; init; }
+
+    public required StorageScope Scope { get; init; }
+}
+
 public sealed record IndexedDbListRequest<T>
 {
     public required IndexedDbStoreDefinition Store { get; init; }

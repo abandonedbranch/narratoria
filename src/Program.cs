@@ -43,12 +43,13 @@ builder.Services.AddScoped<IIndexedDbValueSerializer<NarrationContext>, Narratio
 builder.Services.AddScoped<INarrationSessionStore>(sp =>
 {
     var storage = sp.GetRequiredService<IIndexedDbStorageService>();
+    var quotaStorage = sp.GetRequiredService<IIndexedDbStorageWithQuota>();
     var schema = sp.GetRequiredService<IndexedDbSchema>();
     var store = schema.Stores.Single(s => s.Name == "narration_sessions");
     var serializer = sp.GetRequiredService<IIndexedDbValueSerializer<NarrationContext>>();
     var logger = sp.GetRequiredService<ILogger<IndexedDbNarrationSessionStore>>();
     var scope = new StorageScope(schema.DatabaseName, store.Name);
-    return new IndexedDbNarrationSessionStore(storage, store, scope, logger, serializer);
+    return new IndexedDbNarrationSessionStore(storage, quotaStorage, store, scope, logger, serializer);
 });
 builder.Services.AddSingleton<INarrationPipelineObserver>(_ => NullNarrationPipelineObserver.Instance);
 

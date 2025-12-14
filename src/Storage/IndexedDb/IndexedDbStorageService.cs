@@ -9,7 +9,6 @@ public sealed class IndexedDbStorageService : IIndexedDbStorageService, IAsyncDi
 
     private readonly IJSRuntime _jsRuntime;
     private readonly IndexedDbSchema _schema;
-    private readonly IStorageQuotaAwareness? _quota;
     private readonly IIndexedDbStorageMetrics _metrics;
     private readonly ILogger<IndexedDbStorageService> _logger;
     private readonly SemaphoreSlim _moduleLock = new(1, 1);
@@ -17,13 +16,12 @@ public sealed class IndexedDbStorageService : IIndexedDbStorageService, IAsyncDi
     private IJSObjectReference? _module;
     private bool _disposed;
 
-    public IndexedDbStorageService(IJSRuntime jsRuntime, IndexedDbSchema schema, IIndexedDbStorageMetrics metrics, ILogger<IndexedDbStorageService> logger, IStorageQuotaAwareness? quota = null)
+    public IndexedDbStorageService(IJSRuntime jsRuntime, IndexedDbSchema schema, IIndexedDbStorageMetrics metrics, ILogger<IndexedDbStorageService> logger)
     {
         _jsRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
         _schema = schema ?? throw new ArgumentNullException(nameof(schema));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _quota = quota;
     }
 
     public async ValueTask<StorageResult<Unit>> PutAsync<T>(IndexedDbPutRequest<T> request, CancellationToken cancellationToken)
@@ -61,26 +59,34 @@ public sealed class IndexedDbStorageService : IIndexedDbStorageService, IAsyncDi
             return StorageResult<Unit>.Failure(error);
         }
 
-        var requestedBytes = serialized.SizeBytes;
-        if (_quota is not null)
+        var putRequest = new IndexedDbPutSerializedRequest
         {
-            var hints = new StorageQuotaEstimationHints(request.Store.Name, null);
-            var quotaResult = await _quota.CheckAsync(request.Scope, requestedBytes, hints, cancellationToken).ConfigureAwait(false);
-            if (!quotaResult.Ok)
-            {
-                var error = quotaResult.Error ?? StorageError.QuotaUnavailable("Quota provider unavailable");
-                _metrics.RecordResult("put", request.Store.Name, "failure", error.ErrorClass.ToString());
-                _logger.LogWarning("IndexedDB quota unavailable trace={TraceId} request={RequestId} store={Store} key={Key} errorClass={ErrorClass}", traceId, requestId, request.Store.Name, request.Key, error.ErrorClass);
-                return StorageResult<Unit>.Failure(error);
-            }
+            Store = request.Store,
+            Key = request.Key,
+            Payload = serialized.Payload,
+            SizeBytes = serialized.SizeBytes,
+            IndexValues = request.IndexValues,
+            Scope = request.Scope
+        };
 
-            if (quotaResult.Value.CanAccommodate is false)
-            {
-                var error = StorageError.Quota("Requested bytes exceed available quota");
-                _metrics.RecordResult("put", request.Store.Name, "failure", error.ErrorClass.ToString());
-                _logger.LogWarning("IndexedDB quota denied trace={TraceId} request={RequestId} store={Store} key={Key} requestedBytes={RequestedBytes} availableBytes={AvailableBytes}", traceId, requestId, request.Store.Name, request.Key, requestedBytes, quotaResult.Value.AvailableBytes);
-                return StorageResult<Unit>.Failure(error);
-            }
+        return await PutSerializedAsync(putRequest, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async ValueTask<StorageResult<Unit>> PutSerializedAsync(IndexedDbPutSerializedRequest request, CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var traceId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+
+        if (request.Payload is null)
+        {
+            var error = StorageError.Serialization("Payload is required");
+            _metrics.RecordResult("put", request.Store.Name, "failure", error.ErrorClass.ToString());
+            _logger.LogError("IndexedDB put payload missing trace={TraceId} request={RequestId} store={Store} key={Key}", traceId, requestId, request.Store.Name, request.Key);
+            return StorageResult<Unit>.Failure(error);
         }
 
         var module = await EnsureModuleAsync(cancellationToken).ConfigureAwait(false);
@@ -88,13 +94,13 @@ public sealed class IndexedDbStorageService : IIndexedDbStorageService, IAsyncDi
 
         try
         {
-            var args = new PutArgs(_schema, request.Store.Name, request.Store.KeyPath, request.Store.AutoIncrement, request.Key, serialized.Payload, request.IndexValues ?? EmptyIndexValues);
+            var args = new PutArgs(_schema, request.Store.Name, request.Store.KeyPath, request.Store.AutoIncrement, request.Key, request.Payload, request.IndexValues ?? EmptyIndexValues);
             await module.InvokeVoidAsync("put", cancellationToken, args).ConfigureAwait(false);
             stopwatch.Stop();
 
             _metrics.RecordLatency("put", request.Store.Name, stopwatch.Elapsed);
             _metrics.RecordResult("put", request.Store.Name, "success", StorageErrorClass.None.ToString());
-            _metrics.RecordBytesWritten(requestedBytes);
+            _metrics.RecordBytesWritten(request.SizeBytes > 0 ? request.SizeBytes : request.Payload.LongLength);
             _logger.LogInformation("IndexedDB put success trace={TraceId} request={RequestId} store={Store} key={Key} elapsedMs={ElapsedMs}", traceId, requestId, request.Store.Name, request.Key, stopwatch.Elapsed.TotalMilliseconds);
             return StorageResult<Unit>.Success(Unit.Value);
         }
