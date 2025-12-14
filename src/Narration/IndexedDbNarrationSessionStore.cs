@@ -1,5 +1,7 @@
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text.Json;
+using Narratoria.OpenAi;
 using Narratoria.Storage;
 using Narratoria.Storage.IndexedDb;
 
@@ -12,20 +14,91 @@ public sealed class NarrationContextSerializer : IIndexedDbValueSerializer<Narra
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
+    private static readonly string[] EphemeralMetadataPrefixes =
+    [
+        "system_prompt_",
+        "content_guardian_"
+    ];
+
     public ValueTask<IndexedDbSerializedValue> SerializeAsync(NarrationContext value, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var payload = JsonSerializer.SerializeToUtf8Bytes(value, Options);
+
+        var persisted = new PersistedNarrationContext(
+            value.SessionId,
+            value.PlayerPrompt,
+            value.PriorNarration,
+            StripEphemeralMetadata(value.Metadata),
+            value.Trace);
+
+        var payload = JsonSerializer.SerializeToUtf8Bytes(persisted, Options);
         return ValueTask.FromResult(new IndexedDbSerializedValue(payload, payload.LongLength));
     }
 
     public ValueTask<NarrationContext> DeserializeAsync(IndexedDbSerializedValue payload, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var context = JsonSerializer.Deserialize<NarrationContext>(payload.Payload, Options)
-            ?? throw new InvalidOperationException("Unable to deserialize narration context.");
-        return ValueTask.FromResult(context);
+
+        try
+        {
+            var persisted = JsonSerializer.Deserialize<PersistedNarrationContext>(payload.Payload, Options)
+                ?? throw new InvalidOperationException("Unable to deserialize narration context.");
+
+            return ValueTask.FromResult(new NarrationContext
+            {
+                SessionId = persisted.SessionId,
+                PlayerPrompt = persisted.PlayerPrompt,
+                PriorNarration = persisted.PriorNarration,
+                WorkingNarration = ImmutableArray<string>.Empty,
+                Metadata = StripEphemeralMetadata(persisted.Metadata),
+                WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
+                Trace = persisted.Trace
+            });
+        }
+        catch (JsonException)
+        {
+            var legacy = JsonSerializer.Deserialize<NarrationContext>(payload.Payload, Options)
+                ?? throw new InvalidOperationException("Unable to deserialize narration context.");
+
+            return ValueTask.FromResult(legacy with
+            {
+                WorkingNarration = ImmutableArray<string>.Empty,
+                WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
+                Metadata = StripEphemeralMetadata(legacy.Metadata)
+            });
+        }
     }
+
+    private static ImmutableDictionary<string, string> StripEphemeralMetadata(IReadOnlyDictionary<string, string> metadata)
+    {
+        if (metadata.Count == 0)
+        {
+            return ImmutableDictionary<string, string>.Empty;
+        }
+
+        var immutable = metadata as ImmutableDictionary<string, string>
+            ?? metadata.ToImmutableDictionary(StringComparer.Ordinal);
+
+        foreach (var prefix in EphemeralMetadataPrefixes)
+        {
+            foreach (var key in immutable.Keys)
+            {
+                if (key.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    immutable = immutable.Remove(key);
+                }
+            }
+        }
+
+        return immutable;
+    }
+
+    private sealed record PersistedNarrationContext(
+        Guid SessionId,
+        string PlayerPrompt,
+        ImmutableArray<string> PriorNarration,
+        ImmutableDictionary<string, string> Metadata,
+        TraceMetadata Trace);
 }
 
 public sealed class IndexedDbNarrationSessionStore : INarrationSessionStore

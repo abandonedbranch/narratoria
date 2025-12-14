@@ -12,6 +12,12 @@ public sealed class NarrationPersistenceMiddleware
     private const string LoadStage = "session_load";
     private const string PersistStage = "persist_context";
 
+    private static readonly string[] EphemeralMetadataPrefixes =
+    [
+        "system_prompt_",
+        "content_guardian_"
+    ];
+
     private readonly INarrationSessionStore _sessions;
     private readonly INarrationPipelineObserver _observer;
 
@@ -42,9 +48,10 @@ public sealed class NarrationPersistenceMiddleware
             var mergedContext = loaded with
             {
                 PlayerPrompt = context.PlayerPrompt,
-                Metadata = context.Metadata ?? loaded.Metadata ?? ImmutableDictionary<string, string>.Empty,
+                Metadata = StripEphemeralMetadata(MergeMetadata(loaded.Metadata, context.Metadata)),
                 Trace = context.Trace,
-                WorkingNarration = ImmutableArray<string>.Empty
+                WorkingNarration = ImmutableArray<string>.Empty,
+                WorkingContextSegments = ImmutableArray<ContextSegment>.Empty
             };
 
             _observer.OnStageCompleted(new NarrationStageTelemetry(LoadStage, "success", "none", mergedContext.SessionId, mergedContext.Trace, loadStopwatch.Elapsed));
@@ -111,10 +118,14 @@ public sealed class NarrationPersistenceMiddleware
             var targetTrace = updatedContext.Trace;
             var targetSessionId = updatedContext.SessionId;
             var mergedNarration = updatedContext.PriorNarration.AddRange(updatedContext.WorkingNarration);
+
+            var persistMetadata = StripEphemeralMetadata(updatedContext.Metadata);
             var persistable = updatedContext with
             {
                 PriorNarration = mergedNarration,
-                WorkingNarration = ImmutableArray<string>.Empty
+                WorkingNarration = ImmutableArray<string>.Empty,
+                WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
+                Metadata = persistMetadata
             };
 
             await _sessions.SaveAsync(persistable, cancellationToken).ConfigureAwait(false);
@@ -133,5 +144,44 @@ public sealed class NarrationPersistenceMiddleware
             _observer.OnStageCompleted(new NarrationStageTelemetry(PersistStage, "failure", NarrationPipelineErrorClass.PersistenceError.ToString(), context.SessionId, context.Trace, stopwatch.Elapsed));
             throw new NarrationPipelineException(error, ex);
         }
+    }
+
+    private static ImmutableDictionary<string, string> MergeMetadata(
+        IReadOnlyDictionary<string, string> stored,
+        IReadOnlyDictionary<string, string> request)
+    {
+        var result = stored as ImmutableDictionary<string, string>
+            ?? stored.ToImmutableDictionary(StringComparer.Ordinal);
+
+        foreach (var (key, value) in request)
+        {
+            result = result.SetItem(key, value);
+        }
+
+        return result;
+    }
+
+    private static ImmutableDictionary<string, string> StripEphemeralMetadata(IReadOnlyDictionary<string, string> metadata)
+    {
+        if (metadata.Count == 0)
+        {
+            return ImmutableDictionary<string, string>.Empty;
+        }
+
+        var immutable = metadata as ImmutableDictionary<string, string>
+            ?? metadata.ToImmutableDictionary(StringComparer.Ordinal);
+
+        foreach (var prefix in EphemeralMetadataPrefixes)
+        {
+            foreach (var key in immutable.Keys)
+            {
+                if (key.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    immutable = immutable.Remove(key);
+                }
+            }
+        }
+
+        return immutable;
     }
 }

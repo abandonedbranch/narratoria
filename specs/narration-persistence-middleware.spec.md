@@ -33,6 +33,8 @@ invariants:
   - PriorNarration is only appended with WorkingNarration; existing narration is not reordered or removed.
   - Context is loaded once per run and persisted once after downstream completion.
   - Deterministic ordering: executes exactly where registered; thread-safe under concurrent sessions.
+  - WorkingContextSegments are per-run derived state and must not be persisted to session storage.
+  - Metadata keys used only to control per-run prompt injection (e.g., prefixes `system_prompt_` and `content_guardian_`) must not be persisted.
 
 failure_modes:
   - MissingSession :: no stored context for SessionId :: emit NarrationPipelineError(stage=session_load) and short-circuit.

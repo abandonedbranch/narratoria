@@ -60,6 +60,78 @@ public sealed class NarrationPipelineServiceTests
     }
 
     [TestMethod]
+    public async Task SecondRun_ReinjectsPrompts_AndDoesNotPersistWorkingSegmentsOrFlags()
+    {
+        var sessionId = Guid.NewGuid();
+        var store = InMemorySessionStore.WithSessions(new[] { CreateContext(sessionId) });
+
+        var runOneObserver = new RecordingObserver();
+        var runTwoObserver = new RecordingObserver();
+
+        var providerOne = new ProviderDispatchMiddleware(new StubNarrationProvider(["one"], ["two"]), observer: runOneObserver);
+        var providerTwo = new ProviderDispatchMiddleware(new StubNarrationProvider(["one"], ["two"]), observer: runTwoObserver);
+        var systemPromptOne = new NarrationSystemPromptMiddleware(new StaticSystemPromptResolver(), runOneObserver);
+        var systemPromptTwo = new NarrationSystemPromptMiddleware(new StaticSystemPromptResolver(), runTwoObserver);
+        var guardianOne = new NarrationContentGuardianMiddleware(runOneObserver);
+        var guardianTwo = new NarrationContentGuardianMiddleware(runTwoObserver);
+
+        var pipelineOne = new NarrationPipelineService(new NarrationMiddleware[]
+        {
+            new NarrationPersistenceMiddleware(store, runOneObserver).InvokeAsync,
+            systemPromptOne.InvokeAsync,
+            guardianOne.InvokeAsync,
+            providerOne.InvokeAsync
+        });
+
+        var pipelineTwo = new NarrationPipelineService(new NarrationMiddleware[]
+        {
+            new NarrationPersistenceMiddleware(store, runTwoObserver).InvokeAsync,
+            systemPromptTwo.InvokeAsync,
+            guardianTwo.InvokeAsync,
+            providerTwo.InvokeAsync
+        });
+
+        var firstContext = new NarrationContext
+        {
+            SessionId = sessionId,
+            PlayerPrompt = "prompt-1",
+            PriorNarration = [],
+            WorkingNarration = [],
+            Metadata = ImmutableDictionary<string, string>.Empty,
+            WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
+            Trace = new TraceMetadata("trace-1", "req-1")
+        };
+
+        var firstResult = await pipelineOne.RunAsync(firstContext, CancellationToken.None);
+        await ConsumeAsync(firstResult.StreamedNarration);
+
+        var persistedAfterFirst = store.Get(sessionId);
+        Assert.AreEqual(0, persistedAfterFirst.WorkingContextSegments.Length);
+        Assert.IsFalse(persistedAfterFirst.Metadata.Keys.Any(k => k.StartsWith("system_prompt_", StringComparison.Ordinal)));
+        Assert.IsFalse(persistedAfterFirst.Metadata.Keys.Any(k => k.StartsWith("content_guardian_", StringComparison.Ordinal)));
+
+        var secondContext = new NarrationContext
+        {
+            SessionId = sessionId,
+            PlayerPrompt = "prompt-2",
+            PriorNarration = [],
+            WorkingNarration = [],
+            Metadata = ImmutableDictionary<string, string>.Empty,
+            WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
+            Trace = new TraceMetadata("trace-2", "req-2")
+        };
+
+        var secondResult = await pipelineTwo.RunAsync(secondContext, CancellationToken.None);
+        await ConsumeAsync(secondResult.StreamedNarration);
+
+        var secondStages = runTwoObserver.StageTelemetries.ToArray();
+        var system = secondStages.Single(t => t.Stage == "system_prompt_injection");
+        var guardianStage = secondStages.Single(t => t.Stage == "content_guardian_injection");
+        Assert.AreEqual("success", system.Status);
+        Assert.AreEqual("success", guardianStage.Status);
+    }
+
+    [TestMethod]
     public async Task MiddlewareOrder_RemainsDeterministic()
     {
         var sessionId = Guid.NewGuid();
