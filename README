@@ -18,8 +18,8 @@ This repo is intentionally spec-driven: the specs are the authoritative definiti
 ### Root files
 
 - `README`: Human-facing overview and context.
-- `SPEC.md`: Index of specs and project status reporting (what’s complete vs what remains).
-- `CONTRIB.md`: Non-negotiable code-generation constraints (target framework, style rules, architectural rules).
+- `SPEC`: Index of specs and project status reporting (what’s complete vs what remains).
+- `CONTRIB`: Non-negotiable code-generation constraints (target framework, style rules, architectural rules).
 - `LICENSE`: Project license.
 
 ### `specs/`

@@ -1,6 +1,6 @@
 ## Rules
 
-RULE: All implementations must comply with the rules in [CONTRIB.md](CONTRIB.md).
+RULE: All implementations must comply with the rules in [CONTRIB](CONTRIB.md).
 
 RULE: Audience and intent
 - All specs and project documentation (EXCEPT `README.md`) are written for GPT-5.x models only.
