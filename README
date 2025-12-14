@@ -37,3 +37,10 @@ Notable files:
 
 - `_template.spec.md`: The spec template used when adding new components.
 - `narrator-pipeline-service.spec.md`: The core pipeline execution/streaming semantics.
+
+### `src/wwwroot/`
+
+Static web assets served by the Blazor app.
+
+- `src/wwwroot/js/indexedDbStorage.js`: IndexedDB storage interop module.
+- `src/wwwroot/js/storageQuota.js`: Storage quota estimation interop module.
