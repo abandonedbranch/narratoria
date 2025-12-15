@@ -4,6 +4,7 @@ INTERPRETATION: All RULE entries are mandatory constraints for code generation.
 
 SECTION: Scope
 RULE: This document defines coding standards and implementation practices only. For specification authoring and status/drift process, see SPEC.
+RULE: Spec drift, functionality gaps, and technical debt are tracked in TODO at the repo root.
 
 SECTION: CorePrinciples
 RULE: Keep interfaces tiny (1-3 members). No hierarchies except framework-required.
@@ -127,6 +128,7 @@ NOTE: Test scope derives from the corresponding spec; if test requirements are u
 
 SECTION: CodeChanges
 RULE: Keep code changes minimal, focused, and aligned to existing public APIs. Update tests relevant to the change; do not modify unrelated code or tests.
+RULE: Before finishing any work, update TODO if items remain to be done (drift/gaps/debt). If nothing remains, no TODO changes are required.
 
 SECTION: NoPlaceholders
 RULE: Do not add placeholder code, components, or tests. If no implementation is available, omit it entirely and track the gap in SPEC under "What remains" or "Not completed".
