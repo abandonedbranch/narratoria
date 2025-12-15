@@ -1,0 +1,117 @@
+@using System.Collections.Immutable
+@using System.Linq
+@using System.Text
+
+<div class="narration-log-container">
+    @if (_hasValidationError)
+    {
+        <div class="validation-error" data-testid="validation-error">Invalid stage configuration.</div>
+    }
+    @if (_hasStreamMismatch)
+    {
+        <div class="stream-warning" data-testid="stream-warning">Streaming state is not on the latest turn.</div>
+    }
+    <div class="narration-log">
+        @foreach (var turn in Turns)
+        {
+            <section class="turn" data-turn-id="@turn.TurnId">
+                <header class="turn-label">USER</header>
+                <div class="user-bubble">@turn.UserPrompt</div>
+
+                <div class="stage-row" role="list">
+                    @foreach (var stageKind in StageOrder)
+                    {
+                        var stageView = FindStage(turn, stageKind);
+                        <span class="chip @GetChipClass(stageView?.Status ?? NarrationStageStatus.Pending)" role="listitem" data-stage="@stageKind.Name">
+                            @stageKind.Name
+                        </span>
+                    }
+                </div>
+
+                <header class="turn-label">NARRATION@(turn.Output.IsStreaming ? " (streaming)" : string.Empty)</header>
+                <div class="narration-bubble">@RenderOutput(turn.Output)</div>
+            </section>
+        }
+    </div>
+
+    <div class="prompt-row">
+        <input data-testid="prompt-input" placeholder="Type your next prompt..." @bind="_inputText" @bind:event="oninput" disabled="@IsSubmitDisabled" />
+        <button data-testid="submit-button" class="submit-button" disabled="@IsSubmitDisabled" @onclick="SubmitAsync">Send</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_submissionError))
+    {
+        <div class="submission-error" data-testid="submission-error">@_submissionError</div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<NarrationPipelineTurnView> Turns { get; set; } = Array.Empty<NarrationPipelineTurnView>();
+
+    [Parameter]
+    public IReadOnlyList<NarrationStageKind> StageOrder { get; set; } = Array.Empty<NarrationStageKind>();
+
+    [Parameter]
+    public EventCallback<string> OnSubmitPrompt { get; set; }
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    private string _inputText = string.Empty;
+    private bool _hasValidationError;
+    private bool _hasStreamMismatch;
+    private string _submissionError = string.Empty;
+
+    private bool IsSubmitDisabled => _hasValidationError || IsSubmitting;
+
+    protected override void OnParametersSet()
+    {
+        _hasValidationError = !NarrationPipelineLogLogic.IsStageOrderValid(StageOrder) || !NarrationPipelineLogLogic.AreTurnsAligned(StageOrder, Turns);
+        _hasStreamMismatch = NarrationPipelineLogLogic.HasStreamMismatch(Turns);
+    }
+
+    
+
+    private NarrationStageView? FindStage(NarrationPipelineTurnView turn, NarrationStageKind kind)
+    {
+        return turn.Stages.FirstOrDefault(s => s.Kind == kind);
+    }
+
+    private string RenderOutput(NarrationOutputView output) => NarrationPipelineLogLogic.RenderOutput(output);
+
+    private string GetChipClass(NarrationStageStatus status) => status switch
+    {
+        NarrationStageStatus.Pending => "chip pending",
+        NarrationStageStatus.Running => "chip running",
+        NarrationStageStatus.Completed => "chip completed",
+        NarrationStageStatus.Skipped => "chip skipped",
+        NarrationStageStatus.Failed => "chip failed",
+        _ => "chip"
+    };
+
+    private async Task SubmitAsync()
+    {
+        if (_hasValidationError || IsSubmitting)
+        {
+            return;
+        }
+
+        var nextPrompt = _inputText;
+        if (string.IsNullOrWhiteSpace(nextPrompt))
+        {
+            return;
+        }
+
+        try
+        {
+            await OnSubmitPrompt.InvokeAsync(nextPrompt);
+            _inputText = string.Empty;
+            _submissionError = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _submissionError = ex.Message;
+        }
+    }
+}
