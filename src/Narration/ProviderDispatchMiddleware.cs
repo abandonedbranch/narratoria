@@ -160,7 +160,8 @@ public sealed class ProviderDispatchMiddleware
 
             writer.TryComplete();
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "success", errorClass, context.SessionId, context.Trace, stopwatch.Elapsed));
-            _stageMetadata?.ApplyProviderMetrics(context.SessionId, Narratoria.Components.NarrationStageKind.Llm, promptTokens: null, completionTokens: tokens.Count, model: _provider.GetType().Name);
+            var model = _options.Model ?? _provider.GetType().Name;
+            _stageMetadata?.ApplyProviderMetrics(context.SessionId, Narratoria.Components.NarrationStageKind.Llm, promptTokens: null, completionTokens: tokens.Count, model: model);
             RecordMetrics("success", errorClass, stopwatch.Elapsed);
             return context with { WorkingNarration = tokens.ToImmutable() };
         }

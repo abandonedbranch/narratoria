@@ -108,7 +108,7 @@
         var middleware = new NarrationMiddleware[]
         {
             new NarrationPersistenceMiddleware(SessionStore ?? new NullSessionStore(), observer ?? NullNarrationPipelineObserver.Instance).InvokeAsync,
-            new ProviderDispatchMiddleware(provider, options: null, observer: observer, stageMetadata: _metadata).InvokeAsync
+            new ProviderDispatchMiddleware(provider, options: new ProviderDispatchOptions { Model = "fake-narrator" }, observer: observer, stageMetadata: _metadata).InvokeAsync
         };
         return new NarrationPipelineService(middleware);
     }
