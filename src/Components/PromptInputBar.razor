@@ -1,0 +1,59 @@
+@code {
+    [Parameter]
+    public Func<string, CancellationToken, ValueTask>? SubmitPrompt { get; set; }
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    [Parameter]
+    public string? InitialText { get; set; }
+
+    private string _inputText = string.Empty;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        _inputText = InitialText ?? string.Empty;
+    }
+
+    private bool Disabled => IsSubmitting;
+
+    private async Task HandleSubmitAsync()
+    {
+        if (Disabled || SubmitPrompt is null)
+        {
+            return;
+        }
+
+        var text = _inputText?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
+        try
+        {
+            using var cts = new CancellationTokenSource();
+            await SubmitPrompt.Invoke(text, cts.Token);
+            _error = null;
+            _inputText = string.Empty;
+        }
+        catch (OperationCanceledException)
+        {
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}
+
+<div class="prompt-bar">
+    <input data-testid="prompt-bar-input" placeholder="Type your prompt..." @bind="_inputText" @bind:event="oninput" disabled="@Disabled" />
+    <button data-testid="prompt-bar-submit" class="submit-button" disabled="@Disabled" @onclick="HandleSubmitAsync">Submit</button>
+</div>
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="submission-error" data-testid="prompt-bar-error">@_error</div>
+}

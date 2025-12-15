@@ -33,16 +33,6 @@
             </section>
         }
     </div>
-
-    <div class="prompt-row">
-        <input data-testid="prompt-input" placeholder="Type your next prompt..." @bind="_inputText" @bind:event="oninput" disabled="@IsSubmitDisabled" />
-        <button data-testid="submit-button" class="submit-button" disabled="@IsSubmitDisabled" @onclick="SubmitAsync">Send</button>
-    </div>
-
-    @if (!string.IsNullOrWhiteSpace(_submissionError))
-    {
-        <div class="submission-error" data-testid="submission-error">@_submissionError</div>
-    }
 </div>
 
 @code {
@@ -51,19 +41,8 @@
 
     [Parameter]
     public IReadOnlyList<NarrationStageKind> StageOrder { get; set; } = Array.Empty<NarrationStageKind>();
-
-    [Parameter]
-    public EventCallback<string> OnSubmitPrompt { get; set; }
-
-    [Parameter]
-    public bool IsSubmitting { get; set; }
-
-    private string _inputText = string.Empty;
     private bool _hasValidationError;
     private bool _hasStreamMismatch;
-    private string _submissionError = string.Empty;
-
-    private bool IsSubmitDisabled => _hasValidationError || IsSubmitting;
 
     protected override void OnParametersSet()
     {
@@ -89,29 +68,4 @@
         NarrationStageStatus.Failed => "chip failed",
         _ => "chip"
     };
-
-    private async Task SubmitAsync()
-    {
-        if (_hasValidationError || IsSubmitting)
-        {
-            return;
-        }
-
-        var nextPrompt = _inputText;
-        if (string.IsNullOrWhiteSpace(nextPrompt))
-        {
-            return;
-        }
-
-        try
-        {
-            await OnSubmitPrompt.InvokeAsync(nextPrompt);
-            _inputText = string.Empty;
-            _submissionError = string.Empty;
-        }
-        catch (Exception ex)
-        {
-            _submissionError = ex.Message;
-        }
-    }
 }

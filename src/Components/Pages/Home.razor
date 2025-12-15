@@ -7,7 +7,7 @@
 
 <section style="margin-top:1rem;">
 	<h2>Narration Pipeline Log</h2>
-	<NarrationPipelineLog Turns="@_turns" StageOrder="@_stageOrder" OnSubmitPrompt="OnSubmit" IsSubmitting="false" />
+	<NarrationPipelineLog Turns="@_turns" StageOrder="@_stageOrder" />
 </section>
 
 @code {
@@ -46,6 +46,4 @@
 			Output = new NarrationOutputView{ IsStreaming = true, StreamedSegments = ImmutableArray.Create("You let your gaze ", "drift across the room...") }
 		}
 	};
-
-	private Task OnSubmit(string text) => Task.CompletedTask;
 }
