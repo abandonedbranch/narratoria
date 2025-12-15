@@ -64,10 +64,6 @@ RULE: Drift tracking (for specs)
 - Provider dispatch (potential drift): future middleware additions that wrap streams must preserve early-dispose cancellation propagation upstream.
 - Persistence (potential drift): any future changes must preserve “skip persistence on downstream failure” and must not reintroduce persistence of per-run prompt state.
 
-## Not completed
-
-- RULE: Removed. Track remaining work under “What remains” drift bullets per spec/component.
-
 ## Format (Template Sections)
 
 - Mode
