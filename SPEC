@@ -20,36 +20,27 @@
 - All specs live in `specs/`.
 - Template: `specs/_template.spec.md`.
 - RULE: Before creating a new spec file, the coding agent MUST read `specs/_template.spec.md` and follow its structure verbatim (headings/sections), only replacing placeholders.
-- Completed specs:
-  - `specs/indexeddb-storage-service.spec.md`
-  - `specs/storage-quota-awareness-service.spec.md`
-  - `specs/openai-api-service.spec.md`
-  - `specs/narrator-pipeline-service.spec.md`
-  - `specs/narration-persistence-middleware.spec.md`
-  - `specs/narration-provider-dispatch-middleware.spec.md`
-  - `specs/narration-content-guardian-middleware.spec.md`
-  - `specs/narration-system-prompt-middleware.spec.md`
-  - `specs/narration-attachment-ingestion-service.spec.md`
-  - `specs/narration-pipeline-log-ui.spec.md`
-  - `specs/system-prompt-profile-resolver.spec.md`
-  - `specs/prompt-input-bar-ui.spec.md`
-  - `specs/attachments-dropzone-ui.spec.md`
-  - `specs/narration-session-orchestrator-ui.spec.md`
-  - `specs/pipeline-observer-view-adapter.spec.md`
-  - `specs/stage-metadata-provider.spec.md`
-- If any spec is not yet complete, add it under a "Not completed" list with owner and expected completion date.
-- Implementors MUST explicitly state what is complete and what remains when updating this file.
-- After any work on a spec/implementation pair (including drift reduction), update this file with an explicit status note. Listing a spec as “Completed” is insufficient unless “what remains” is explicitly “none”.
+- RULE: The list below MUST mirror the filenames present in the `specs/` directory. Keep it up to date whenever files are added, removed, or renamed.
 
-## Status Reporting (Required)
+### Specs Index (mirrors specs/)
 
-When you touch a spec or its implementation, update this file with a brief status note.
-
-Minimum required update (pick one):
-- Add/refresh the “What remains” section (even if the answer is “none”).
-- Or, if partial, move the spec under a “Not completed” list with an owner.
-
-Goal: keep this file truthful about drift and remaining work, not just whether a spec document exists.
+- `specs/_template.spec.md`
+- `specs/attachments-dropzone-ui.spec.md`
+- `specs/indexeddb-storage-service.spec.md`
+- `specs/narration-attachment-ingestion-service.spec.md`
+- `specs/narration-content-guardian-middleware.spec.md`
+- `specs/narration-persistence-middleware.spec.md`
+- `specs/narration-pipeline-log-ui.spec.md`
+- `specs/narration-provider-dispatch-middleware.spec.md`
+- `specs/narration-session-orchestrator-ui.spec.md`
+- `specs/narration-system-prompt-middleware.spec.md`
+- `specs/narrator-pipeline-service.spec.md`
+- `specs/openai-api-service.spec.md`
+- `specs/pipeline-observer-view-adapter.spec.md`
+- `specs/prompt-input-bar-ui.spec.md`
+- `specs/stage-metadata-provider.spec.md`
+- `specs/storage-quota-awareness-service.spec.md`
+- `specs/system-prompt-profile-resolver.spec.md`
 
 RULE: Drift tracking (for specs)
 - The “What remains” section MUST track BOTH:
@@ -74,10 +65,8 @@ RULE: Drift tracking (for specs)
 - Persistence (potential drift): any future changes must preserve “skip persistence on downstream failure” and must not reintroduce persistence of per-run prompt state.
 
 ## Not completed
- 
- - Restore-from-store in orchestrator
- - Attachment ingestion wiring in orchestrator
- - Prompt token estimation and emission
+
+- RULE: Removed. Track remaining work under “What remains” drift bullets per spec/component.
 
 ## Format (Template Sections)
 
