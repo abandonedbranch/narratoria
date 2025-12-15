@@ -1,6 +1,11 @@
 # Narratoria: A Computer-driven role-playing game narrator!
 
-## About
+## File conventions
+
+RULE: If a paragraph was created by a large language model, there's a little robot appended to it 🤖
+RULE: Human written content is to be preserved and only checked for grammatical errors. It will have a 🧑‍💻 developer appended to it.
+
+## 🧑‍💻 About
 
 Narratoria is a project to experiment with a couple of interesting uses for "AI."
 
@@ -11,16 +16,19 @@ The very first piece of software I wrote when I was a little kid was a text-adve
 
 Well, here we are. With this neat thing everyone keeps calling AI (which it isn't), I can actually build that idea! However I'm busy. Very busy. Stupidly busy. So I don't have to type to write, test, and verify every single piece of code. That's the idea with a agent-first spec driven development workspace. Whether that's a great idea or a dumb one I'll leave for future me to figure out. (Hi future me.)
 
-## 🤖 Project structure
+## Project structure
 
-This repo is intentionally spec-driven: the specs are the authoritative definition of the system, and the code is the implementation output.
+This repo is intentionally spec-driven: the specs are the authoritative definition of the system, and the code is the implementation output. 🤖
 
-### Root files
+Specs are created either by hand (a human hand), and refined using a coding agent such that the spec can be better understood by a large language model. Fundemental idea is that given the specs, this entire system should be able to be regenerated with a capable large language model. 🧑‍💻
+
+### Root files 🤖
 
 - `README`: Human-facing overview and context.
-- `SPEC`: Index of specs and project status reporting (what’s complete vs what remains).
-- `CONTRIB`: Non-negotiable code-generation constraints (target framework, style rules, architectural rules).
+- `SPEC`: Spec authoring rules and a specs index that MUST mirror `specs/`; includes drift/status tracking guidance.
+- `CONTRIB`: Non-negotiable coding standards and implementation practices; points to `SPEC` for spec authoring and to `TODO` for drift/gaps/debt.
 - `LICENSE`: Project license.
+- `TODO`: Tracker for spec drift, functionality gaps, and technical debt; update before finishing work when items remain.
 
 ### `specs/`
 
@@ -37,10 +45,3 @@ Notable files:
 
 - `_template.spec.md`: The spec template used when adding new components.
 - `narrator-pipeline-service.spec.md`: The core pipeline execution/streaming semantics.
-
-### `src/wwwroot/`
-
-Static web assets served by the Blazor app.
-
-- `src/wwwroot/js/indexedDbStorage.js`: IndexedDB storage interop module.
-- `src/wwwroot/js/storageQuota.js`: Storage quota estimation interop module.
