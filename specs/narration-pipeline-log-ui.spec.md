@@ -4,26 +4,21 @@ mode:
   - stateful (maintains append-only turns and in-flight input; collaborates with caller-supplied stage order)
 
 behavior:
-  - what: Render a vertical narration log with stage chips per turn, stream narration output, and accept a new prompt submission.
+  - what: Render a vertical narration log with stage chips per turn and stream narration output.
   - input:
       - IReadOnlyList<NarrationPipelineTurnView> : ordered turns (oldest to newest) with immutable content
       - IReadOnlyList<NarrationStageKind> : canonical pipeline stage ordering used to render chips
-      - EventCallback<string> OnSubmitPrompt : invoked when user submits the next prompt
-      - bool IsSubmitting : gate that disables input while true
   - output:
-      - RenderFragment : UI tree containing turn blocks and prompt input row
+    - RenderFragment : UI tree containing turn blocks
   - caller_obligations:
       - supply stable identifiers for each turn and stage; do not mutate prior turn payloads once rendered
       - propagate streaming tokens into the most recent turn via stage status updates and output segments
-      - ensure OnSubmitPrompt is idempotent or guarded against double submission server-side
   - side_effects_allowed:
-      - emit OnSubmitPrompt exactly once per user action
       - auto-scroll to latest turn when a new turn or stream segment arrives
       - trigger hover popover describing chip metadata
 
 state:
   - turns : IReadOnlyList<NarrationPipelineTurnView> | ephemeral UI memory
-  - input_text : string | ephemeral UI memory
   - active_stream : NarrationStreamState? | ephemeral UI memory
   - hover_metadata : NarrationStageHover? | ephemeral UI memory
   - NarrationPipelineTurnView: record { Guid TurnId; string UserPrompt; DateTimeOffset? PromptAt; ImmutableArray<NarrationStageView> Stages; NarrationOutputView Output } | provided by caller
@@ -42,7 +37,6 @@ preconditions:
 postconditions:
   - turns render in chronological order; prior turns are read-only
   - stage chips render in caller-supplied order; downstream chips remain Pending until upstream completes or fails
-  - OnSubmitPrompt invocation clears input_text and re-disables submit UI until IsSubmitting becomes false
   - streaming segments append in-order to the active turn Output; when status flips to Completed or Failed, streaming stops
 
 invariants:
@@ -53,12 +47,10 @@ invariants:
 
 failure_modes:
   - validation_error :: missing stage in stage order or duplicate kinds :: render error state and suppress input submission
-  - submission_error :: OnSubmitPrompt throws or returns faulted task :: show error banner; keep input text for retry; do not append turn
   - stream_mismatch :: active_stream references non-latest turn :: drop segments and log warning
 
 policies:
   - no implicit retries; caller must resubmit failed prompt explicitly
-  - input submission is serialized; multiple submissions are queued or rejected while IsSubmitting is true
   - cancellation: caller may set IsSubmitting=false to re-enable input after upstream cancellation; streaming stops when status leaves Running
 
 never:
@@ -80,7 +72,7 @@ observability:
   - logs:
       - trace_id, request_id, turn_id, stage, status, elapsed_ms, error_class, event (submit|stream_append|render_error)
   - metrics:
-      - narration_log_render_ms (histogram), narration_prompt_submitted (counter), narration_stage_hover_shown (counter), narration_stream_segments_appended (counter)
+    - narration_log_render_ms (histogram), narration_stage_hover_shown (counter), narration_stream_segments_appended (counter)
 
 output:
   - minimal implementation only (no commentary, no TODOs)
