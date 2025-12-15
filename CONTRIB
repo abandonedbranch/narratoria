@@ -116,12 +116,14 @@ SECTION: Packaging
 RULE: Align namespaces with folders; one concept per file.
 RULE: Minimize public surface; prefer internal/file-scoped.
 RULE: Constructors/factories must enforce invariants; return interfaces when caller only needs behavior.
+NOTE: For defining component/feature behavior and observability, author a spec in specs/ per SPEC.
 
 SECTION: Testing
 RULE: Use table-driven tests ([Theory]/[InlineData]/[MemberData]).
 RULE: Fake collaborators via small interfaces; avoid global state.
 RULE: Deterministic tests only: inject time/random/IO; no real clocks or external IO.
 RULE: UI components MUST have end-to-end coverage using Playwright for .NET in addition to applicable unit tests; tests SHOULD target stable routes and assert deterministic UI states.
+NOTE: Test scope derives from the corresponding spec; if test requirements are unclear, update the spec per SPEC before writing tests.
 
 SECTION: CodeChanges
 RULE: Keep code changes minimal, focused, and aligned to existing public APIs. Update tests relevant to the change; do not modify unrelated code or tests.

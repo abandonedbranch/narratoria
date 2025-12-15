@@ -75,9 +75,9 @@ RULE: Drift tracking (for specs)
 
 ## Not completed
  
- - Restore-from-store in orchestrator — Owner: GitHub Copilot — Expected completion: 2025-12-20.
- - Attachment ingestion wiring in orchestrator — Owner: GitHub Copilot — Expected completion: 2025-12-21.
- - Prompt token estimation and emission — Owner: GitHub Copilot — Expected completion: 2025-12-21.
+ - Restore-from-store in orchestrator
+ - Attachment ingestion wiring in orchestrator
+ - Prompt token estimation and emission
 
 ## Format (Template Sections)
 
@@ -104,6 +104,11 @@ RULE: Drift tracking (for specs)
 
 - Mode: Isolated behavior
 - Output: Minimal implementation only. No commentary.
+
+## Cross-refs
+
+- Coding standards, interfaces, testing practices, and implementation rules live in [CONTRIB.md](CONTRIB.md).
+- This SPEC governs specification authoring, drift/status tracking, and spec-first authority only.
 
 ## Checklist
 
