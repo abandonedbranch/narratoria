@@ -86,6 +86,12 @@ builder.Services.AddSingleton<ProviderDispatchMiddleware>(sp =>
     var provider = sp.GetRequiredService<INarrationProvider>();
     var observer = sp.GetRequiredService<INarrationPipelineObserver>();
     var options = sp.GetRequiredService<IOptions<ProviderDispatchOptions>>().Value;
+    // If ProviderDispatchOptions.Model is not set, default to OpenAi options model
+    if (string.IsNullOrWhiteSpace(options.Model))
+    {
+        var openAi = sp.GetRequiredService<IOptions<NarrationOpenAiOptions>>().Value;
+        options = options with { Model = openAi.Model };
+    }
     var logger = sp.GetRequiredService<ILogger<ProviderDispatchMiddleware>>();
     return new ProviderDispatchMiddleware(provider, options, observer, logger);
 });
