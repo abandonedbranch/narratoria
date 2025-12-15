@@ -9,9 +9,9 @@ Narratoria is a project to experiment with a couple of interesting uses for "AI.
 
 The very first piece of software I wrote when I was a little kid was a text-adventure game. It was first drafted in assembly (ouch), then ported to QBASIC. Part of me always wondered, what if the underlying machine was smart enough to respond with outcomes of the player's decisions without me explicitly coding decision trees.
 
-Well, here we are. With this neat thing everyone keeps calling AI (which it isn't), I can actually build that idea! However I'm busy. Very busy. Stupidly busy. So I don't have to type to write, test, and verify every single piece of code. That's the idea with a agent-first spec driven develoment workspace. Whether that's a great idea or a dumb one I'll leave for future me to figure out. (Hi future me.)
+Well, here we are. With this neat thing everyone keeps calling AI (which it isn't), I can actually build that idea! However I'm busy. Very busy. Stupidly busy. So I don't have to type to write, test, and verify every single piece of code. That's the idea with a agent-first spec driven development workspace. Whether that's a great idea or a dumb one I'll leave for future me to figure out. (Hi future me.)
 
-## Project structure
+## 🤖 Project structure
 
 This repo is intentionally spec-driven: the specs are the authoritative definition of the system, and the code is the implementation output.
 
