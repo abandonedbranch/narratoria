@@ -32,6 +32,7 @@ RULE: Style (machine-oriented)
   - `specs/narration-system-prompt-middleware.spec.md`
   - `specs/narration-attachment-ingestion-service.spec.md`
   - `specs/narration-pipeline-log-ui.spec.md`
+  - `specs/system-prompt-profile-resolver.spec.md`
 - If any spec is not yet complete, add it under a "Not completed" list with owner and expected completion date.
 - Implementors must explicitly state what is complete and what remains when updating this file.
 - IMPORTANT: After any work on a spec/implementation pair (including drift reduction), update this file with an explicit status note. Listing a spec as “Completed” is not sufficient unless “what remains” is explicitly “none”.
@@ -59,6 +60,10 @@ RULE: Drift tracking
 - IndexedDB storage (current drift): CRUD surface incomplete (e.g., no Get/Delete); observability field completeness varies by operation.
 - Narration pipeline log UI (current drift): initial UI component implemented; hover metadata popovers and auto-scroll behaviors remain unimplemented; validation/stream gating covered by component checks. Component UI tests removed (bUnit dependency dropped).
  - Narration pipeline log UI (current drift): initial UI component implemented; hover metadata popovers and auto-scroll behaviors remain unimplemented; validation/stream gating covered by component checks. Component UI tests removed (bUnit dependency dropped). Plan to add end-to-end UI coverage using Playwright for .NET.
+ - Narration pipeline log UI (current drift): initial UI component implemented; hover metadata popovers and auto-scroll behaviors remain unimplemented; validation/stream gating covered by component checks. End-to-end UI coverage MUST be added using Playwright for .NET, alongside unit tests for pure logic helpers.
+- System prompt profile resolver (current drift): spec added; implementation present only as a static dev-time resolver; storage-backed or policy-based selection not implemented; observability not yet emitted.
+ - System prompt profile resolver (current drift): config-backed resolver implemented with success/not_found/error/cancelled metrics and logs; storage-backed or policy-based selection remains unimplemented.
+ - System prompt profile resolver (potential drift): future changes to selection policies MUST remain deterministic and versioned; any caching MUST preserve consistency across a single process lifetime.
 - Provider dispatch (potential drift): future middleware additions that wrap streams must preserve early-dispose cancellation propagation upstream.
 - Persistence (potential drift): any future changes must preserve “skip persistence on downstream failure” and must not reintroduce persistence of per-run prompt state.
 

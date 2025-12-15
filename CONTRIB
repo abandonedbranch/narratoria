@@ -124,6 +124,7 @@ SECTION: Testing
 RULE: Use table-driven tests ([Theory]/[InlineData]/[MemberData]).
 RULE: Fake collaborators via small interfaces; avoid global state.
 RULE: Deterministic tests only: inject time/random/IO; no real clocks or external IO.
+RULE: UI components MUST have end-to-end coverage using Playwright for .NET in addition to applicable unit tests; tests SHOULD target stable routes and assert deterministic UI states.
 
 SECTION: StatusReporting
 RULE: When updating specs or implementations, explicitly report what is complete and what remains; mark completed specs in SPEC.md and note outstanding work.
