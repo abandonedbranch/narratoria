@@ -2,11 +2,8 @@ TARGET: dotnet_10, csharp_14
 
 INTERPRETATION: All RULE entries are mandatory constraints for code generation.
 
-SECTION: DocumentationAudience
-RULE: All specs and project documentation (EXCEPT README.md) are written for GPT-5.x models only.
-RULE: Optimize docs for deterministic regeneration of the system in a blank project; avoid human-oriented narrative.
-RULE: Specs are authoritative; code should be treated as a derived byproduct of the specs.
-RULE: Prefer normative, testable wording (MUST/SHOULD/MAY), explicit inputs/outputs, failure modes, invariants, and observability fields.
+SECTION: Scope
+RULE: This document defines coding standards and implementation practices only. For specification authoring and status/drift process, see SPEC.
 
 SECTION: CorePrinciples
 RULE: Keep interfaces tiny (1-3 members). No hierarchies except framework-required.
@@ -126,8 +123,8 @@ RULE: Fake collaborators via small interfaces; avoid global state.
 RULE: Deterministic tests only: inject time/random/IO; no real clocks or external IO.
 RULE: UI components MUST have end-to-end coverage using Playwright for .NET in addition to applicable unit tests; tests SHOULD target stable routes and assert deterministic UI states.
 
-SECTION: StatusReporting
-RULE: When updating specs or implementations, explicitly report what is complete and what remains; mark completed specs in SPEC.md and note outstanding work.
+SECTION: CodeChanges
+RULE: Keep code changes minimal, focused, and aligned to existing public APIs. Update tests relevant to the change; do not modify unrelated code or tests.
 
 SECTION: NoPlaceholders
 RULE: Do not add placeholder code, components, or tests. If no implementation is available, omit it entirely and track the gap in SPEC under "What remains" or "Not completed".
