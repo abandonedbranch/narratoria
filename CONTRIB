@@ -128,3 +128,7 @@ RULE: UI components MUST have end-to-end coverage using Playwright for .NET in a
 
 SECTION: StatusReporting
 RULE: When updating specs or implementations, explicitly report what is complete and what remains; mark completed specs in SPEC.md and note outstanding work.
+
+SECTION: NoPlaceholders
+RULE: Do not add placeholder code, components, or tests. If no implementation is available, omit it entirely and track the gap in SPEC under "What remains" or "Not completed".
+RULE: Follow specifications strictly. If a spec does not define functionality, do not implement or stub it. Extend specs first, then implement.
