@@ -22,17 +22,20 @@ public sealed class ProviderDispatchMiddleware
     private readonly ProviderDispatchOptions _options;
     private readonly INarrationPipelineObserver _observer;
     private readonly ILogger<ProviderDispatchMiddleware> _logger;
+    private readonly Narratoria.Components.IStageMetadataProvider? _stageMetadata;
 
     public ProviderDispatchMiddleware(
         INarrationProvider provider,
         ProviderDispatchOptions? options = null,
         INarrationPipelineObserver? observer = null,
-        ILogger<ProviderDispatchMiddleware>? logger = null)
+        ILogger<ProviderDispatchMiddleware>? logger = null,
+        Narratoria.Components.IStageMetadataProvider? stageMetadata = null)
     {
         _provider = provider ?? throw new ArgumentNullException(nameof(provider));
         _options = options ?? new ProviderDispatchOptions();
         _observer = observer ?? NullNarrationPipelineObserver.Instance;
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ProviderDispatchMiddleware>.Instance;
+        _stageMetadata = stageMetadata;
     }
 
     public ValueTask<MiddlewareResult> InvokeAsync(NarrationContext context, MiddlewareResult result, NarrationMiddlewareNext next, CancellationToken cancellationToken)
@@ -157,6 +160,7 @@ public sealed class ProviderDispatchMiddleware
 
             writer.TryComplete();
             _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "success", errorClass, context.SessionId, context.Trace, stopwatch.Elapsed));
+            _stageMetadata?.ApplyProviderMetrics(context.SessionId, Narratoria.Components.NarrationStageKind.Llm, promptTokens: null, completionTokens: tokens.Count, model: _provider.GetType().Name);
             RecordMetrics("success", errorClass, stopwatch.Elapsed);
             return context with { WorkingNarration = tokens.ToImmutable() };
         }

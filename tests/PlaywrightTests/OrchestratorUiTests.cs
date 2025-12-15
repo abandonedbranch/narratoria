@@ -46,6 +46,6 @@ public class OrchestratorUiTests
         var title = await llmChip.First.EvaluateAsync<string>("e => e.getAttribute('title')");
         Assert.IsNotNull(title);
         StringAssert.Contains(title, "C=4");
-        StringAssert.Contains(title, "fake-narrator");
+        StringAssert.Contains(title, "FakeNarrationProvider");
     }
 }
