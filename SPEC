@@ -63,21 +63,22 @@ RULE: Drift tracking
 
 - Provider dispatch (current drift): metrics/log fields not fully aligned with spec; verify terminal/stream-composition semantics remain consistent with the streaming contract.
 - IndexedDB storage (current drift): CRUD surface incomplete (e.g., no Get/Delete); observability field completeness varies by operation.
- - Narration pipeline log UI (current drift): render-only component implemented; hover metadata popovers and auto-scroll behaviors remain unimplemented; Playwright coverage exists for streaming and chip states; hover popover coverage remains.
- - Prompt input bar UI (current drift): component implemented with gating and error banner; cancellation propagation via delegate token SHOULD be validated by E2E; no implicit retries (policy) remains enforced.
- - Attachments dropzone UI (current drift): component implemented for selection/validation and acceptance; ingestion service integration NOT wired in orchestrator; drag-and-drop interactions MAY be added; Playwright coverage present for acceptance via payload.
- - Narration session orchestrator UI (current drift): component implemented; restore-from-store NOT implemented; observer→view adapter NOT wired; stage metadata provider NOT integrated; uses a fake provider for local streaming; MUST wire real pipeline with middleware and observer.
- - Pipeline observer→view adapter (current drift): NOT implemented; orchestrator updates view directly from streaming; adapter MUST translate observer events into deterministic turn updates.
- - Stage metadata provider (current drift): NOT implemented; chips lack hover payload population; aggregation MUST merge telemetry and provider metrics per spec.
+ - Narration pipeline log UI (current drift): render-only component implemented; hover metadata popovers now present via chip title; auto-scroll remains unimplemented; expand Playwright coverage to assert hover content deterministically.
+ - Prompt input bar UI (current drift): component implemented with gating and error banner; E2E SHOULD validate cancellation propagation; no implicit retries enforced.
+ - Attachments dropzone UI (current drift): component implemented; ingestion middleware NOT yet wired into orchestrator; drag-and-drop interactions MAY be added; Playwright covers acceptance via payload.
+ - Narration session orchestrator UI (current drift): component implemented and wired with observer→view adapter and stage metadata provider; restore-from-store remains unimplemented; demo provider remains in orchestrator for local streaming only.
+ - Pipeline observer→view adapter (current drift): implemented and integrated; monitor for event mismatches; add unit tests for skipped/failure transitions coverage breadth.
+ - Stage metadata provider (current drift): implemented and integrated; provider metrics (tokens/model) emitted via middleware; prompt token estimation remains unimplemented.
  - System prompt profile resolver (current drift): config-backed resolver implemented with success/not_found/error/cancelled metrics and logs; storage-backed or policy-based selection remains unimplemented.
  - System prompt profile resolver (potential drift): future changes to selection policies MUST remain deterministic and versioned; any caching MUST preserve consistency across a single process lifetime.
 - Provider dispatch (potential drift): future middleware additions that wrap streams must preserve early-dispose cancellation propagation upstream.
 - Persistence (potential drift): any future changes must preserve “skip persistence on downstream failure” and must not reintroduce persistence of per-run prompt state.
 
 ## Not completed
-
-- `specs/pipeline-observer-view-adapter.spec.md` — Owner: GitHub Copilot — Expected completion: 2025-12-20.
-- `specs/stage-metadata-provider.spec.md` — Owner: GitHub Copilot — Expected completion: 2025-12-20.
+ 
+ - Restore-from-store in orchestrator — Owner: GitHub Copilot — Expected completion: 2025-12-20.
+ - Attachment ingestion wiring in orchestrator — Owner: GitHub Copilot — Expected completion: 2025-12-21.
+ - Prompt token estimation and emission — Owner: GitHub Copilot — Expected completion: 2025-12-21.
 
 ## Format
 
