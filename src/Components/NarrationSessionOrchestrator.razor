@@ -34,10 +34,12 @@
     private List<NarrationPipelineTurnView> _turns = new();
     private bool _isSubmitting;
     private List<AttachmentCandidate> _attachments = new();
+    private StageMetadataProvider? _metadata;
 
     protected override void OnInitialized()
     {
         // Minimal restore omitted for now; orchestrator focuses on new submissions
+        _metadata = new StageMetadataProvider(StageOrder);
     }
 
     private async ValueTask SubmitPromptAsync(string prompt, CancellationToken cancellationToken)
@@ -66,7 +68,8 @@
             // Prepare observer adapter wired to latest turn
             var adapter = new PipelineObserverViewAdapter(StageOrder,
                 getTurn: _ => _turns[^1],
-                setTurn: updated => { _turns[^1] = updated; StateHasChanged(); });
+                setTurn: updated => { _turns[^1] = updated; StateHasChanged(); },
+                metadata: _metadata);
 
             var pipeline = Pipeline ?? BuildDefaultPipeline(adapter);
             var result = await pipeline.RunAsync(ctx, cancellationToken).ConfigureAwait(false);
@@ -144,5 +147,5 @@
 <div class="session-orchestrator">
     <AttachmentsDropzone AllowedContentTypes="@AllowedContentTypes" MaxBytesPerFile="@MaxBytesPerFile" MaxBytesTotal="@MaxBytesTotal" OnAccepted="AcceptAttachmentsAsync" />
     <PromptInputBar SubmitPrompt="SubmitPromptAsync" IsSubmitting="@_isSubmitting" />
-    <NarrationPipelineLog Turns="@_turns" StageOrder="@StageOrder" />
+    <NarrationPipelineLog Turns="@_turns" StageOrder="@StageOrder" Hovers="@_metadata?.Snapshot()" />
 </div>

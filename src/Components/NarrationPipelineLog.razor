@@ -22,7 +22,8 @@
                     @foreach (var stageKind in StageOrder)
                     {
                         var stageView = FindStage(turn, stageKind);
-                        <span class="chip @GetChipClass(stageView?.Status ?? NarrationStageStatus.Pending)" role="listitem" data-stage="@stageKind.Name">
+                        var hover = GetHover(turn.TurnId, stageKind);
+                        <span class="chip @GetChipClass(stageView?.Status ?? NarrationStageStatus.Pending)" role="listitem" data-stage="@stageKind.Name" title="@FormatHover(hover)">
                             @stageKind.Name
                         </span>
                     }
@@ -41,6 +42,9 @@
 
     [Parameter]
     public IReadOnlyList<NarrationStageKind> StageOrder { get; set; } = Array.Empty<NarrationStageKind>();
+
+    [Parameter]
+    public IReadOnlyDictionary<(Guid, NarrationStageKind), NarrationStageHover>? Hovers { get; set; }
     private bool _hasValidationError;
     private bool _hasStreamMismatch;
 
@@ -58,6 +62,20 @@
     }
 
     private string RenderOutput(NarrationOutputView output) => NarrationPipelineLogLogic.RenderOutput(output);
+
+    private NarrationStageHover? GetHover(Guid turnId, NarrationStageKind stage)
+        => Hovers is null ? null : (Hovers.TryGetValue((turnId, stage), out var hover) ? hover : null);
+
+    private static string FormatHover(NarrationStageHover? hover)
+    {
+        if (hover is null) return string.Empty;
+        var parts = new List<string>(4);
+        if (hover.Duration is TimeSpan d) parts.Add($"{d.TotalMilliseconds:F0}ms");
+        if (hover.PromptTokens is int pt) parts.Add($"P={pt}");
+        if (hover.CompletionTokens is int ct) parts.Add($"C={ct}");
+        if (!string.IsNullOrWhiteSpace(hover.Model)) parts.Add(hover.Model!);
+        return string.Join(" • ", parts);
+    }
 
     private string GetChipClass(NarrationStageStatus status) => status switch
     {
