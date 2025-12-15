@@ -1,20 +1,19 @@
 ## Rules
 
-RULE: All implementations MUST comply with [CONTRIB.md](CONTRIB.md).
+- Specs MUST reference and defer all coding standards to [CONTRIB.md](CONTRIB.md). Do not restate coding rules here.
 
-RULE: Audience
-- All documents in this repository EXCEPT `README` are written for GPT-5.x models only.
-- Optimize for deterministic regeneration of the system in a blank workspace.
+- Audience (spec documents only)
+  - All documents EXCEPT `README` target GPT-5.x models.
+  - Optimize for deterministic regeneration in a blank workspace.
 
-RULE: Spec-first authority
-- Specs are the authoritative implementation definition.
-- Code is a derived byproduct.
-- When spec and code conflict, the spec wins (until the spec is updated).
+- Spec-first authority (for specification workflow)
+  - Specs define behavior; code is derived.
+  - When spec and code conflict, the spec wins until the spec is updated.
 
-RULE: Style (machine-oriented)
-- Prefer normative, testable wording: MUST / SHOULD / MAY.
-- Prefer explicit types, inputs/outputs, invariants, failure modes, cancellation semantics, and observability fields.
-- Avoid human-oriented narrative or pedagogy.
+- Spec style (machine-oriented authoring)
+  - Use normative wording: MUST / SHOULD / MAY.
+  - Define explicit types, inputs/outputs, invariants, failure modes, cancellation semantics, observability fields.
+  - Avoid human-oriented narrative/pedagogy.
 
 ## Spec Directory
 
@@ -39,25 +38,25 @@ RULE: Style (machine-oriented)
   - `specs/pipeline-observer-view-adapter.spec.md`
   - `specs/stage-metadata-provider.spec.md`
 - If any spec is not yet complete, add it under a "Not completed" list with owner and expected completion date.
-- Implementors must explicitly state what is complete and what remains when updating this file.
-- IMPORTANT: After any work on a spec/implementation pair (including drift reduction), update this file with an explicit status note. Listing a spec as “Completed” is not sufficient unless “what remains” is explicitly “none”.
+- Implementors MUST explicitly state what is complete and what remains when updating this file.
+- After any work on a spec/implementation pair (including drift reduction), update this file with an explicit status note. Listing a spec as “Completed” is insufficient unless “what remains” is explicitly “none”.
 
 ## Status Reporting (Required)
 
-When you touch a spec or its implementation, you must also update this file with a brief status note.
+When you touch a spec or its implementation, update this file with a brief status note.
 
 Minimum required update (pick one):
 - Add/refresh the “What remains” section (even if the answer is “none”).
-- Or, if the work is partial, move the spec under a “Not completed” list with an owner.
+- Or, if partial, move the spec under a “Not completed” list with an owner.
 
-The goal is to keep this file truthful about drift and remaining work, not just about whether a spec document exists.
+Goal: keep this file truthful about drift and remaining work, not just whether a spec document exists.
 
-RULE: Drift tracking
+RULE: Drift tracking (for specs)
 - The “What remains” section MUST track BOTH:
   - current drift (known mismatches between specs and code)
   - potential drift (high-risk areas where drift is likely or expected soon)
 - Each bullet SHOULD name the affected spec/component and the nature of the drift.
-- If drift is fully resolved for a component, explicitly state “none” for that component (do not omit).
+- If drift is fully resolved for a component, explicitly state “none” (do not omit).
 
 ## What remains
 
@@ -80,31 +79,31 @@ RULE: Drift tracking
  - Attachment ingestion wiring in orchestrator — Owner: GitHub Copilot — Expected completion: 2025-12-21.
  - Prompt token estimation and emission — Owner: GitHub Copilot — Expected completion: 2025-12-21.
 
-## Format
+## Format (Template Sections)
 
-Mode
-Behavior (WHAT / INPUT / OUTPUT / FAILS / NEVER)
-Policies
-Invariants
-Observability
-Never
-Non-goals
-Output
+- Mode
+- Behavior (WHAT / INPUT / OUTPUT / FAILS / NEVER)
+- Policies
+- Invariants
+- Observability
+- Never
+- Non-goals
+- Output
 
-## Clarifications
+## Clarifications (Spec Authoring)
 
 - Mode: `isolated` (pure function, no shared state), `compositional` (cooperates with collaborators), `stateful` (reads/writes owned state).
-- Behavior: spell out caller obligations (auth/session/state loading), allowed side effects, and typed inputs/outputs referencing existing DTOs/interfaces when possible.
-- Policies: include retry/timeout/idempotency/concurrency/cancellation requirements; async methods accept `CancellationToken`.
-- Invariants: note determinism, thread-safety, and constraints that must be true for all executions.
-- Observability: define required log/event fields (e.g., `trace_id`, `request_id`, `stage`, `elapsed_ms`, `status`, `error_class`) and when they emit.
-- Never/Non-goals: list forbidden behaviors and explicitly excluded scope to prevent drift.
+- Behavior: caller obligations, allowed side effects, typed inputs/outputs referencing existing DTOs/interfaces.
+- Policies: retry/timeout/idempotency/concurrency/cancellation; async methods accept `CancellationToken`.
+- Invariants: determinism, thread-safety, constraints.
+- Observability: required log/event fields (e.g., `trace_id`, `request_id`, `stage`, `elapsed_ms`, `status`, `error_class`) and emit timing.
+- Never/Non-goals: forbidden behaviors and excluded scope to prevent drift.
 - Output: minimal implementation only—no commentary, no TODOs.
 
 ## Defaults
 
-Mode: Isolated behavior
-Output: Minimal implementation only. No commentary.
+- Mode: Isolated behavior
+- Output: Minimal implementation only. No commentary.
 
 ## Checklist
 
