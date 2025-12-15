@@ -76,6 +76,10 @@ builder.Services.AddSingleton<INarrationOpenAiContextFactory, NarrationOpenAiCon
 builder.Services.AddSingleton<INarrationProvider, OpenAiNarrationProvider>();
 builder.Services.AddSingleton<NarrationContentGuardianMiddleware>();
 builder.Services.AddSingleton<NarrationSystemPromptMiddleware>();
+builder.Services.AddOptions<SystemPromptProfileConfig>().Bind(builder.Configuration.GetSection("SystemPromptProfile")).Validate(config =>
+    !string.IsNullOrWhiteSpace(config.ProfileId) && !string.IsNullOrWhiteSpace(config.PromptText) && !string.IsNullOrWhiteSpace(config.Version),
+    "SystemPromptProfile requires ProfileId, PromptText, Version").ValidateOnStart();
+builder.Services.AddSingleton<ISystemPromptProfileResolver, ConfigSystemPromptProfileResolver>();
 
 builder.Services.AddSingleton<ProviderDispatchMiddleware>(sp =>
 {
