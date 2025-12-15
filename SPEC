@@ -56,7 +56,6 @@ RULE: Drift tracking
 ## What remains
 
 - Provider dispatch (current drift): metrics/log fields not fully aligned with spec; verify terminal/stream-composition semantics remain consistent with the streaming contract.
-- Attachment ingestion (current drift): `application/pdf` allowlisted without true PDF-to-text extraction; purge on cancellation is best-effort (caller-token-bound).
 - IndexedDB storage (current drift): CRUD surface incomplete (e.g., no Get/Delete); observability field completeness varies by operation.
 - Narration pipeline log UI (current drift): initial UI component implemented; hover metadata popovers and auto-scroll behaviors remain unimplemented; validation/stream gating covered by component checks. Component UI tests removed (bUnit dependency dropped).
  - Narration pipeline log UI (current drift): initial UI component implemented; hover metadata popovers and auto-scroll behaviors remain unimplemented; validation/stream gating covered by component checks. Component UI tests removed (bUnit dependency dropped). Plan to add end-to-end UI coverage using Playwright for .NET.
