@@ -40,6 +40,13 @@ public sealed class StageMetadataProvider : IStageMetadataProvider
             (_, existing) => existing with { PromptTokens = promptTokens, CompletionTokens = completionTokens, Model = model });
     }
 
+    public static int EstimatePromptTokens(string prompt)
+    {
+        if (string.IsNullOrWhiteSpace(prompt)) return 0;
+        var words = prompt.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return words.Length;
+    }
+
     public NarrationStageHover? Get(Guid turnId, NarrationStageKind stage)
     {
         return _byKey.TryGetValue((turnId, stage.Name), out var hover) ? hover : null;

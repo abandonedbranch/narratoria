@@ -38,8 +38,42 @@
 
     protected override void OnInitialized()
     {
-        // Minimal restore omitted for now; orchestrator focuses on new submissions
         _metadata = new StageMetadataProvider(StageOrder);
+        // Restore from store if available
+        if (SessionStore is not null)
+        {
+            var cts = new CancellationTokenSource();
+            _ = RestoreAsync(cts.Token);
+        }
+    }
+
+    private async Task RestoreAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var context = await SessionStore!.LoadAsync(SessionId, cancellationToken).ConfigureAwait(false);
+            if (context is null) return;
+
+            if (!context.PriorNarration.IsDefaultOrEmpty)
+            {
+                foreach (var line in context.PriorNarration)
+                {
+                    var stages = StageOrder.Select(k => new NarrationStageView { Kind = k, Status = NarrationStageStatus.Completed }).ToImmutableArray();
+                    _turns.Add(new NarrationPipelineTurnView
+                    {
+                        TurnId = Guid.NewGuid(),
+                        UserPrompt = context.PlayerPrompt,
+                        PromptAt = null,
+                        Stages = stages,
+                        Output = new NarrationOutputView { FinalText = line }
+                    });
+                }
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+        }
     }
 
     private async ValueTask SubmitPromptAsync(string prompt, CancellationToken cancellationToken)
@@ -86,6 +120,8 @@
             var updatedContext = await result.UpdatedContext.ConfigureAwait(false);
             var finalized = NarrationSessionOrchestratorLogic.FinalizeTurn(_turns[^1], allSegments, StageOrder);
             _turns[^1] = finalized;
+            var promptTokens = StageMetadataProvider.EstimatePromptTokens(prompt);
+            _metadata?.ApplyProviderMetrics(SessionId, NarrationStageKind.Llm, promptTokens: promptTokens, completionTokens: allSegments.Count, model: null);
             StateHasChanged();
         }
         finally
@@ -105,11 +141,18 @@
     private NarrationPipelineService BuildDefaultPipeline(INarrationPipelineObserver? observer = null)
     {
         var provider = new FakeNarrationProvider();
-        var middleware = new NarrationMiddleware[]
+        var middleware = new List<NarrationMiddleware>
         {
             new NarrationPersistenceMiddleware(SessionStore ?? new NullSessionStore(), observer ?? NullNarrationPipelineObserver.Instance).InvokeAsync,
             new ProviderDispatchMiddleware(provider, options: new ProviderDispatchOptions { Model = "fake-narrator" }, observer: observer, stageMetadata: _metadata).InvokeAsync
         };
+
+        // Wire attachment ingestion ahead of provider when attachments are staged
+        foreach (var a in _attachments)
+        {
+            middleware.Insert(1, new Narratoria.Narration.Attachments.AttachmentIngestionMiddleware(a.AttachmentId, new NullAttachmentIngestionService()).InvokeAsync);
+        }
+
         return new NarrationPipelineService(middleware);
     }
 
@@ -124,6 +167,15 @@
                 await Task.Delay(50, cancellationToken);
                 yield return t;
             }
+        }
+    }
+
+    private sealed class NullAttachmentIngestionService : Narratoria.Narration.Attachments.IAttachmentIngestionService
+    {
+        public ValueTask<Narratoria.Narration.Attachments.AttachmentIngestionResult> IngestAsync(Narratoria.Narration.Attachments.AttachmentIngestionCommand command, CancellationToken cancellationToken)
+        {
+            var processed = new Narratoria.Narration.Attachments.ProcessedAttachment(command.AttachmentId, command.SessionId, "file", "text/plain", "hash", "", 0, false, DateTimeOffset.UtcNow);
+            return ValueTask.FromResult(Narratoria.Narration.Attachments.AttachmentIngestionResult.Success(processed));
         }
     }
 
