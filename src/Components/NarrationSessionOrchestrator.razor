@@ -63,7 +63,12 @@
                 Trace = new Narratoria.OpenAi.TraceMetadata(Guid.NewGuid().ToString(), Guid.NewGuid().ToString())
             };
 
-            var pipeline = Pipeline ?? BuildDefaultPipeline();
+            // Prepare observer adapter wired to latest turn
+            var adapter = new PipelineObserverViewAdapter(StageOrder,
+                getTurn: _ => _turns[^1],
+                setTurn: updated => { _turns[^1] = updated; StateHasChanged(); });
+
+            var pipeline = Pipeline ?? BuildDefaultPipeline(adapter);
             var result = await pipeline.RunAsync(ctx, cancellationToken).ConfigureAwait(false);
 
             var allSegments = new List<string>();
@@ -94,13 +99,13 @@
         return ValueTask.CompletedTask;
     }
 
-    private NarrationPipelineService BuildDefaultPipeline()
+    private NarrationPipelineService BuildDefaultPipeline(INarrationPipelineObserver? observer = null)
     {
         var provider = new FakeNarrationProvider();
         var middleware = new NarrationMiddleware[]
         {
-            new NarrationPersistenceMiddleware(SessionStore ?? new NullSessionStore(), NullNarrationPipelineObserver.Instance).InvokeAsync,
-            new ProviderDispatchMiddleware(provider).InvokeAsync
+            new NarrationPersistenceMiddleware(SessionStore ?? new NullSessionStore(), observer ?? NullNarrationPipelineObserver.Instance).InvokeAsync,
+            new ProviderDispatchMiddleware(provider, options: null, observer: observer).InvokeAsync
         };
         return new NarrationPipelineService(middleware);
     }

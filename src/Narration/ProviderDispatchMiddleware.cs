@@ -171,6 +171,13 @@ public sealed class ProviderDispatchMiddleware
             ProviderErrorCount.Add(1, new TagList { { "error_class", errorClass } });
             throw new NarrationPipelineException(error, oce);
         }
+        catch (TaskCanceledException tce)
+        {
+            writer.TryComplete(tce);
+            _observer.OnStageCompleted(new NarrationStageTelemetry(Stage, "canceled", "OperationCanceled", context.SessionId, context.Trace, stopwatch.Elapsed));
+            RecordMetrics("canceled", "OperationCanceled", stopwatch.Elapsed);
+            throw new OperationCanceledException(tce.CancellationToken);
+        }
         catch (OperationCanceledException oce)
         {
             writer.TryComplete(oce);

@@ -99,10 +99,9 @@ public sealed class NarrationPersistenceMiddleware
         }
         finally
         {
-            if (completed)
-            {
-                await persistenceTask.Value.ConfigureAwait(false);
-            }
+            // Always attempt persistence to emit appropriate stage telemetry
+            // (success, skipped, or canceled) per spec, even when stream ends early.
+            await persistenceTask.Value.ConfigureAwait(false);
         }
     }
 
