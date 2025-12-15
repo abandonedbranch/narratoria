@@ -40,5 +40,12 @@ public class OrchestratorUiTests
 
         await page.WaitForSelectorAsync("text=NARRATION (streaming)");
         await page.WaitForSelectorAsync("text=NARRATION", new PageWaitForSelectorOptions { State = WaitForSelectorState.Visible, Timeout = 5000 });
+
+        // Assert hover title includes provider metrics for Llm stage
+        var llmChip = page.Locator(".chip", new LocatorOptions { HasTextString = "Llm" });
+        var title = await llmChip.First.EvaluateAsync<string>("e => e.getAttribute('title')");
+        Assert.IsNotNull(title);
+        StringAssert.Contains(title, "C=4");
+        StringAssert.Contains(title, "fake-narrator");
     }
 }

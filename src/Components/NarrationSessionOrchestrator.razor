@@ -86,6 +86,7 @@
             var updatedContext = await result.UpdatedContext.ConfigureAwait(false);
             var finalized = NarrationSessionOrchestratorLogic.FinalizeTurn(_turns[^1], allSegments, StageOrder);
             _turns[^1] = finalized;
+            _metadata?.ApplyProviderMetrics(SessionId, NarrationStageKind.Llm, promptTokens: null, completionTokens: allSegments.Count, model: "fake-narrator");
             StateHasChanged();
         }
         finally
