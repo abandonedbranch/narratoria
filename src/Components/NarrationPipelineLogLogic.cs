@@ -8,12 +8,7 @@ public static class NarrationPipelineLogLogic
     public static bool IsStageOrderValid(IReadOnlyList<NarrationStageKind> stageOrder)
     {
         if (stageOrder.Count == 0) return false;
-        var seen = new HashSet<NarrationStageKind>();
-        foreach (var stage in stageOrder)
-        {
-            if (!seen.Add(stage)) return false;
-        }
-        return true;
+        return stageOrder.Count == stageOrder.Distinct().Count();
     }
 
     public static bool AreTurnsAligned(IReadOnlyList<NarrationStageKind> stageOrder, IReadOnlyList<NarrationPipelineTurnView> turns)
