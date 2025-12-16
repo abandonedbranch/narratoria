@@ -81,12 +81,10 @@ public sealed class NarrationContextSerializer : IIndexedDbValueSerializer<Narra
 
         foreach (var prefix in EphemeralMetadataPrefixes)
         {
-            foreach (var key in immutable.Keys)
+            var keysToRemove = immutable.Keys.Where(key => key.StartsWith(prefix, StringComparison.Ordinal)).ToArray();
+            foreach (var key in keysToRemove)
             {
-                if (key.StartsWith(prefix, StringComparison.Ordinal))
-                {
-                    immutable = immutable.Remove(key);
-                }
+                immutable = immutable.Remove(key);
             }
         }
 

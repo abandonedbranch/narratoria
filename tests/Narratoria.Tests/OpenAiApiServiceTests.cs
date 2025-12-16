@@ -12,6 +12,8 @@ namespace Narratoria.Tests;
 [TestClass]
 public sealed class OpenAiApiServiceTests
 {
+    private static readonly HttpClient SharedHttpClient = new();
+
     [TestMethod]
     public async Task StreamAsync_YieldsProviderTokens()
     {
@@ -51,6 +53,7 @@ public sealed class OpenAiApiServiceTests
         {
             await foreach (var _ in service.StreamAsync(new SerializedPrompt(Guid.NewGuid(), "payload"), context, CancellationToken.None))
             {
+                // Consume the stream to trigger the HTTP error
             }
         });
 
@@ -71,6 +74,7 @@ public sealed class OpenAiApiServiceTests
         {
             await foreach (var _ in service.StreamAsync(new SerializedPrompt(Guid.NewGuid(), "payload"), context, CancellationToken.None))
             {
+                // Consume the stream to trigger the timeout
             }
         });
 
@@ -90,6 +94,7 @@ public sealed class OpenAiApiServiceTests
         {
             await foreach (var _ in service.StreamAsync(new SerializedPrompt(Guid.NewGuid(), "payload"), context, CancellationToken.None))
             {
+                // Consume the stream to trigger the decode error
             }
         });
 
@@ -133,7 +138,7 @@ public sealed class OpenAiApiServiceTests
     private static OpenAiRequestContext CreateContext(IOpenAiStreamingProvider provider, IOpenAiApiServiceMetrics metrics, TimeSpan? timeout = null)
     {
         return new OpenAiRequestContext(
-            new HttpClient(),
+            SharedHttpClient,
             new Uri("https://api.example.com/llm"),
             new OpenAiProviderCredentials("secret"),
             new OpenAiRequestPolicy(timeout ?? TimeSpan.FromSeconds(30), true),

@@ -165,6 +165,7 @@ public sealed class NarrationPipelineServiceTests
         var result = await pipeline.RunAsync(context, CancellationToken.None);
         await foreach (var _ in result.StreamedNarration)
         {
+            // Consume the stream to trigger middleware execution
         }
 
         CollectionAssert.AreEqual(new[] { "custom" }, order);
@@ -220,7 +221,7 @@ public sealed class NarrationPipelineServiceTests
         var sessionId = Guid.NewGuid();
         var store = InMemorySessionStore.WithSessions(new[] { CreateContext(sessionId) });
         var observer = new RecordingObserver();
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
 
         var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(StreamUntilCanceled), observer: observer, options: new ProviderDispatchOptions { Timeout = Timeout.InfiniteTimeSpan });
         var persistence = new NarrationPersistenceMiddleware(store, observer);
@@ -382,6 +383,7 @@ public sealed class NarrationPipelineServiceTests
     {
         await foreach (var _ in stream)
         {
+            // Consume all items from the stream
         }
     }
 

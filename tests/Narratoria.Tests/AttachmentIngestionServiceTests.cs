@@ -14,6 +14,8 @@ namespace Narratoria.Tests;
 [TestClass]
 public sealed class AttachmentIngestionServiceTests
 {
+    private static readonly HttpClient SharedHttpClient = new();
+
     [TestMethod]
     public async Task IngestAsync_Succeeds_PersistsAndPurges()
     {
@@ -92,6 +94,7 @@ public sealed class AttachmentIngestionServiceTests
             var result = await pipeline.RunAsync(context, CancellationToken.None);
             await foreach (var _ in result.StreamedNarration)
             {
+                // Consume the stream to trigger the pipeline execution and verify the exception is thrown
             }
         });
 
@@ -103,7 +106,7 @@ public sealed class AttachmentIngestionServiceTests
     private static OpenAiRequestContext CreateContext()
     {
         var credentials = new OpenAiProviderCredentials("key");
-        return new OpenAiRequestContext(new HttpClient(), new Uri("https://example.com"), credentials, OpenAiRequestPolicy.Default, NullLogger.Instance, new NullOpenAiMetrics(), new TraceMetadata("trace", "req"), new DummyStreamingProvider());
+        return new OpenAiRequestContext(SharedHttpClient, new Uri("https://example.com"), credentials, OpenAiRequestPolicy.Default, NullLogger.Instance, new NullOpenAiMetrics(), new TraceMetadata("trace", "req"), new DummyStreamingProvider());
     }
 
     private sealed class InMemoryUploadStore : IAttachmentUploadStore

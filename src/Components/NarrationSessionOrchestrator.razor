@@ -2,6 +2,7 @@
 @using Narratoria.Narration
 
 @inject IServiceProvider Services
+@implements IDisposable
 
 @code {
     [Parameter]
@@ -31,10 +32,11 @@
     [Parameter]
     public NarrationPipelineService? Pipeline { get; set; }
 
-    private List<NarrationPipelineTurnView> _turns = new();
+    private readonly List<NarrationPipelineTurnView> _turns = new();
     private bool _isSubmitting;
-    private List<AttachmentCandidate> _attachments = new();
+    private readonly List<AttachmentCandidate> _attachments = new();
     private StageMetadataProvider? _metadata;
+    private CancellationTokenSource? _restoreCts;
 
     protected override void OnInitialized()
     {
@@ -42,9 +44,15 @@
         // Restore from store if available
         if (SessionStore is not null)
         {
-            var cts = new CancellationTokenSource();
-            _ = RestoreAsync(cts.Token);
+            _restoreCts = new CancellationTokenSource();
+            // Fire-and-forget restoration; errors are caught in RestoreAsync to prevent crashes
+            _ = RestoreAsync(_restoreCts.Token);
         }
+    }
+
+    public void Dispose()
+    {
+        _restoreCts?.Dispose();
     }
 
     private async Task RestoreAsync(CancellationToken cancellationToken)
@@ -73,6 +81,7 @@
         }
         catch
         {
+            // Suppress errors during restoration to avoid blocking component initialization
         }
     }
 
@@ -117,7 +126,7 @@
                 StateHasChanged();
             }
 
-            var updatedContext = await result.UpdatedContext.ConfigureAwait(false);
+            _ = await result.UpdatedContext.ConfigureAwait(false);
             var finalized = NarrationSessionOrchestratorLogic.FinalizeTurn(_turns[^1], allSegments, StageOrder);
             _turns[^1] = finalized;
             var promptTokens = StageMetadataProvider.EstimatePromptTokens(prompt);

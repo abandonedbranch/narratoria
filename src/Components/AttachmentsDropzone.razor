@@ -13,8 +13,8 @@
     [Parameter]
     public Func<IReadOnlyList<AttachmentCandidate>, CancellationToken, ValueTask>? OnAccepted { get; set; }
 
-    private List<AttachmentCandidate> _staged = new();
-    private List<string> _errors = new();
+    private readonly List<AttachmentCandidate> _staged = new();
+    private readonly List<string> _errors = new();
 
     private long TotalBytes => _staged.Sum(s => s.SizeBytes);
 
@@ -70,6 +70,7 @@
         }
         catch (OperationCanceledException)
         {
+            // Expected when cancellation is requested; no action needed
         }
         catch (Exception ex)
         {
