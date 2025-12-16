@@ -189,7 +189,8 @@ public sealed class NarrationPersistenceMiddleware
         foreach (var prefix in EphemeralMetadataPrefixes)
         {
             var keysToRemove = immutable.Keys
-                .Where(key => key.StartsWith(prefix, StringComparison.Ordinal));
+                .Where(key => key.StartsWith(prefix, StringComparison.Ordinal))
+                .ToList();
             
             foreach (var key in keysToRemove)
             {
