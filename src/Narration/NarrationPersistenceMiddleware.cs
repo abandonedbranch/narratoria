@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -187,12 +188,13 @@ public sealed class NarrationPersistenceMiddleware
 
         foreach (var prefix in EphemeralMetadataPrefixes)
         {
-            foreach (var key in immutable.Keys)
+            var keysToRemove = immutable.Keys
+                .Where(key => key.StartsWith(prefix, StringComparison.Ordinal))
+                .ToList();
+            
+            foreach (var key in keysToRemove)
             {
-                if (key.StartsWith(prefix, StringComparison.Ordinal))
-                {
-                    immutable = immutable.Remove(key);
-                }
+                immutable = immutable.Remove(key);
             }
         }
 
