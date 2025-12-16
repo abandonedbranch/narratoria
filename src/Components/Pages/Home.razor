@@ -11,7 +11,7 @@
 </section>
 
 @code {
-	private IReadOnlyList<NarrationStageKind> _stageOrder = new[]
+	private readonly IReadOnlyList<NarrationStageKind> _stageOrder = new[]
 	{
 		NarrationStageKind.Sanitize,
 		NarrationStageKind.Context,
@@ -19,7 +19,7 @@
 		NarrationStageKind.Llm
 	};
 
-	private IReadOnlyList<NarrationPipelineTurnView> _turns = new[]
+	private readonly IReadOnlyList<NarrationPipelineTurnView> _turns = new[]
 	{
 		new NarrationPipelineTurnView
 		{
