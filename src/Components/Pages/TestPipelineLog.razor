@@ -7,7 +7,7 @@
 <NarrationPipelineLog Turns="@_turns" StageOrder="@_stageOrder" OnSubmitPrompt="OnSubmit" IsSubmitting="false" />
 
 @code {
-    private IReadOnlyList<NarrationStageKind> _stageOrder = new[]
+    private readonly IReadOnlyList<NarrationStageKind> _stageOrder = new[]
     {
         NarrationStageKind.Sanitize,
         NarrationStageKind.Context,
