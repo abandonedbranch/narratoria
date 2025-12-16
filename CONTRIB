@@ -131,5 +131,5 @@ RULE: Keep code changes minimal, focused, and aligned to existing public APIs. U
 RULE: Before finishing any work, update TODO if items remain to be done (drift/gaps/debt). If nothing remains, no TODO changes are required.
 
 SECTION: NoPlaceholders
-RULE: Do not add placeholder code, components, or tests. If no implementation is available, omit it entirely and track the gap in SPEC under "What remains" or "Not completed".
+RULE: Do not add placeholder code, components, or tests. If no implementation is available, omit it entirely and track implementation gaps in TODO (per line 7). Track specification gaps (areas not yet specified) in SPEC under "What remains".
 RULE: Follow specifications strictly. If a spec does not define functionality, do not implement or stub it. Extend specs first, then implement.
