@@ -47,9 +47,6 @@ RULE: Specification status tracking
 - This includes: specs not yet written, specs requiring updates, or areas needing clearer specification.
 - For implementation drift, functionality gaps, and technical debt, see TODO at the repo root (per CONTRIB).
 
-## What remains
-
-- All current specifications are complete. Implementation status is tracked in TODO.
 ## Format (Template Sections)
 
 - Mode
