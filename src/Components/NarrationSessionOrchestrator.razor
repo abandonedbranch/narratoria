@@ -45,6 +45,7 @@
         if (SessionStore is not null)
         {
             _restoreCts = new CancellationTokenSource();
+            // Fire-and-forget restoration; errors are caught in RestoreAsync to prevent crashes
             _ = RestoreAsync(_restoreCts.Token);
         }
     }
