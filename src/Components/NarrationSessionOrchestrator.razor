@@ -2,6 +2,7 @@
 @using Narratoria.Narration
 
 @inject IServiceProvider Services
+@implements IDisposable
 
 @code {
     [Parameter]
@@ -35,6 +36,7 @@
     private bool _isSubmitting;
     private List<AttachmentCandidate> _attachments = new();
     private StageMetadataProvider? _metadata;
+    private CancellationTokenSource? _restoreCts;
 
     protected override void OnInitialized()
     {
@@ -42,9 +44,14 @@
         // Restore from store if available
         if (SessionStore is not null)
         {
-            var cts = new CancellationTokenSource();
-            _ = RestoreAsync(cts.Token);
+            _restoreCts = new CancellationTokenSource();
+            _ = RestoreAsync(_restoreCts.Token);
         }
+    }
+
+    public void Dispose()
+    {
+        _restoreCts?.Dispose();
     }
 
     private async Task RestoreAsync(CancellationToken cancellationToken)

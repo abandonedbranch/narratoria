@@ -214,6 +214,8 @@ public sealed class ProviderDispatchMiddleware
         }
         finally
         {
+            // Manual disposal required because these CancellationTokenSource objects are passed to async operations
+            // and must remain alive until those operations complete. Using statements would dispose them prematurely.
             runCts.Dispose();
             timeoutOnlyCts.Dispose();
         }

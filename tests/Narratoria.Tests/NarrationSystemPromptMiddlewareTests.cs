@@ -203,7 +203,7 @@ public sealed class NarrationSystemPromptMiddlewareTests
             Trace = new TraceMetadata("trace", "request")
         };
 
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
         cts.Cancel();
 
         var result = MiddlewareResult.FromContext(context);

@@ -220,7 +220,7 @@ public sealed class NarrationPipelineServiceTests
         var sessionId = Guid.NewGuid();
         var store = InMemorySessionStore.WithSessions(new[] { CreateContext(sessionId) });
         var observer = new RecordingObserver();
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
 
         var provider = new ProviderDispatchMiddleware(new StubNarrationProvider(StreamUntilCanceled), observer: observer, options: new ProviderDispatchOptions { Timeout = Timeout.InfiniteTimeSpan });
         var persistence = new NarrationPersistenceMiddleware(store, observer);
