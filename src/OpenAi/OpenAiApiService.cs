@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
@@ -139,12 +140,9 @@ public sealed class OpenAiApiService : IOpenAiApiService
         }
 
         var builder = new StringBuilder(content.Count * 8);
-        foreach (var part in content)
+        foreach (var part in content.Where(p => p.Kind == ChatMessageContentPartKind.Text && !string.IsNullOrEmpty(p.Text)))
         {
-            if (part.Kind == ChatMessageContentPartKind.Text && !string.IsNullOrEmpty(part.Text))
-            {
-                builder.Append(part.Text);
-            }
+            builder.Append(part.Text);
         }
 
         return builder.ToString();
