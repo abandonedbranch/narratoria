@@ -79,7 +79,8 @@ RULE: Specification status tracking
 ## Cross-refs
 
 - Coding standards, interfaces, testing practices, and implementation rules live in [CONTRIB.md](CONTRIB.md).
-- This SPEC governs specification authoring, drift/status tracking, and spec-first authority only.
+- This SPEC governs specification authoring, specification status tracking, and spec-first authority only.
+- Implementation drift, functionality gaps, and technical debt tracking live in [TODO](TODO).
 
 ## Checklist
 
