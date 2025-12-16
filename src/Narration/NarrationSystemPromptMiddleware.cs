@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 
 namespace Narratoria.Narration;
@@ -96,12 +97,9 @@ public sealed class NarrationSystemPromptMiddleware
             var builder = ImmutableArray.CreateBuilder<ContextSegment>();
             builder.Add(new ContextSegment("system", profile.PromptText, Source));
 
-            foreach (var instruction in profile.Instructions)
+            foreach (var instruction in profile.Instructions.Where(i => !string.IsNullOrWhiteSpace(i)))
             {
-                if (!string.IsNullOrWhiteSpace(instruction))
-                {
-                    builder.Add(new ContextSegment("instruction", instruction, Source));
-                }
+                builder.Add(new ContextSegment("instruction", instruction, Source));
             }
 
             foreach (var segment in baselineSegments)
