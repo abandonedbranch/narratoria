@@ -32,9 +32,9 @@
     [Parameter]
     public NarrationPipelineService? Pipeline { get; set; }
 
-    private List<NarrationPipelineTurnView> _turns = new();
+    private readonly List<NarrationPipelineTurnView> _turns = new();
     private bool _isSubmitting;
-    private List<AttachmentCandidate> _attachments = new();
+    private readonly List<AttachmentCandidate> _attachments = new();
     private StageMetadataProvider? _metadata;
     private CancellationTokenSource? _restoreCts;
 
@@ -80,6 +80,7 @@
         }
         catch
         {
+            // Suppress errors during restoration to avoid blocking component initialization
         }
     }
 
@@ -124,7 +125,7 @@
                 StateHasChanged();
             }
 
-            var updatedContext = await result.UpdatedContext.ConfigureAwait(false);
+            _ = await result.UpdatedContext.ConfigureAwait(false);
             var finalized = NarrationSessionOrchestratorLogic.FinalizeTurn(_turns[^1], allSegments, StageOrder);
             _turns[^1] = finalized;
             var promptTokens = StageMetadataProvider.EstimatePromptTokens(prompt);

@@ -74,7 +74,6 @@ public sealed class NarrationPersistenceMiddleware
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using var enumerator = downstreamResult.StreamedNarration.WithCancellation(cancellationToken).GetAsyncEnumerator();
-        var completed = false;
         try
         {
             while (true)
@@ -91,7 +90,6 @@ public sealed class NarrationPersistenceMiddleware
 
                 if (!hasNext)
                 {
-                    completed = true;
                     break;
                 }
 

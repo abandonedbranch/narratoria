@@ -109,6 +109,7 @@ public sealed class ProviderDispatchMiddleware
                 }
                 catch (ObjectDisposedException)
                 {
+                    // Ignore if CancellationTokenSource is already disposed
                 }
             }
         }

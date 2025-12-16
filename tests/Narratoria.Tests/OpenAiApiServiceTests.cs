@@ -53,6 +53,7 @@ public sealed class OpenAiApiServiceTests
         {
             await foreach (var _ in service.StreamAsync(new SerializedPrompt(Guid.NewGuid(), "payload"), context, CancellationToken.None))
             {
+                // Consume the stream to trigger the HTTP error
             }
         });
 
@@ -73,6 +74,7 @@ public sealed class OpenAiApiServiceTests
         {
             await foreach (var _ in service.StreamAsync(new SerializedPrompt(Guid.NewGuid(), "payload"), context, CancellationToken.None))
             {
+                // Consume the stream to trigger the timeout
             }
         });
 
@@ -92,6 +94,7 @@ public sealed class OpenAiApiServiceTests
         {
             await foreach (var _ in service.StreamAsync(new SerializedPrompt(Guid.NewGuid(), "payload"), context, CancellationToken.None))
             {
+                // Consume the stream to trigger the decode error
             }
         });
 

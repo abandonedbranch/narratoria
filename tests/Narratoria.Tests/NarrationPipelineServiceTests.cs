@@ -165,6 +165,7 @@ public sealed class NarrationPipelineServiceTests
         var result = await pipeline.RunAsync(context, CancellationToken.None);
         await foreach (var _ in result.StreamedNarration)
         {
+            // Consume the stream to trigger middleware execution
         }
 
         CollectionAssert.AreEqual(new[] { "custom" }, order);
@@ -382,6 +383,7 @@ public sealed class NarrationPipelineServiceTests
     {
         await foreach (var _ in stream)
         {
+            // Consume all items from the stream
         }
     }
 

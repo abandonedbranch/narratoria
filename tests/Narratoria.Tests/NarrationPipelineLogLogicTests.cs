@@ -46,7 +46,6 @@ public sealed class NarrationPipelineLogLogicTests
     [TestMethod]
     public void HasStreamMismatch_DetectsNonLatestStreamingOrRunning()
     {
-        var order = new[] { NarrationStageKind.Sanitize };
         var t1 = new NarrationPipelineTurnView
         {
             TurnId = Guid.NewGuid(),

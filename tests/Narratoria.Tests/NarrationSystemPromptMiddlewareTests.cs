@@ -209,7 +209,7 @@ public sealed class NarrationSystemPromptMiddlewareTests
         var result = MiddlewareResult.FromContext(context);
         var downstreamInvoked = false;
 
-        var ex = await Assert.ThrowsExceptionAsync<OperationCanceledException>(
+        _ = await Assert.ThrowsExceptionAsync<OperationCanceledException>(
             () => middleware.InvokeAsync(context, result, (ctx, res, ct) =>
             {
                 downstreamInvoked = true;
@@ -313,13 +313,6 @@ public sealed class NarrationSystemPromptMiddlewareTests
     [TestMethod]
     public async Task AllowsProfileUpdateByDifferentVersionOrId()
     {
-        var profile1 = new SystemPromptProfile(
-            ProfileId: "profile-a",
-            PromptText: "First prompt",
-            Instructions: [],
-            Version: "v1"
-        );
-
         var profile2 = new SystemPromptProfile(
             ProfileId: "profile-b",
             PromptText: "Second prompt",
