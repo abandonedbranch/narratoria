@@ -1,0 +1,106 @@
+## Rules
+
+- Specs MUST reference and defer all coding standards to [CONTRIB.md](CONTRIB.md). Do not restate coding rules here.
+
+- Audience (spec documents only)
+  - All documents EXCEPT `README` target GPT-5.x models.
+  - Optimize for deterministic regeneration in a blank workspace.
+
+- Spec-first authority (for specification workflow)
+  - Specs define behavior; code is derived.
+  - When spec and code conflict, the spec wins until the spec is updated.
+
+- Spec style (machine-oriented authoring)
+  - Use normative wording: MUST / SHOULD / MAY.
+  - Define explicit types, inputs/outputs, invariants, failure modes, cancellation semantics, observability fields.
+  - Avoid human-oriented narrative/pedagogy.
+
+## Spec Directory
+
+- All specs live in `specs/`.
+- Template: `specs/_template.spec.md`.
+- RULE: Before creating a new spec file, the coding agent MUST read `specs/_template.spec.md` and follow its structure verbatim (headings/sections), only replacing placeholders.
+- RULE: The list below MUST mirror the filenames present in the `specs/` directory. Keep it up to date whenever files are added, removed, or renamed.
+
+### Specs Index (mirrors specs/)
+
+- `specs/_template.spec.md`
+- `specs/attachments-dropzone-ui.spec.md`
+- `specs/indexeddb-storage-service.spec.md`
+- `specs/narration-attachment-ingestion-service.spec.md`
+- `specs/narration-content-guardian-middleware.spec.md`
+- `specs/narration-persistence-middleware.spec.md`
+- `specs/narration-pipeline-log-ui.spec.md`
+- `specs/narration-provider-dispatch-middleware.spec.md`
+- `specs/narration-session-orchestrator-ui.spec.md`
+- `specs/narration-system-prompt-middleware.spec.md`
+- `specs/narrator-pipeline-service.spec.md`
+- `specs/openai-api-service.spec.md`
+- `specs/pipeline-observer-view-adapter.spec.md`
+- `specs/prompt-input-bar-ui.spec.md`
+- `specs/stage-metadata-provider.spec.md`
+- `specs/storage-quota-awareness-service.spec.md`
+- `specs/system-prompt-profile-resolver.spec.md`
+
+RULE: Drift tracking (for specs)
+- The “What remains” section MUST track BOTH:
+  - current drift (known mismatches between specs and code)
+  - potential drift (high-risk areas where drift is likely or expected soon)
+- Each bullet SHOULD name the affected spec/component and the nature of the drift.
+- If drift is fully resolved for a component, explicitly state “none” (do not omit).
+
+## What remains
+
+- Provider dispatch (current drift): metrics/log fields not fully aligned with spec; verify terminal/stream-composition semantics remain consistent with the streaming contract.
+- IndexedDB storage (current drift): CRUD surface incomplete (e.g., no Get/Delete); observability field completeness varies by operation.
+ - Narration pipeline log UI (current drift): render-only component implemented; hover metadata popovers now present via chip title; auto-scroll remains unimplemented; expand Playwright coverage to assert hover content deterministically.
+ - Prompt input bar UI (current drift): component implemented with gating and error banner; E2E SHOULD validate cancellation propagation; no implicit retries enforced.
+ - Attachments dropzone UI (current drift): component implemented; ingestion middleware NOT yet wired into orchestrator; drag-and-drop interactions MAY be added; Playwright covers acceptance via payload.
+ - Narration session orchestrator UI (current drift): component implemented and wired with observer→view adapter and stage metadata provider; restore-from-store remains unimplemented; demo provider remains in orchestrator for local streaming only.
+ - Pipeline observer→view adapter (current drift): implemented and integrated; monitor for event mismatches; add unit tests for skipped/failure transitions coverage breadth.
+ - Stage metadata provider (current drift): implemented and integrated; provider metrics (tokens/model) emitted via middleware; prompt token estimation remains unimplemented.
+ - System prompt profile resolver (current drift): config-backed resolver implemented with success/not_found/error/cancelled metrics and logs; storage-backed or policy-based selection remains unimplemented.
+ - System prompt profile resolver (potential drift): future changes to selection policies MUST remain deterministic and versioned; any caching MUST preserve consistency across a single process lifetime.
+- Provider dispatch (potential drift): future middleware additions that wrap streams must preserve early-dispose cancellation propagation upstream.
+- Persistence (potential drift): any future changes must preserve “skip persistence on downstream failure” and must not reintroduce persistence of per-run prompt state.
+
+## Format (Template Sections)
+
+- Mode
+- Behavior (WHAT / INPUT / OUTPUT / FAILS / NEVER)
+- Policies
+- Invariants
+- Observability
+- Never
+- Non-goals
+- Output
+
+## Clarifications (Spec Authoring)
+
+- Mode: `isolated` (pure function, no shared state), `compositional` (cooperates with collaborators), `stateful` (reads/writes owned state).
+- Behavior: caller obligations, allowed side effects, typed inputs/outputs referencing existing DTOs/interfaces.
+- Policies: retry/timeout/idempotency/concurrency/cancellation; async methods accept `CancellationToken`.
+- Invariants: determinism, thread-safety, constraints.
+- Observability: required log/event fields (e.g., `trace_id`, `request_id`, `stage`, `elapsed_ms`, `status`, `error_class`) and emit timing.
+- Never/Non-goals: forbidden behaviors and excluded scope to prevent drift.
+- Output: minimal implementation only—no commentary, no TODOs.
+
+## Defaults
+
+- Mode: Isolated behavior
+- Output: Minimal implementation only. No commentary.
+
+## Cross-refs
+
+- Coding standards, interfaces, testing practices, and implementation rules live in [CONTRIB.md](CONTRIB.md).
+- This SPEC governs specification authoring, drift/status tracking, and spec-first authority only.
+
+## Checklist
+
+- Mode selected and justified.
+- Inputs/outputs typed and reference known types.
+- Failure modes are structured with required side effects.
+- Policies cover retry/timeout/idempotency/concurrency/cancellation.
+- Invariants and observability are testable and log fields are defined.
+- Never/Non-goals prevent unwanted side effects.
+- Spec is added to `specs/` and linked above.

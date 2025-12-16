@@ -1,0 +1,212 @@
+@using System.Collections.Immutable
+@using Narratoria.Narration
+
+@inject IServiceProvider Services
+@implements IDisposable
+
+@code {
+    [Parameter]
+    public Guid SessionId { get; set; } = Guid.NewGuid();
+
+    [Parameter]
+    public IReadOnlyList<NarrationStageKind> StageOrder { get; set; } = new[]
+    {
+        NarrationStageKind.Sanitize,
+        NarrationStageKind.Context,
+        NarrationStageKind.Lore,
+        NarrationStageKind.Llm
+    };
+
+    [Parameter]
+    public IReadOnlyList<string> AllowedContentTypes { get; set; } = new[] { "text/plain", "text/markdown" };
+
+    [Parameter]
+    public long MaxBytesPerFile { get; set; } = 4 * 1024 * 1024;
+
+    [Parameter]
+    public long MaxBytesTotal { get; set; } = 16 * 1024 * 1024;
+
+    [Parameter]
+    public INarrationSessionStore? SessionStore { get; set; }
+
+    [Parameter]
+    public NarrationPipelineService? Pipeline { get; set; }
+
+    private readonly List<NarrationPipelineTurnView> _turns = new();
+    private bool _isSubmitting;
+    private readonly List<AttachmentCandidate> _attachments = new();
+    private StageMetadataProvider? _metadata;
+    private CancellationTokenSource? _restoreCts;
+
+    protected override void OnInitialized()
+    {
+        _metadata = new StageMetadataProvider(StageOrder);
+        // Restore from store if available
+        if (SessionStore is not null)
+        {
+            _restoreCts = new CancellationTokenSource();
+            // Fire-and-forget restoration; errors are caught in RestoreAsync to prevent crashes
+            _ = RestoreAsync(_restoreCts.Token);
+        }
+    }
+
+    public void Dispose()
+    {
+        _restoreCts?.Dispose();
+    }
+
+    private async Task RestoreAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var context = await SessionStore!.LoadAsync(SessionId, cancellationToken).ConfigureAwait(false);
+            if (context is null) return;
+
+            if (!context.PriorNarration.IsDefaultOrEmpty)
+            {
+                foreach (var line in context.PriorNarration)
+                {
+                    var stages = StageOrder.Select(k => new NarrationStageView { Kind = k, Status = NarrationStageStatus.Completed }).ToImmutableArray();
+                    _turns.Add(new NarrationPipelineTurnView
+                    {
+                        TurnId = Guid.NewGuid(),
+                        UserPrompt = context.PlayerPrompt,
+                        PromptAt = null,
+                        Stages = stages,
+                        Output = new NarrationOutputView { FinalText = line }
+                    });
+                }
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // Suppress errors during restoration to avoid blocking component initialization
+        }
+    }
+
+    private async ValueTask SubmitPromptAsync(string prompt, CancellationToken cancellationToken)
+    {
+        if (_isSubmitting) return;
+        _isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            var turn = NarrationSessionOrchestratorLogic.CreateNewTurn(prompt, StageOrder);
+            _turns.Add(turn);
+            StateHasChanged();
+
+            var ctx = new NarrationContext
+            {
+                SessionId = SessionId,
+                PlayerPrompt = prompt,
+                PriorNarration = ImmutableArray<string>.Empty,
+                WorkingNarration = ImmutableArray<string>.Empty,
+                WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
+                Metadata = ImmutableDictionary<string, string>.Empty,
+                Trace = new Narratoria.OpenAi.TraceMetadata(Guid.NewGuid().ToString(), Guid.NewGuid().ToString())
+            };
+
+            // Prepare observer adapter wired to latest turn
+            var adapter = new PipelineObserverViewAdapter(StageOrder,
+                getTurn: _ => _turns[^1],
+                setTurn: updated => { _turns[^1] = updated; StateHasChanged(); },
+                metadata: _metadata);
+
+            var pipeline = Pipeline ?? BuildDefaultPipeline(adapter);
+            var result = await pipeline.RunAsync(ctx, cancellationToken).ConfigureAwait(false);
+
+            var allSegments = new List<string>();
+            await foreach (var seg in result.StreamedNarration.WithCancellation(cancellationToken))
+            {
+                allSegments.Add(seg);
+                var updated = NarrationSessionOrchestratorLogic.ApplyStreamSegment(_turns[^1], seg);
+                _turns[^1] = updated;
+                StateHasChanged();
+            }
+
+            _ = await result.UpdatedContext.ConfigureAwait(false);
+            var finalized = NarrationSessionOrchestratorLogic.FinalizeTurn(_turns[^1], allSegments, StageOrder);
+            _turns[^1] = finalized;
+            var promptTokens = StageMetadataProvider.EstimatePromptTokens(prompt);
+            _metadata?.ApplyProviderMetrics(SessionId, NarrationStageKind.Llm, promptTokens: promptTokens, completionTokens: allSegments.Count, model: null);
+            StateHasChanged();
+        }
+        finally
+        {
+            _isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private ValueTask AcceptAttachmentsAsync(IReadOnlyList<AttachmentCandidate> files, CancellationToken cancellationToken)
+    {
+        _attachments.Clear();
+        _attachments.AddRange(files);
+        return ValueTask.CompletedTask;
+    }
+
+    private NarrationPipelineService BuildDefaultPipeline(INarrationPipelineObserver? observer = null)
+    {
+        var provider = new FakeNarrationProvider();
+        var middleware = new List<NarrationMiddleware>
+        {
+            new NarrationPersistenceMiddleware(SessionStore ?? new NullSessionStore(), observer ?? NullNarrationPipelineObserver.Instance).InvokeAsync,
+            new ProviderDispatchMiddleware(provider, options: new ProviderDispatchOptions { Model = "fake-narrator" }, observer: observer, stageMetadata: _metadata).InvokeAsync
+        };
+
+        // Wire attachment ingestion ahead of provider when attachments are staged
+        foreach (var a in _attachments)
+        {
+            middleware.Insert(1, new Narratoria.Narration.Attachments.AttachmentIngestionMiddleware(a.AttachmentId, new NullAttachmentIngestionService()).InvokeAsync);
+        }
+
+        return new NarrationPipelineService(middleware);
+    }
+
+    private sealed class FakeNarrationProvider : INarrationProvider
+    {
+        public async IAsyncEnumerable<string> StreamNarrationAsync(NarrationContext context, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            var tokens = new[] { "You ", "enter ", "the ", "tavern." };
+            foreach (var t in tokens)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await Task.Delay(50, cancellationToken);
+                yield return t;
+            }
+        }
+    }
+
+    private sealed class NullAttachmentIngestionService : Narratoria.Narration.Attachments.IAttachmentIngestionService
+    {
+        public ValueTask<Narratoria.Narration.Attachments.AttachmentIngestionResult> IngestAsync(Narratoria.Narration.Attachments.AttachmentIngestionCommand command, CancellationToken cancellationToken)
+        {
+            var processed = new Narratoria.Narration.Attachments.ProcessedAttachment(command.AttachmentId, command.SessionId, "file", "text/plain", "hash", "", 0, false, DateTimeOffset.UtcNow);
+            return ValueTask.FromResult(Narratoria.Narration.Attachments.AttachmentIngestionResult.Success(processed));
+        }
+    }
+
+    private sealed class NullSessionStore : INarrationSessionStore
+    {
+        public ValueTask<NarrationContext?> LoadAsync(Guid sessionId, CancellationToken cancellationToken) => ValueTask.FromResult<NarrationContext?>(new NarrationContext
+        {
+            SessionId = sessionId,
+            PlayerPrompt = string.Empty,
+            PriorNarration = ImmutableArray<string>.Empty,
+            WorkingNarration = ImmutableArray<string>.Empty,
+            WorkingContextSegments = ImmutableArray<ContextSegment>.Empty,
+            Metadata = ImmutableDictionary<string, string>.Empty,
+            Trace = new Narratoria.OpenAi.TraceMetadata(Guid.NewGuid().ToString(), Guid.NewGuid().ToString())
+        });
+
+        public ValueTask SaveAsync(NarrationContext context, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    }
+}
+
+<div class="session-orchestrator">
+    <AttachmentsDropzone AllowedContentTypes="@AllowedContentTypes" MaxBytesPerFile="@MaxBytesPerFile" MaxBytesTotal="@MaxBytesTotal" OnAccepted="AcceptAttachmentsAsync" />
+    <PromptInputBar SubmitPrompt="SubmitPromptAsync" IsSubmitting="@_isSubmitting" />
+    <NarrationPipelineLog Turns="@_turns" StageOrder="@StageOrder" Hovers="@_metadata?.Snapshot()" />
+</div>

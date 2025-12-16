@@ -467,3 +467,6 @@ $RECYCLE.BIN/
 *.swo
 *~
 .vimrc.local
+
+# Development configuration (keep secrets out of VCS)
+src/appsettings.Development.json

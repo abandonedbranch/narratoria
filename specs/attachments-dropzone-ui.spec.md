@@ -1,0 +1,62 @@
+## spec: attachments-dropzone-ui
+
+mode:
+  - stateful (tracks transient dropped files and validation results; no persistence)
+
+behavior:
+  - what: Accept drag-and-drop or file-picker attachments, validate allowlisted MIME/types and size limits, and emit accepted files to the ingestion service.
+  - input:
+      - IReadOnlyList<string> AllowedContentTypes : allowlist (e.g., application/pdf, image/png)
+      - long MaxBytesPerFile : size limit per file
+      - long MaxBytesTotal : cumulative size limit
+      - Func<IReadOnlyList<AttachmentCandidate>, CancellationToken, ValueTask> OnAccepted : callback invoked with validated candidates
+  - output:
+      - RenderFragment : dropzone UI with list of staged files and errors
+  - caller_obligations:
+      - supply accurate allowlist and limits aligned with ingestion service
+      - propagate cancellation
+  - side_effects_allowed:
+      - invoke OnAccepted exactly once per user acceptance action
+
+state:
+  - staged_files : IReadOnlyList<AttachmentCandidate> | ephemeral UI memory
+  - validation_errors : IReadOnlyList<string> | ephemeral UI memory
+
+preconditions:
+  - AllowedContentTypes non-empty; size limits are non-negative
+
+postconditions:
+  - valid files appear in staged_files; invalid files produce entries in validation_errors
+  - invoking acceptance emits OnAccepted with current staged_files and clears staged_files on success
+
+invariants:
+  - deterministic validation: same files yield same results given the same policy
+  - no mutation of file contents; only metadata tracked
+
+failure_modes:
+  - validation_error :: disallowed MIME or exceeded limits :: show error and do not emit
+  - cancelled :: cancellation_token requested :: do not emit; keep staged_files
+
+policies:
+  - no implicit upload; ingestion happens downstream upon OnAccepted
+  - cancellation: honor token on acceptance
+
+never:
+  - write files to storage
+  - re-encode or transform attachments
+
+non_goals:
+  - live preview rendering beyond minimal metadata
+  - server-side scanning or antivirus
+
+performance:
+  - validate and render lists under 50ms for up to 20 files
+
+observability:
+  - logs:
+      - trace_id, request_id, event (drop|pick|accept|reject), file_count, error_class
+  - metrics:
+      - attachments_staged_count, attachments_accepted_count, attachments_rejected_count
+
+output:
+  - minimal implementation only (no commentary, no TODOs)

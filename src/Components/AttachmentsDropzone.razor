@@ -1,0 +1,102 @@
+@using Narratoria.Components
+
+@code {
+    [Parameter]
+    public IReadOnlyList<string> AllowedContentTypes { get; set; } = Array.Empty<string>();
+
+    [Parameter]
+    public long MaxBytesPerFile { get; set; } = 4 * 1024 * 1024;
+
+    [Parameter]
+    public long MaxBytesTotal { get; set; } = 16 * 1024 * 1024;
+
+    [Parameter]
+    public Func<IReadOnlyList<AttachmentCandidate>, CancellationToken, ValueTask>? OnAccepted { get; set; }
+
+    private readonly List<AttachmentCandidate> _staged = new();
+    private readonly List<string> _errors = new();
+
+    private long TotalBytes => _staged.Sum(s => s.SizeBytes);
+
+    private void HandlePickedFiles(InputFileChangeEventArgs e)
+    {
+        _errors.Clear();
+        var files = e.GetMultipleFiles();
+        if (files is null || files.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var f in files)
+        {
+            var mime = f.ContentType ?? string.Empty;
+            var size = f.Size;
+
+            if (AllowedContentTypes.Count > 0 && !AllowedContentTypes.Contains(mime))
+            {
+                _errors.Add($"Disallowed type: {mime}");
+                continue;
+            }
+
+            if (size > MaxBytesPerFile)
+            {
+                _errors.Add($"File too large: {f.Name}");
+                continue;
+            }
+
+            if (TotalBytes + size > MaxBytesTotal)
+            {
+                _errors.Add("Total size exceeded");
+                break;
+            }
+
+            _staged.Add(new AttachmentCandidate(Guid.NewGuid().ToString(), f.Name, mime, size));
+        }
+    }
+
+    private async Task AcceptAsync()
+    {
+        if (OnAccepted is null || _staged.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            using var cts = new CancellationTokenSource();
+            await OnAccepted.Invoke(_staged.ToArray(), cts.Token);
+            _staged.Clear();
+            _errors.Clear();
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when cancellation is requested; no action needed
+        }
+        catch (Exception ex)
+        {
+            _errors.Add(ex.Message);
+        }
+    }
+}
+
+<div class="attachments-dropzone">
+    <InputFile OnChange="HandlePickedFiles" multiple data-testid="attachments-input" />
+    <button class="attach-button" data-testid="attachments-accept" @onclick="AcceptAsync">Attach</button>
+
+    <ul class="staged-files">
+        @foreach (var file in _staged)
+        {
+            <li>@file.FileName (@file.MimeType) - @file.SizeBytes bytes</li>
+        }
+    </ul>
+
+    @if (_errors.Count > 0)
+    {
+        <ul class="validation-errors" data-testid="attachments-errors">
+            @foreach (var err in _errors)
+            {
+                <li>@err</li>
+            }
+        </ul>
+    }
+</div>
