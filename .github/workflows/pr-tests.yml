@@ -21,6 +21,9 @@ jobs:
         with:
           dotnet-version: 10.0.x
           cache: true
+          cache-dependency-path: |
+            src/Narratoria.csproj
+            tests/Narratoria.Tests/Narratoria.Tests.csproj
 
       - name: Restore
         run: dotnet restore src/Narratoria.csproj
