@@ -11,13 +11,21 @@ behavior:
       - IAttachmentUploadStore : temporary per-session upload store for raw attachment bytes
       - IStageMetadataProvider : hover aggregation keyed by turn id and stage kind
       - IReadOnlyList<NarrationStageKind> StageOrder : canonical UI stage order
+      - IReadOnlyDictionary<string, NarrationStageKind> StageIdMap : deterministic mapping from pipeline telemetry stage ids to StageOrder kinds
       - IReadOnlyList<AttachmentUploadCandidate> Attachments : accepted attachments, including a read stream provider
       - Guid SessionId : active session identifier
       - Guid TurnId : per-turn identifier used for UI log lookup
       - string Prompt : user-supplied prompt text
       - TraceMetadata Trace : trace identifiers
       - CancellationToken : caller-provided cancellation
-      - NarrationPipelineBuildRequest : factory argument constructed by this integration step
+      - NarrationPipelineBuildRequest : factory argument constructed by this integration step (see narration-pipeline-factory)
+        - Guid SessionId
+        - Guid TurnId
+        - TraceMetadata Trace
+        - IReadOnlyList<NarrationStageKind> StageOrder
+        - IReadOnlyList<string> AttachmentIds
+        - INarrationPipelineObserver Observer (turn-scoped)
+        - IStageMetadataProvider? StageMetadata
   - output:
       - NarrationPipelineTurnView : append-only turn with stage statuses, output stream, and hover metadata
   - caller_obligations:
@@ -36,6 +44,7 @@ state:
 
 preconditions:
   - StageOrder is non-empty, unique, and mapped to pipeline telemetry stage ids via a deterministic mapping
+  - StageIdMap keys are non-empty and values are members of StageOrder
   - attachments, if any, are accepted and provide a readable stream via AttachmentUploadCandidate.OpenRead
   - DI container is initialized with required middleware and services, including INarrationPipelineFactory
 
