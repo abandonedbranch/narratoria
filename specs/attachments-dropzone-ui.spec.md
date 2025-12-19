@@ -10,6 +10,12 @@ behavior:
       - long MaxBytesPerFile : size limit per file
       - long MaxBytesTotal : cumulative size limit
       - Func<IReadOnlyList<AttachmentUploadCandidate>, CancellationToken, ValueTask> OnAccepted : callback invoked with validated candidates
+      - AttachmentUploadCandidate : AttachmentCandidate + stream provider
+        - AttachmentId : string
+        - FileName : string
+        - MimeType : string
+        - SizeBytes : long
+        - OpenRead : Func<CancellationToken, ValueTask<Stream>>
   - output:
       - RenderFragment : dropzone UI with list of staged files and errors
   - caller_obligations:
@@ -19,7 +25,7 @@ behavior:
       - invoke OnAccepted exactly once per user acceptance action
 
 state:
-  - staged_files : IReadOnlyList<AttachmentCandidate> | ephemeral UI memory
+  - staged_files : IReadOnlyList<AttachmentUploadCandidate> | ephemeral UI memory
   - validation_errors : IReadOnlyList<string> | ephemeral UI memory
 
 preconditions:
