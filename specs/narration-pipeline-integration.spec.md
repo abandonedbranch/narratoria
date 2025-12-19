@@ -10,8 +10,7 @@ behavior:
         - Create(buildRequest: NarrationPipelineBuildRequest) : NarrationPipelineService
       - IAttachmentUploadStore : temporary per-session upload store for raw attachment bytes
       - IStageMetadataProvider : hover aggregation keyed by turn id and stage kind
-      - IReadOnlyList<NarrationStageKind> StageOrder : canonical UI stage order
-      - IReadOnlyDictionary<string, NarrationStageKind> StageIdMap : deterministic mapping from pipeline telemetry stage ids to StageOrder kinds
+      - IReadOnlyList<NarrationStageKind> StageOrder : canonical pipeline stage order rendered by the UI; MUST match telemetry stage ids exactly
       - IReadOnlyList<AttachmentUploadCandidate> Attachments : accepted attachments, including a read stream provider
       - Guid SessionId : active session identifier
       - Guid TurnId : per-turn identifier used for UI log lookup
@@ -30,7 +29,7 @@ behavior:
       - NarrationPipelineTurnView : append-only turn with stage statuses, output stream, and hover metadata
   - caller_obligations:
       - supply a DI-resolved INarrationPipelineFactory; do not construct fallback pipelines
-      - provide StageOrder and a deterministic mapping between pipeline telemetry stage ids and NarrationStageKind values
+      - provide StageOrder whose NarrationStageKind.Name values exactly match the telemetry stage ids emitted by the configured middleware
       - propagate CancellationToken for submit and streaming
   - side_effects_allowed:
       - write accepted attachment bytes into IAttachmentUploadStore (using AttachmentUploadCandidate.OpenRead) prior to invoking the composed pipeline
@@ -43,8 +42,8 @@ state:
   - hovers : IReadOnlyDictionary<(Guid, NarrationStageKind), NarrationStageHover> | recomputed snapshots
 
 preconditions:
-  - StageOrder is non-empty, unique, and mapped to pipeline telemetry stage ids via a deterministic mapping
-  - StageIdMap keys are non-empty and values are members of StageOrder
+  - StageOrder is non-empty and unique
+  - every middleware stage id that should be visualized is present in StageOrder exactly once
   - attachments, if any, are accepted and provide a readable stream via AttachmentUploadCandidate.OpenRead
   - DI container is initialized with required middleware and services, including INarrationPipelineFactory
 
@@ -61,7 +60,7 @@ invariants:
   - attachment ingestion precedes provider dispatch when attachments exist; when none, ingestion is skipped
   - middleware order remains: persistence → system prompt → content guardian → attachment ingestion (per attachment) → provider dispatch
   - turn scoping: the UI integration MUST translate pipeline events keyed by SessionId into UI updates keyed by TurnId without requiring changes to NarrationStageTelemetry
-  - stage mapping is deterministic and total for rendered stages: every telemetry stage id that should update the UI MUST map to exactly one NarrationStageKind in StageOrder
+  - stage identity is total for rendered stages: every telemetry stage id that should update the UI MUST equal exactly one NarrationStageKind.Name in StageOrder
 
 failure_modes:
   - ingestion_error :: attachment ingestion fails or rejects :: pipeline short-circuits; turn marks failed; hovers include error_class
