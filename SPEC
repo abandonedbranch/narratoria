@@ -30,9 +30,9 @@
 - `specs/narration-attachment-ingestion-service.spec.md`
 - `specs/narration-content-guardian-middleware.spec.md`
 - `specs/narration-persistence-middleware.spec.md`
+- `specs/narration-pipeline-factory.spec.md`
 - `specs/narration-pipeline-integration.spec.md`
 - `specs/narration-pipeline-log-ui.spec.md`
-- `specs/narration-pipeline-factory.spec.md`
 - `specs/narration-provider-dispatch-middleware.spec.md`
 - `specs/narration-session-orchestrator-ui.spec.md`
 - `specs/narration-system-prompt-middleware.spec.md`
