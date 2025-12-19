@@ -11,7 +11,7 @@ behavior:
   - output:
       - Immutable updates to `NarrationPipelineTurnView` instances
   - caller_obligations:
-      - supply StageOrder aligned to the pipeline stages
+      - supply StageOrder whose NarrationStageKind.Name values match the telemetry stage ids emitted by the configured middleware
       - ensure a single turn is active for streaming
   - side_effects_allowed:
       - none (pure mapping)

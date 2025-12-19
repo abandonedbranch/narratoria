@@ -21,7 +21,7 @@ behavior:
   - caller_obligations:
       - provide a non-null Observer that is already turn-scoped (events applied to the active turn) or otherwise safe for concurrent turns
       - ensure any AttachmentIds have corresponding raw bytes written to IAttachmentUploadStore prior to running the returned pipeline
-      - provide StageOrder aligned to the UI contract; stage-id mapping is handled outside this factory
+      - provide StageOrder whose NarrationStageKind.Name values match the middleware telemetry stage ids (identity; no mapping)
   - side_effects_allowed:
       - none (composition only; returned pipeline performs side effects when executed)
 

@@ -8,6 +8,13 @@ behavior:
   - input:
       - IReadOnlyList<NarrationPipelineTurnView> : ordered turns (oldest to newest) with immutable content
       - IReadOnlyList<NarrationStageKind> : canonical pipeline stage ordering used to render chips
+        - recommended_default (NarrationStageKind.Name values):
+            - session_load
+            - system_prompt_injection
+            - content_guardian_injection
+            - attachment_ingestion
+            - provider_dispatch
+            - persist_context
   - output:
     - RenderFragment : UI tree containing turn blocks
   - caller_obligations:
@@ -24,7 +31,9 @@ state:
   - NarrationPipelineTurnView: record { Guid TurnId; string UserPrompt; DateTimeOffset? PromptAt; ImmutableArray<NarrationStageView> Stages; NarrationOutputView Output } | provided by caller
   - NarrationStageView: record { NarrationStageKind Kind; NarrationStageStatus Status; TimeSpan? Duration; int? PromptTokens; int? CompletionTokens; string? Model; string? ErrorClass; string? ErrorMessage } | provided by caller
   - NarrationOutputView: record { bool IsStreaming; string? FinalText; ImmutableArray<string> StreamedSegments } | provided by caller
-  - NarrationStageKind: enum { Sanitize, Context, Lore, Llm, Image, Custom(string Name) } | render label text
+  - NarrationStageKind: record struct { string Name } | render label text
+    - static members (convenience only): Sanitize, Context, Lore, Llm, Image
+    - Custom(string name) => NarrationStageKind | creates a stage kind with an arbitrary Name
   - NarrationStageStatus: enum { Pending, Running, Completed, Skipped, Failed } | visual state mapping
   - NarrationStreamState: record { Guid TurnId; NarrationStageKind Stage; ImmutableArray<string> Segments } | tracks current streaming turn
   - NarrationStageHover: record { Guid TurnId; NarrationStageKind Stage; TimeSpan? Duration; int? PromptTokens; int? CompletionTokens; string? Model } | hover payload
