@@ -6,26 +6,26 @@ mode:
 behavior:
   - what: Route prompt submissions through a DI-resolved pipeline factory, prepend attachment ingestion when attachments are staged, and emit hover metadata keyed to UI turns and stage order.
   - input:
-    - INarrationPipelineFactory : DI-resolved factory that composes a per-submission NarrationPipelineService
-      - arguments:
-        - NarrationPipelineBuildRequest : composition request provided to INarrationPipelineFactory.Create
-          - IReadOnlyList<NarrationStageKind> StageOrder : canonical UI stage order
-          - CancellationToken CancellationToken : caller-provided cancellation
-          - Guid SessionId : active session identifier
-    - CancellationToken : caller-provided cancellation
-    - Guid SessionId : active session identifier
-    - Guid TurnId : per-turn identifier used for UI log lookup
-    - string Prompt : user-supplied prompt text
-    - TraceMetadata Trace : trace identifiers
-    - IStageMetadataProvider : hover aggregation keyed by turn id and stage kind
+      - INarrationPipelineFactory : DI-resolved factory that composes a per-submission NarrationPipelineService
+        - Create(buildRequest: NarrationPipelineBuildRequest) : NarrationPipelineService
+      - IAttachmentUploadStore : temporary per-session upload store for raw attachment bytes
+      - IStageMetadataProvider : hover aggregation keyed by turn id and stage kind
+      - IReadOnlyList<NarrationStageKind> StageOrder : canonical UI stage order
+      - IReadOnlyList<AttachmentUploadCandidate> Attachments : accepted attachments, including a read stream provider
+      - Guid SessionId : active session identifier
+      - Guid TurnId : per-turn identifier used for UI log lookup
+      - string Prompt : user-supplied prompt text
+      - TraceMetadata Trace : trace identifiers
+      - CancellationToken : caller-provided cancellation
+      - NarrationPipelineBuildRequest : factory argument constructed by this integration step
   - output:
       - NarrationPipelineTurnView : append-only turn with stage statuses, output stream, and hover metadata
   - caller_obligations:
-    - supply a DI-resolved INarrationPipelineFactory; do not construct fallback pipelines
-    - provide StageOrder and a deterministic mapping between pipeline telemetry stage ids and NarrationStageKind values
-    - for each accepted attachment, write raw content into IAttachmentUploadStore before invoking the pipeline
+      - supply a DI-resolved INarrationPipelineFactory; do not construct fallback pipelines
+      - provide StageOrder and a deterministic mapping between pipeline telemetry stage ids and NarrationStageKind values
       - propagate CancellationToken for submit and streaming
   - side_effects_allowed:
+      - write accepted attachment bytes into IAttachmentUploadStore (using AttachmentUploadCandidate.OpenRead) prior to invoking the composed pipeline
       - invoke attachment ingestion ahead of provider dispatch when attachments exist
       - persist narration context via persistence middleware
       - stream narration tokens to UI and update hover metadata
@@ -36,11 +36,12 @@ state:
 
 preconditions:
   - StageOrder is non-empty, unique, and mapped to pipeline telemetry stage ids via a deterministic mapping
-  - attachments, if any, are accepted and written to IAttachmentUploadStore for SessionId prior to pipeline invocation
+  - attachments, if any, are accepted and provide a readable stream via AttachmentUploadCandidate.OpenRead
   - DI container is initialized with required middleware and services, including INarrationPipelineFactory
 
 postconditions:
   - submissions invoke a DI-composed pipeline exactly once; no fallback provider is used
+  - when attachments are present, the integration writes each attachment to IAttachmentUploadStore before invoking the pipeline
   - attachment ingestion middleware runs before provider dispatch when attachments are staged; failures short-circuit with surfaced error
   - stage telemetry and provider metrics populate hovers keyed by (TurnId, StageKind) matching UI lookup
   - stage status transitions reflect mapped pipeline telemetry; streaming tokens append to the latest turn only
