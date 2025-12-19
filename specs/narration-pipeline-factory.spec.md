@@ -6,28 +6,21 @@ mode:
 behavior:
   - what: Compose a per-submission NarrationPipelineService from DI-provided middleware, inserting attachment ingestion steps when requested and wiring the provided observer.
   - input:
-      - composition request:
-      - NarrationPipelineBuildRequest: record {
-          Guid SessionId;
-          Guid TurnId;
-          TraceMetadata Trace;
-          IReadOnlyList<NarrationStageKind> StageOrder;
-          IReadOnlyList<AttachmentUploadCandidate> Attachments;
-          INarrationPipelineObserver Observer;
-          IStageMetadataProvider? StageMetadata;
-        }
-      - AttachmentUploadCandidate: record {
-          string AttachmentId;
-          string FileName;
-          string MimeType;
-          long SizeBytes;
-          Func<CancellationToken, ValueTask<Stream>> OpenRead;
-        }
+      - NarrationPipelineBuildRequest : composition request
+        - NarrationPipelineBuildRequest: record {
+            Guid SessionId;
+            Guid TurnId;
+            TraceMetadata Trace;
+            IReadOnlyList<NarrationStageKind> StageOrder;
+            IReadOnlyList<string> AttachmentIds;
+            INarrationPipelineObserver Observer;
+            IStageMetadataProvider? StageMetadata;
+          }
   - output:
       - NarrationPipelineService : pipeline instance to be used exactly once for the submission
   - caller_obligations:
       - provide a non-null Observer that is already turn-scoped (events applied to the active turn) or otherwise safe for concurrent turns
-      - ensure any Attachments have been written to IAttachmentUploadStore prior to running the returned pipeline
+      - ensure any AttachmentIds have corresponding raw bytes written to IAttachmentUploadStore prior to running the returned pipeline
       - provide StageOrder aligned to the UI contract; stage-id mapping is handled outside this factory
   - side_effects_allowed:
       - none (composition only; returned pipeline performs side effects when executed)
@@ -43,7 +36,7 @@ preconditions:
 
 postconditions:
   - returned pipeline contains the DI base chain in order: persistence → system prompt → content guardian → provider dispatch
-  - when request.Attachments is non-empty, one attachment ingestion middleware is inserted per attachment between content guardian and provider dispatch
+  - when request.AttachmentIds is non-empty, one attachment ingestion middleware is inserted per attachment id between content guardian and provider dispatch
   - returned pipeline uses DI-provided provider dispatch and does not substitute providers
 
 invariants:
@@ -58,7 +51,9 @@ failure_modes:
 
 policies:
   - concurrency: factory is thread-safe and may be used concurrently
-  - cancellation: composition does not observe CancellationToken; cancellation is handled by the pipeline execution
+  - cancellation:
+      - composition does not observe CancellationToken and never performs IO
+      - NarrationPipelineService.RunAsync accepts a CancellationToken; this token is propagated through all middleware, including attachment ingestion and provider dispatch
 
 never:
   - perform IO, persistence, or provider calls during composition
