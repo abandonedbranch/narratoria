@@ -4,12 +4,12 @@ mode:
   - stateful (tracks transient dropped files and validation results; no persistence)
 
 behavior:
-  - what: Accept drag-and-drop or file-picker attachments, validate allowlisted MIME/types and size limits, and emit accepted files to the ingestion service.
+  - what: Accept drag-and-drop or file-picker attachments, validate allowlisted MIME/types and size limits, and emit accepted files (with a stream provider) to the caller for downstream upload/ingestion.
   - input:
       - IReadOnlyList<string> AllowedContentTypes : allowlist (e.g., application/pdf, image/png)
       - long MaxBytesPerFile : size limit per file
       - long MaxBytesTotal : cumulative size limit
-      - Func<IReadOnlyList<AttachmentCandidate>, CancellationToken, ValueTask> OnAccepted : callback invoked with validated candidates
+      - Func<IReadOnlyList<AttachmentUploadCandidate>, CancellationToken, ValueTask> OnAccepted : callback invoked with validated candidates
   - output:
       - RenderFragment : dropzone UI with list of staged files and errors
   - caller_obligations:
@@ -31,14 +31,14 @@ postconditions:
 
 invariants:
   - deterministic validation: same files yield same results given the same policy
-  - no mutation of file contents; only metadata tracked
+  - no mutation of file contents; dropzone provides read-only access via a stream provider
 
 failure_modes:
   - validation_error :: disallowed MIME or exceeded limits :: show error and do not emit
   - cancelled :: cancellation_token requested :: do not emit; keep staged_files
 
 policies:
-  - no implicit upload; ingestion happens downstream upon OnAccepted
+  - no implicit upload: the dropzone MUST NOT write to storage; upload/ingestion happens downstream upon OnAccepted
   - cancellation: honor token on acceptance
 
 never:

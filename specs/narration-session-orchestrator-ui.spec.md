@@ -7,7 +7,8 @@ behavior:
   - what: Compose attachments dropzone, prompt input bar, and pipeline log; restore turns from storage; submit prompts; and update the log via observer.
   - input:
       - INarrationSessionStore : collaborator to load/save session turns
-      - NarrationPipelineService : collaborator to run the pipeline
+  - INarrationPipelineFactory : collaborator to compose per-submission pipelines
+  - IAttachmentUploadStore : collaborator to store raw attachment bytes before ingestion
       - IReadOnlyList<NarrationStageKind> StageOrder : canonical stage order
   - output:
       - RenderFragment : composed UI containing dropzone, prompt bar, and log
@@ -16,7 +17,8 @@ behavior:
       - supply StageOrder consistent with pipeline configuration
   - side_effects_allowed:
       - load and save turns via INarrationSessionStore
-      - invoke pipeline service with prompt and attachments
+      - write accepted attachments to IAttachmentUploadStore
+      - invoke pipeline factory with prompt and attachments
 
 state:
   - turns : IReadOnlyList<NarrationPipelineTurnView> | append-only
