@@ -14,7 +14,7 @@ behavior:
       - RenderFragment : composed UI containing dropzone, prompt bar, and log
   - caller_obligations:
       - provide a session identifier and load initial turns from store
-      - supply StageOrder consistent with pipeline configuration
+      - supply StageOrder consistent with the pipeline middleware stage ids (telemetry stage names)
   - side_effects_allowed:
       - load and save turns via INarrationSessionStore
       - write accepted attachments to IAttachmentUploadStore
