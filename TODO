@@ -14,6 +14,13 @@ Purpose
 - Narration session orchestrator UI: component implemented and wired with observer→view adapter and stage metadata provider; restore-from-store remains unimplemented; demo provider remains in orchestrator for local streaming only.
 - Pipeline observer→view adapter: implemented and integrated; monitor for event mismatches; add unit tests for skipped/failure transitions coverage breadth.
 - Stage metadata provider: implemented and integrated; provider metrics (tokens/model) emitted via middleware; prompt token estimation remains unimplemented.
+
+- Pipeline integration (current drift): telemetry and stage-metadata are keyed by SessionId in middleware, while the log UI hover lookup is keyed by TurnId; implement a turn-scoped observer wrapper (maps session-scoped events to the active TurnId) and a turn-scoped stage-metadata adapter (stores hovers under (TurnId, StageKind)).
+- Pipeline composition (current drift): Program registers a singleton NarrationPipelineService, but per-submission attachment ingestion requires a DI pipeline factory that can compose a submission-specific chain.
+- Attachments upload-store (current drift): dropzone is specified to emit accepted files (with a stream provider), but attachment ingestion still requires raw bytes to be written to IAttachmentUploadStore prior to ingestion.
+- Stage naming (current drift): StageOrder is intended to reflect middleware stage ids directly (telemetry stage names); update default/configured StageOrder to match the configured middleware stages (e.g., session_load, persist_context, provider_dispatch, attachment_ingestion) and keep these stage ids stable.
+- Attachments MIME policy (current drift): ingestion options allow application/pdf in code, but ingestion decodes as UTF-8 text; either disallow PDF or implement extraction and align specs.
+- Attachment ingestion observability (current drift): AttachmentIngestionMiddleware throws on failure but does not emit observer stage telemetry; failure-to-chip transitions must be specified and implemented.
 - System prompt profile resolver (current drift): config-backed resolver implemented with success/not_found/error/cancelled metrics and logs; storage-backed or policy-based selection remains unimplemented.
 - System prompt profile resolver (potential drift): future changes to selection policies MUST remain deterministic and versioned; any caching MUST preserve consistency across a single process lifetime.
 - Provider dispatch (potential drift): future middleware additions that wrap streams must preserve early-dispose cancellation propagation upstream.
@@ -24,6 +31,10 @@ Purpose
 - Restore-from-store in orchestrator: not implemented.
 - Attachment ingestion wiring in orchestrator: not implemented.
 - Prompt token estimation and emission: not implemented.
+
+- DI pipeline factory: not implemented (required for per-submission middleware insertion without fallback pipelines).
+- Attachment upload store write path: not implemented (required before attachment ingestion can succeed).
+- Turn-scoped observer/stage-metadata mapping: not implemented (required for hover metadata to match log lookup).
 
 ## Technical Debt
 
