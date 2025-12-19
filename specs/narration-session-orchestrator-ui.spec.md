@@ -10,6 +10,13 @@ behavior:
       - INarrationPipelineFactory : collaborator to compose per-submission pipelines
       - IAttachmentUploadStore : collaborator to store raw attachment bytes before ingestion
       - IReadOnlyList<NarrationStageKind> StageOrder : canonical stage order
+        - recommended_default (NarrationStageKind.Name values):
+            - session_load
+            - system_prompt_injection
+            - content_guardian_injection
+            - attachment_ingestion
+            - provider_dispatch
+            - persist_context
   - output:
       - RenderFragment : composed UI containing dropzone, prompt bar, and log
   - caller_obligations:

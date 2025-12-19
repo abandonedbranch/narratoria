@@ -11,6 +11,16 @@ behavior:
       - IAttachmentUploadStore : temporary per-session upload store for raw attachment bytes
       - IStageMetadataProvider : hover aggregation keyed by turn id and stage kind
       - IReadOnlyList<NarrationStageKind> StageOrder : canonical pipeline stage order rendered by the UI; MUST match telemetry stage ids exactly
+        - recommended_default (NarrationStageKind.Name values):
+            - session_load
+            - system_prompt_injection
+            - content_guardian_injection
+            - attachment_ingestion
+            - provider_dispatch
+            - persist_context
+        - notes:
+            - persist_context is expected to complete after downstream streaming ends (it is rendered last)
+            - attachment_ingestion may occur multiple times per turn (one per attachment) but shares the same stage id
       - IReadOnlyList<AttachmentUploadCandidate> Attachments : accepted attachments, including a read stream provider
       - Guid SessionId : active session identifier
       - Guid TurnId : per-turn identifier used for UI log lookup
