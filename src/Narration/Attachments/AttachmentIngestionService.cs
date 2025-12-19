@@ -57,8 +57,6 @@ public sealed class AttachmentIngestionService : IAttachmentIngestionService
             upload.MimeType,
             upload.SizeBytes);
         _metrics.RecordBytesIngested(upload.SizeBytes);
-
-        var purgeRequested = false;
         try
         {
             var validation = Validate(upload, options);
@@ -127,7 +125,6 @@ public sealed class AttachmentIngestionService : IAttachmentIngestionService
             }
 
             _metrics.RecordProcessed("success", "none");
-            purgeRequested = true;
             _logger.LogInformation(
                 "Attachment ingestion success trace={TraceId} request={RequestId} session={SessionId} attachment={AttachmentId}",
                 traceId,
@@ -147,16 +144,6 @@ public sealed class AttachmentIngestionService : IAttachmentIngestionService
                 _logger.LogWarning(
                     ex,
                     "Attachment ingestion purge failed trace={TraceId} request={RequestId} session={SessionId} attachment={AttachmentId}",
-                    traceId,
-                    requestId,
-                    command.SessionId,
-                    upload.AttachmentId);
-            }
-
-            if (!purgeRequested)
-            {
-                _logger.LogDebug(
-                    "Attachment ingestion ensured purge trace={TraceId} request={RequestId} session={SessionId} attachment={AttachmentId}",
                     traceId,
                     requestId,
                     command.SessionId,

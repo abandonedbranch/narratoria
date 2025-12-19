@@ -29,17 +29,20 @@ builder.Services.AddSingleton<IIndexedDbStorageMetrics, LoggingIndexedDbStorageM
 builder.Services.AddSingleton(sp =>
 {
     var attachmentsStore = ProcessedAttachmentStore.CreateStoreDefinition();
+    var uploadsStore = AttachmentUploadStore.CreateStoreDefinition();
     var narrationStore = IndexedDbNarrationSessionStore.CreateStoreDefinition();
     return new IndexedDbSchema
     {
         DatabaseName = "narratoria",
-        Version = 1,
-        Stores = new[] { attachmentsStore, narrationStore }
+        Version = 2,
+        Stores = new[] { attachmentsStore, uploadsStore, narrationStore }
     };
 });
 builder.Services.AddIndexedDbStorageService();
 
 builder.Services.AddScoped<IIndexedDbValueSerializer<NarrationContext>, NarrationContextSerializer>();
+builder.Services.AddScoped<IIndexedDbValueSerializer<UploadedFile>, UploadedFileSerializer>();
+builder.Services.AddScoped<IIndexedDbValueSerializer<ProcessedAttachment>, ProcessedAttachmentSerializer>();
 builder.Services.AddScoped<INarrationSessionStore>(sp =>
 {
     var storage = sp.GetRequiredService<IIndexedDbStorageService>();
@@ -51,6 +54,35 @@ builder.Services.AddScoped<INarrationSessionStore>(sp =>
     var scope = new StorageScope(schema.DatabaseName, store.Name);
     return new IndexedDbNarrationSessionStore(storage, quotaStorage, store, scope, logger, serializer);
 });
+
+builder.Services.AddScoped<IAttachmentUploadStore>(sp =>
+{
+    var storage = sp.GetRequiredService<IIndexedDbStorageService>();
+    var quotaStorage = sp.GetRequiredService<IIndexedDbStorageWithQuota>();
+    var schema = sp.GetRequiredService<IndexedDbSchema>();
+    var store = schema.Stores.Single(s => s.Name == "attachment_uploads");
+    var serializer = sp.GetRequiredService<IIndexedDbValueSerializer<UploadedFile>>();
+    var logger = sp.GetRequiredService<ILogger<AttachmentUploadStore>>();
+    var scope = new StorageScope(schema.DatabaseName, store.Name);
+    return new AttachmentUploadStore(storage, quotaStorage, store, scope, logger, serializer);
+});
+
+builder.Services.AddScoped<IProcessedAttachmentStore>(sp =>
+{
+    var storage = sp.GetRequiredService<IIndexedDbStorageService>();
+    var quotaStorage = sp.GetRequiredService<IIndexedDbStorageWithQuota>();
+    var schema = sp.GetRequiredService<IndexedDbSchema>();
+    var store = schema.Stores.Single(s => s.Name == "attachments");
+    var serializer = sp.GetRequiredService<IIndexedDbValueSerializer<ProcessedAttachment>>();
+    var logger = sp.GetRequiredService<ILogger<ProcessedAttachmentStore>>();
+    var scope = new StorageScope(schema.DatabaseName, store.Name);
+    return new ProcessedAttachmentStore(storage, quotaStorage, store, scope, logger, serializer);
+});
+
+builder.Services.AddSingleton<IAttachmentIngestionMetrics>(_ => NullAttachmentIngestionMetrics.Instance);
+builder.Services.AddSingleton<IAttachmentOpenAiContextFactory, AttachmentOpenAiContextFactory>();
+builder.Services.AddSingleton(AttachmentIngestionOptions.Default);
+builder.Services.AddScoped<IAttachmentIngestionService, AttachmentIngestionService>();
 builder.Services.AddSingleton<INarrationPipelineObserver>(_ => NullNarrationPipelineObserver.Instance);
 
 builder.Services.AddSingleton<IOpenAiApiService, OpenAiApiService>();
@@ -110,6 +142,25 @@ builder.Services.AddSingleton<NarrationPipelineService>(sp =>
         guardian.InvokeAsync,
         dispatch.InvokeAsync
     });
+});
+
+builder.Services.AddScoped<INarrationPipelineFactory>(sp =>
+{
+    var sessions = sp.GetRequiredService<INarrationSessionStore>();
+    var profiles = sp.GetRequiredService<ISystemPromptProfileResolver>();
+    var provider = sp.GetRequiredService<INarrationProvider>();
+
+    var options = sp.GetRequiredService<IOptions<ProviderDispatchOptions>>().Value;
+    if (string.IsNullOrWhiteSpace(options.Model))
+    {
+        var openAi = sp.GetRequiredService<IOptions<NarrationOpenAiOptions>>().Value;
+        options = options with { Model = openAi.Model };
+    }
+
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    var ingestion = sp.GetRequiredService<IAttachmentIngestionService>();
+    var attachmentOptions = sp.GetRequiredService<AttachmentIngestionOptions>();
+    return new NarrationPipelineFactory(sessions, profiles, provider, options, loggerFactory, ingestion, attachmentOptions);
 });
 
 var app = builder.Build();

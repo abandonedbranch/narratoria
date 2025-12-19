@@ -36,3 +36,11 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+.submission-error {
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #cf222e;
+    background-color: #ffebe9;
+    color: #58151c;
+}

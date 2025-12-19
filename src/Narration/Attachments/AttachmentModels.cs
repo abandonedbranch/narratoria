@@ -5,6 +5,7 @@ using Narratoria.Storage;
 namespace Narratoria.Narration.Attachments;
 
 public sealed record UploadedFile(
+    Guid SessionId,
     string AttachmentId,
     string FileName,
     string MimeType,
@@ -24,7 +25,7 @@ public sealed record AttachmentIngestionOptions
     public bool DedupeByHash { get; init; } = true;
 
     public IImmutableSet<string> AllowedMimeTypes { get; init; } =
-        ImmutableHashSet.Create<string>(StringComparer.OrdinalIgnoreCase, "text/plain", "text/markdown", "application/pdf");
+        ImmutableHashSet.Create<string>(StringComparer.OrdinalIgnoreCase, "text/plain", "text/markdown");
 }
 
 public sealed record ProcessedAttachment(
@@ -55,6 +56,8 @@ public readonly record struct AttachmentIngestionResult(bool Ok, ProcessedAttach
 
 public interface IAttachmentUploadStore
 {
+    ValueTask<string> WriteAsync(Guid sessionId, string fileName, string mimeType, long sizeBytes, Stream content, CancellationToken cancellationToken);
+
     ValueTask<UploadedFile?> GetAsync(Guid sessionId, string attachmentId, CancellationToken cancellationToken);
 
     ValueTask DeleteAsync(Guid sessionId, string attachmentId, CancellationToken cancellationToken);

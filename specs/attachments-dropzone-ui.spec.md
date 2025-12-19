@@ -6,7 +6,7 @@ mode:
 behavior:
   - what: Accept drag-and-drop or file-picker attachments, validate allowlisted MIME/types and size limits, and emit accepted files (with a stream provider) to the caller for downstream upload/ingestion.
   - input:
-      - IReadOnlyList<string> AllowedContentTypes : allowlist (e.g., application/pdf, image/png)
+  - IReadOnlyList<string> AllowedContentTypes : allowlist (e.g., text/plain, text/markdown, image/png)
       - long MaxBytesPerFile : size limit per file
       - long MaxBytesTotal : cumulative size limit
       - Func<IReadOnlyList<AttachmentUploadCandidate>, CancellationToken, ValueTask> OnAccepted : callback invoked with validated candidates
