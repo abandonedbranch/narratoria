@@ -20,7 +20,7 @@ public sealed class AttachmentIngestionServiceTests
     public async Task IngestAsync_Succeeds_PersistsAndPurges()
     {
         var sessionId = Guid.NewGuid();
-        var upload = new UploadedFile("att-1", "notes.md", "text/markdown", 12, Utf8("content"));
+        var upload = new UploadedFile(sessionId, "att-1", "notes.md", "text/markdown", 12, Utf8("content"));
         var uploads = InMemoryUploadStore.WithUploads(sessionId, upload);
         var processed = new InMemoryProcessedAttachmentStore();
         var openAi = new StubOpenAiApiService(["summary "]);
@@ -37,10 +37,10 @@ public sealed class AttachmentIngestionServiceTests
     }
 
     [TestMethod]
-    public async Task IngestAsync_FileTooLarge_FailsAndPurges()
+    public async Task IngestAsync_FileTooLarge_FailsAndDoesNotPurge()
     {
         var sessionId = Guid.NewGuid();
-        var upload = new UploadedFile("att-2", "notes.md", "text/markdown", 1024, Utf8("content"));
+        var upload = new UploadedFile(sessionId, "att-2", "notes.md", "text/markdown", 1024, Utf8("content"));
         var uploads = InMemoryUploadStore.WithUploads(sessionId, upload);
         var processed = new InMemoryProcessedAttachmentStore();
         var openAi = new StubOpenAiApiService(["ignored"]);
@@ -53,7 +53,7 @@ public sealed class AttachmentIngestionServiceTests
 
         Assert.IsFalse(result.Ok);
         Assert.AreEqual("FileTooLarge", result.Error?.ErrorClass);
-        Assert.AreEqual(0, uploads.Count(sessionId));
+        Assert.AreEqual(1, uploads.Count(sessionId));
         Assert.AreEqual(0, processed.Attachments.Count);
     }
 
@@ -113,15 +113,30 @@ public sealed class AttachmentIngestionServiceTests
     {
         private readonly ConcurrentDictionary<(Guid, string), UploadedFile> _uploads;
 
-        private InMemoryUploadStore(IEnumerable<(Guid, UploadedFile)> uploads)
+        private InMemoryUploadStore(IEnumerable<UploadedFile> uploads)
         {
-            _uploads = new ConcurrentDictionary<(Guid, string), UploadedFile>(uploads.ToDictionary(x => (x.Item1, x.Item2.AttachmentId), x => x.Item2));
+            _uploads = new ConcurrentDictionary<(Guid, string), UploadedFile>(uploads.ToDictionary(x => (x.SessionId, x.AttachmentId), x => x));
         }
 
         public static InMemoryUploadStore WithUploads(Guid sessionId, params UploadedFile[] uploads) =>
-            new(uploads.Select(u => (sessionId, u)));
+            new(uploads.Select(u => u with { SessionId = sessionId }));
 
         public int Count(Guid sessionId) => _uploads.Keys.Count(k => k.Item1 == sessionId);
+
+        public async ValueTask<string> WriteAsync(Guid sessionId, string fileName, string mimeType, long sizeBytes, Stream content, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ArgumentNullException.ThrowIfNull(content);
+
+            using var ms = new MemoryStream();
+            await content.CopyToAsync(ms, cancellationToken);
+            var bytes = ms.ToArray();
+
+            var id = Guid.NewGuid().ToString("N");
+            var upload = new UploadedFile(sessionId, id, fileName, mimeType, sizeBytes, bytes);
+            _uploads[(sessionId, id)] = upload;
+            return id;
+        }
 
         public ValueTask DeleteAsync(Guid sessionId, string attachmentId, CancellationToken cancellationToken)
         {

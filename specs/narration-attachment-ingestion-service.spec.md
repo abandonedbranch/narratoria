@@ -39,7 +39,7 @@ postconditions:
 invariants:
   - Raw file contents never persist beyond the temporary session upload store and are deleted after each attempt.
   - ProcessedAttachment is immutable once persisted; updates require a new AttachmentId.
-  - Only text-derived content is sent to OpenAI; binary payloads (including PDF) are rejected.
+  - Only text-derived content is sent to OpenAI; non-text payloads are rejected (PDF is not supported).
   - No pipeline context (player prompt, prior narration, metadata) is forwarded to the OpenAI call.
   - LLM prompt explicitly instructs stripping prose and optimizing for downstream LLM consumption (not human readability) and excludes secrets.
   - Session scoping is enforced for all reads/writes; attachments do not leak across sessions.

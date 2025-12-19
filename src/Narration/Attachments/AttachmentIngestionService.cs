@@ -75,6 +75,7 @@ public sealed class AttachmentIngestionService : IAttachmentIngestionService
                 if (existing is not null)
                 {
                     _metrics.RecordProcessed("success", "deduped");
+                    purgeRequested = true;
                     return AttachmentIngestionResult.Success(existing);
                 }
             }
@@ -138,29 +139,22 @@ public sealed class AttachmentIngestionService : IAttachmentIngestionService
         }
         finally
         {
-            try
+            if (purgeRequested)
             {
-                await _uploads.DeleteAsync(command.SessionId, upload.AttachmentId, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(
-                    ex,
-                    "Attachment ingestion purge failed trace={TraceId} request={RequestId} session={SessionId} attachment={AttachmentId}",
-                    traceId,
-                    requestId,
-                    command.SessionId,
-                    upload.AttachmentId);
-            }
-
-            if (!purgeRequested)
-            {
-                _logger.LogDebug(
-                    "Attachment ingestion ensured purge trace={TraceId} request={RequestId} session={SessionId} attachment={AttachmentId}",
-                    traceId,
-                    requestId,
-                    command.SessionId,
-                    upload.AttachmentId);
+                try
+                {
+                    await _uploads.DeleteAsync(command.SessionId, upload.AttachmentId, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Attachment ingestion purge failed trace={TraceId} request={RequestId} session={SessionId} attachment={AttachmentId}",
+                        traceId,
+                        requestId,
+                        command.SessionId,
+                        upload.AttachmentId);
+                }
             }
         }
     }

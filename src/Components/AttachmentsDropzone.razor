@@ -1,4 +1,5 @@
 @using Narratoria.Components
+@using Microsoft.AspNetCore.Components.Forms
 
 @code {
     [Parameter]
@@ -50,7 +51,12 @@
                 break;
             }
 
-            _staged.Add(new AttachmentCandidate(Guid.NewGuid().ToString(), f.Name, mime, size));
+            _staged.Add(new AttachmentCandidate(
+                ClientId: Guid.NewGuid().ToString("N"),
+                FileName: f.Name,
+                MimeType: mime,
+                SizeBytes: size,
+                OpenReadStream: ct => f.OpenReadStream(MaxBytesPerFile, ct)));
         }
     }
 

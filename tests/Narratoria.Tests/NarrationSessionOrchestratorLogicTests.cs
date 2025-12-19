@@ -8,24 +8,27 @@ namespace Narratoria.Tests;
 public class NarrationSessionOrchestratorLogicTests
 {
     private static readonly ImmutableArray<NarrationStageKind> DefaultOrder = ImmutableArray.Create(
-        NarrationStageKind.Sanitize,
-        NarrationStageKind.Context,
-        NarrationStageKind.Lore,
-        NarrationStageKind.Llm);
+        NarrationStageKind.Custom("session_load"),
+        NarrationStageKind.Custom("system_prompt_injection"),
+        NarrationStageKind.Custom("content_guardian_injection"),
+        NarrationStageKind.Custom("attachment_ingestion"),
+        NarrationStageKind.Custom("provider_dispatch"),
+        NarrationStageKind.Custom("persist_context"));
 
     [TestMethod]
-    public void CreateNewTurn_SetsRunningForLlm()
+    public void CreateNewTurn_SetsFirstStageRunning_AndSkipsAttachmentWhenNone()
     {
-        var turn = NarrationSessionOrchestratorLogic.CreateNewTurn("Hello", DefaultOrder);
+        var turn = NarrationSessionOrchestratorLogic.CreateNewTurn("Hello", DefaultOrder, expectedAttachmentCount: 0);
         Assert.AreEqual(true, turn.Output.IsStreaming);
-        var llm = turn.Stages.First(s => s.Kind == NarrationStageKind.Llm);
-        Assert.AreEqual(NarrationStageStatus.Running, llm.Status);
+        Assert.AreEqual(NarrationStageStatus.Running, turn.Stages[0].Status);
+        var attachment = turn.Stages.First(s => s.Kind.Name == "attachment_ingestion");
+        Assert.AreEqual(NarrationStageStatus.Skipped, attachment.Status);
     }
 
     [TestMethod]
     public void ApplyStreamSegment_AppendsText()
     {
-        var turn = NarrationSessionOrchestratorLogic.CreateNewTurn("Hi", DefaultOrder);
+        var turn = NarrationSessionOrchestratorLogic.CreateNewTurn("Hi", DefaultOrder, expectedAttachmentCount: 0);
         turn = NarrationSessionOrchestratorLogic.ApplyStreamSegment(turn, "A");
         turn = NarrationSessionOrchestratorLogic.ApplyStreamSegment(turn, "B");
         Assert.AreEqual(2, turn.Output.StreamedSegments.Length);
@@ -34,12 +37,12 @@ public class NarrationSessionOrchestratorLogicTests
     }
 
     [TestMethod]
-    public void FinalizeTurn_CompletesStagesAndSetsFinalText()
+    public void FinalizeTurn_SetsFinalText_WithoutOverridingStageStatuses()
     {
-        var turn = NarrationSessionOrchestratorLogic.CreateNewTurn("Test", DefaultOrder);
-        var finalized = NarrationSessionOrchestratorLogic.FinalizeTurn(turn, new[] { "X", "Y" }, DefaultOrder);
+        var turn = NarrationSessionOrchestratorLogic.CreateNewTurn("Test", DefaultOrder, expectedAttachmentCount: 0);
+        var finalized = NarrationSessionOrchestratorLogic.FinalizeTurn(turn, new[] { "X", "Y" });
         Assert.AreEqual(false, finalized.Output.IsStreaming);
         Assert.AreEqual("XY", finalized.Output.FinalText);
-        Assert.IsTrue(finalized.Stages.All(s => s.Status == NarrationStageStatus.Completed));
+        Assert.AreEqual(turn.Stages, finalized.Stages);
     }
 }
