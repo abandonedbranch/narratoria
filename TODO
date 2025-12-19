@@ -17,7 +17,7 @@ Purpose
 
 - Pipeline integration (current drift): telemetry and stage-metadata are keyed by SessionId in middleware, while the log UI hover lookup is keyed by TurnId; integration requires turn-scoped observer and stage-metadata wrappers or adding TurnId to telemetry.
 - Pipeline composition (current drift): Program registers a singleton NarrationPipelineService, but per-submission attachment ingestion requires a DI pipeline factory that can compose a submission-specific chain.
-- Attachments upload-store (current drift): dropzone currently emits metadata only; attachment ingestion requires raw bytes to be written to IAttachmentUploadStore prior to ingestion.
+- Attachments upload-store (current drift): dropzone is specified to emit accepted files (with a stream provider), but attachment ingestion still requires raw bytes to be written to IAttachmentUploadStore prior to ingestion.
 - Stage naming (current drift): middleware stage ids (e.g., provider_dispatch/session_load/persist_context/attachment_ingestion) do not align with default StageOrder kinds (Sanitize/Context/Lore/Llm); mapping must be specified and deterministic.
 - Attachments MIME policy (current drift): ingestion options allow application/pdf in code, but ingestion decodes as UTF-8 text; either disallow PDF or implement extraction and align specs.
 - Attachment ingestion observability (current drift): AttachmentIngestionMiddleware throws on failure but does not emit observer stage telemetry; failure-to-chip transitions must be specified and implemented.
