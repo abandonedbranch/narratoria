@@ -20,9 +20,28 @@ public class NarrationSessionOrchestratorLogicTests
     {
         var turn = NarrationSessionOrchestratorLogic.CreateNewTurn("Hello", DefaultOrder, expectedAttachmentCount: 0);
         Assert.AreEqual(true, turn.Output.IsStreaming);
+        Assert.AreEqual(DefaultOrder.Length, turn.Stages.Length);
+
         Assert.AreEqual(NarrationStageStatus.Running, turn.Stages[0].Status);
+
+        for (var i = 1; i < turn.Stages.Length; i++)
+        {
+            if (turn.Stages[i].Kind.Name == "attachment_ingestion") continue;
+            Assert.AreEqual(NarrationStageStatus.Pending, turn.Stages[i].Status);
+        }
+
         var attachment = turn.Stages.First(s => s.Kind.Name == "attachment_ingestion");
         Assert.AreEqual(NarrationStageStatus.Skipped, attachment.Status);
+    }
+
+    [TestMethod]
+    public void CreateNewTurn_WithExpectedAttachments_DoesNotSkipAttachmentStage()
+    {
+        var turn = NarrationSessionOrchestratorLogic.CreateNewTurn("Hello", DefaultOrder, expectedAttachmentCount: 2);
+
+        Assert.AreEqual(NarrationStageStatus.Running, turn.Stages[0].Status);
+        var attachment = turn.Stages.First(s => s.Kind.Name == "attachment_ingestion");
+        Assert.AreEqual(NarrationStageStatus.Pending, attachment.Status);
     }
 
     [TestMethod]

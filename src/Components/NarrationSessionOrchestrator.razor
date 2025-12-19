@@ -43,6 +43,7 @@
 
     private readonly List<NarrationPipelineTurnView> _turns = new();
     private bool _isSubmitting;
+    private string? _submissionError;
     private readonly List<AttachmentCandidate> _attachments = new();
     private StageMetadataProvider? _metadata;
     private CancellationTokenSource? _restoreCts;
@@ -101,8 +102,10 @@
     {
         if (_isSubmitting) return;
         _isSubmitting = true;
+        _submissionError = null;
         StateHasChanged();
 
+        List<string>? uploadedAttachmentIds = null;
         try
         {
             var turn = NarrationSessionOrchestratorLogic.CreateNewTurn(prompt, StageOrder, expectedAttachmentCount: _attachments.Count);
@@ -111,12 +114,43 @@
 
             var uploadStore = UploadStore ?? Services.GetRequiredService<IAttachmentUploadStore>();
             var attachmentIds = new List<string>(_attachments.Count);
-            foreach (var a in _attachments)
+            uploadedAttachmentIds = attachmentIds;
+
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                using var content = a.OpenReadStream(cancellationToken);
-                var id = await uploadStore.WriteAsync(SessionId, a.FileName, a.MimeType, a.SizeBytes, content, cancellationToken).ConfigureAwait(false);
-                attachmentIds.Add(id);
+                foreach (var attachment in _attachments)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    using var content = attachment.OpenReadStream(cancellationToken);
+                    var id = await uploadStore.WriteAsync(SessionId, attachment.FileName, attachment.MimeType, attachment.SizeBytes, content, cancellationToken).ConfigureAwait(false);
+                    if (string.IsNullOrWhiteSpace(id))
+                    {
+                        throw new InvalidOperationException("Attachment upload failed: upload store returned an invalid attachment identifier.");
+                    }
+
+                    attachmentIds.Add(id);
+                }
+
+                if (attachmentIds.Count != _attachments.Count)
+                {
+                    throw new InvalidOperationException($"Attachment upload failed: expected to upload {_attachments.Count} attachments but only {attachmentIds.Count} succeeded.");
+                }
+            }
+            catch
+            {
+                foreach (var id in attachmentIds)
+                {
+                    try
+                    {
+                        await uploadStore.DeleteAsync(SessionId, id, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // best-effort cleanup
+                    }
+                }
+
+                throw;
             }
 
             var ctx = new NarrationContext
@@ -152,7 +186,27 @@
                 AttachmentIds: attachmentIds.ToImmutableArray(),
                 Observer: observer,
                 StageMetadata: scopedMetadata));
-            var result = await pipeline.RunAsync(ctx, cancellationToken).ConfigureAwait(false);
+            MiddlewareResult result;
+            try
+            {
+                result = await pipeline.RunAsync(ctx, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                foreach (var id in attachmentIds)
+                {
+                    try
+                    {
+                        await uploadStore.DeleteAsync(SessionId, id, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // best-effort cleanup
+                    }
+                }
+
+                throw;
+            }
 
             var allSegments = new List<string>();
             await foreach (var seg in result.StreamedNarration.WithCancellation(cancellationToken))
@@ -167,7 +221,19 @@
             var finalized = NarrationSessionOrchestratorLogic.FinalizeTurn(_turns[^1], allSegments);
             _turns[^1] = finalized;
             _attachments.Clear();
+            _submissionError = null;
             StateHasChanged();
+        }
+        catch (OperationCanceledException)
+        {
+            _submissionError = null;
+            throw;
+        }
+        catch (Exception)
+        {
+            _submissionError = "Submission failed. Please try again.";
+            StateHasChanged();
+            throw;
         }
         finally
         {
@@ -187,5 +253,9 @@
 <div class="session-orchestrator">
     <AttachmentsDropzone AllowedContentTypes="@AllowedContentTypes" MaxBytesPerFile="@MaxBytesPerFile" MaxBytesTotal="@MaxBytesTotal" OnAccepted="AcceptAttachmentsAsync" />
     <PromptInputBar SubmitPrompt="SubmitPromptAsync" IsSubmitting="@_isSubmitting" />
+    @if (!string.IsNullOrWhiteSpace(_submissionError))
+    {
+        <div class="submission-error" data-testid="orchestrator-error">@_submissionError</div>
+    }
     <NarrationPipelineLog Turns="@_turns" StageOrder="@StageOrder" Hovers="@_metadata?.Snapshot()" />
 </div>

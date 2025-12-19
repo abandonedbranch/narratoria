@@ -37,7 +37,7 @@ public sealed class AttachmentIngestionServiceTests
     }
 
     [TestMethod]
-    public async Task IngestAsync_FileTooLarge_FailsAndDoesNotPurge()
+    public async Task IngestAsync_FileTooLarge_FailsAndPurges()
     {
         var sessionId = Guid.NewGuid();
         var upload = new UploadedFile(sessionId, "att-2", "notes.md", "text/markdown", 1024, Utf8("content"));
@@ -53,7 +53,7 @@ public sealed class AttachmentIngestionServiceTests
 
         Assert.IsFalse(result.Ok);
         Assert.AreEqual("FileTooLarge", result.Error?.ErrorClass);
-        Assert.AreEqual(1, uploads.Count(sessionId));
+        Assert.AreEqual(0, uploads.Count(sessionId));
         Assert.AreEqual(0, processed.Attachments.Count);
     }
 

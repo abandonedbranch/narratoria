@@ -51,6 +51,7 @@ policies:
   - Timeout: honor caller-provided timeout/cancellation if supported by host runtime.
   - Concurrency: safe under concurrent callers via separate transactions.
   - Idempotency: writes keyed by StoreName/Key are idempotent when Value unchanged.
+  - Migrations: schema version bumps must be accompanied by an explicit upgrade path; backward-compatible upgrades may add new stores/indexes without modifying existing store records.
 
 never:
   - Block the main thread for storage operations.

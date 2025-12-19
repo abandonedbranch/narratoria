@@ -57,8 +57,6 @@ public sealed class AttachmentIngestionService : IAttachmentIngestionService
             upload.MimeType,
             upload.SizeBytes);
         _metrics.RecordBytesIngested(upload.SizeBytes);
-
-        var purgeRequested = false;
         try
         {
             var validation = Validate(upload, options);
@@ -75,7 +73,6 @@ public sealed class AttachmentIngestionService : IAttachmentIngestionService
                 if (existing is not null)
                 {
                     _metrics.RecordProcessed("success", "deduped");
-                    purgeRequested = true;
                     return AttachmentIngestionResult.Success(existing);
                 }
             }
@@ -128,7 +125,6 @@ public sealed class AttachmentIngestionService : IAttachmentIngestionService
             }
 
             _metrics.RecordProcessed("success", "none");
-            purgeRequested = true;
             _logger.LogInformation(
                 "Attachment ingestion success trace={TraceId} request={RequestId} session={SessionId} attachment={AttachmentId}",
                 traceId,
@@ -139,22 +135,19 @@ public sealed class AttachmentIngestionService : IAttachmentIngestionService
         }
         finally
         {
-            if (purgeRequested)
+            try
             {
-                try
-                {
-                    await _uploads.DeleteAsync(command.SessionId, upload.AttachmentId, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(
-                        ex,
-                        "Attachment ingestion purge failed trace={TraceId} request={RequestId} session={SessionId} attachment={AttachmentId}",
-                        traceId,
-                        requestId,
-                        command.SessionId,
-                        upload.AttachmentId);
-                }
+                await _uploads.DeleteAsync(command.SessionId, upload.AttachmentId, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Attachment ingestion purge failed trace={TraceId} request={RequestId} session={SessionId} attachment={AttachmentId}",
+                    traceId,
+                    requestId,
+                    command.SessionId,
+                    upload.AttachmentId);
             }
         }
     }

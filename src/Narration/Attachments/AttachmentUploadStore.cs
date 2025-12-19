@@ -58,19 +58,17 @@ public sealed class AttachmentUploadStore : IAttachmentUploadStore
         if (string.IsNullOrWhiteSpace(fileName)) throw new ArgumentException("FileName is required.", nameof(fileName));
         if (string.IsNullOrWhiteSpace(mimeType)) throw new ArgumentException("MimeType is required.", nameof(mimeType));
         ArgumentNullException.ThrowIfNull(content);
+        if (sizeBytes < 0) throw new ArgumentOutOfRangeException(nameof(sizeBytes), "SizeBytes must be non-negative.");
         cancellationToken.ThrowIfCancellationRequested();
 
         var attachmentId = Guid.NewGuid().ToString("N");
 
-        byte[] bytes;
-        await using (content.ConfigureAwait(false))
-        {
-            using var ms = new MemoryStream();
-            await content.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
-            bytes = ms.ToArray();
-        }
+        using var ms = new MemoryStream();
+        await content.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
+        var bytes = ms.ToArray();
 
-        var upload = new UploadedFile(sessionId, attachmentId, fileName, mimeType, sizeBytes, bytes);
+        var normalizedSizeBytes = bytes.LongLength;
+        var upload = new UploadedFile(sessionId, attachmentId, fileName, mimeType, normalizedSizeBytes, bytes);
 
         var request = new IndexedDbPutRequest<UploadedFile>
         {
@@ -92,7 +90,7 @@ public sealed class AttachmentUploadStore : IAttachmentUploadStore
             throw new InvalidOperationException(result.Error?.Message ?? "Unable to write uploaded attachment.");
         }
 
-        _logger.LogInformation("Attachment upload stored session={SessionId} attachment={AttachmentId} mime={MimeType} size={SizeBytes}", sessionId, attachmentId, mimeType, sizeBytes);
+        _logger.LogInformation("Attachment upload stored session={SessionId} attachment={AttachmentId} mime={MimeType} size={SizeBytes}", sessionId, attachmentId, mimeType, normalizedSizeBytes);
         return attachmentId;
     }
 
