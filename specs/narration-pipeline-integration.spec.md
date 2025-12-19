@@ -7,16 +7,17 @@ behavior:
   - what: Route prompt submissions through a DI-resolved pipeline factory, prepend attachment ingestion when attachments are staged, and emit hover metadata keyed to UI turns and stage order.
   - input:
     - INarrationPipelineFactory : DI-resolved factory that composes a per-submission NarrationPipelineService
-    - NarrationPipelineBuildRequest : composition request provided to INarrationPipelineFactory.Create
-      - IReadOnlyList<NarrationStageKind> StageOrder : canonical UI stage order
-    - IReadOnlyList<AttachmentUploadCandidate> Attachments : staged attachments for the submission, including a stream provider
-    - IAttachmentUploadStore : temporary per-session upload store for raw attachment bytes
-    - IStageMetadataProvider : hover aggregation keyed by turn id and stage kind
-      - CancellationToken : caller-provided cancellation
-      - Guid SessionId : active session identifier
+      - arguments:
+        - NarrationPipelineBuildRequest : composition request provided to INarrationPipelineFactory.Create
+          - IReadOnlyList<NarrationStageKind> StageOrder : canonical UI stage order
+          - CancellationToken CancellationToken : caller-provided cancellation
+          - Guid SessionId : active session identifier
+    - CancellationToken : caller-provided cancellation
+    - Guid SessionId : active session identifier
     - Guid TurnId : per-turn identifier used for UI log lookup
-      - string Prompt : user-supplied prompt text
-      - TraceMetadata Trace : trace identifiers
+    - string Prompt : user-supplied prompt text
+    - TraceMetadata Trace : trace identifiers
+    - IStageMetadataProvider : hover aggregation keyed by turn id and stage kind
   - output:
       - NarrationPipelineTurnView : append-only turn with stage statuses, output stream, and hover metadata
   - caller_obligations:

@@ -6,7 +6,7 @@ mode:
 behavior:
   - what: Compose a per-submission NarrationPipelineService from DI-provided middleware, inserting attachment ingestion steps when requested and wiring the provided observer.
   - input:
-      - NarrationPipelineBuildRequest : composition request
+      - composition request:
       - NarrationPipelineBuildRequest: record {
           Guid SessionId;
           Guid TurnId;
