@@ -45,6 +45,7 @@ failure_modes:
 
 policies:
   - no implicit upload: the dropzone MUST NOT write to storage; upload/ingestion happens downstream upon OnAccepted
+  - downstream may begin ingestion immediately after OnAccepted returns (in the unified compose bar flow)
   - cancellation: honor token on acceptance
 
 never:

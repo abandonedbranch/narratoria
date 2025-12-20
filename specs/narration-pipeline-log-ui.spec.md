@@ -12,7 +12,7 @@ behavior:
             - session_load
             - system_prompt_injection
             - content_guardian_injection
-            - attachment_ingestion
+            - attachment_context_injection
             - provider_dispatch
             - persist_context
   - output:

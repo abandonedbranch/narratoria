@@ -4,18 +4,19 @@ mode:
   - stateful
 
 behavior:
-  - what: Middleware that summarizes an uploaded text-based file via LLM (using its own OpenAI client), persists the processed attachment, and purges the raw upload.
+  - what: Service that summarizes an uploaded text-based file via LLM (using `IOpenAiApiService`), persists the processed attachment, and purges the raw upload; invoked immediately on file drop (not as narration middleware).
   - input:
       - SessionId: Identifier for the active session.
       - UploadedFile: Name, MimeType, SizeBytes, Content (byte stream or buffer).
       - TraceMetadata: Trace identifiers for observability.
       - AttachmentOptions: Optional limits (max_tokens, max_chars, dedupe_by_hash).
+      - IOpenAiApiService: streaming OpenAI client used to generate a normalized, recall-optimized representation.
   - output:
       - ProcessedAttachment: AttachmentId, SessionId, FileName, MimeType, SourceHash, NormalizedText, TokenEstimate, Truncated (bool), CreatedAt.
   - caller_obligations:
       - Provide temporary session upload store to hold the raw file until processing completes.
-      - Provide OpenAI-capable LLM service instance (injected), credentials, endpoint, and timeout policy for summarization.
-      - Provide persistent IndexedDB attachment store scoped to the session.
+      - Provide `IOpenAiApiService` configuration suitable for ingestion (fast/inexpensive model) via injected options/context.
+      - Provide persistent processed-attachment store scoped to the session.
       - Supply logging/metrics hooks and cancellation token.
   - side_effects_allowed:
       - Send raw file content to the LLM provider for parsing/summarization using a prompt that removes prose and optimizes for LLM consumption (not human-readable).
@@ -45,22 +46,22 @@ invariants:
   - Session scoping is enforced for all reads/writes; attachments do not leak across sessions.
 
 failure_modes:
-  - UnsupportedFileType :: mime type/extension not in allowlist or cannot be treated as text :: purge raw upload; emit user-facing structured validation error; short-circuit pipeline.
-  - FileTooLarge :: size_bytes exceeds configured max_bytes :: purge raw upload; emit user-facing structured validation error; short-circuit pipeline.
-  - ProviderTimeout :: LLM call exceeds configured timeout :: purge raw upload; emit user-facing structured timeout error; short-circuit pipeline.
-  - ProviderError :: LLM provider rejects or returns error :: purge raw upload; emit user-facing structured provider error with provider status/details; short-circuit pipeline.
-  - DecodeError :: provider response cannot be decoded :: purge raw upload; emit user-facing structured decode error; short-circuit pipeline.
-  - PersistenceError :: IndexedDB write fails or is unavailable :: purge raw upload; emit user-facing structured persistence error; short-circuit pipeline.
-  - Cancellation :: operation canceled by caller :: purge raw upload; emit user-facing structured cancellation notice; short-circuit pipeline.
+  - UnsupportedFileType :: mime type/extension not in allowlist or cannot be treated as text :: purge raw upload; emit user-facing structured validation error.
+  - FileTooLarge :: size_bytes exceeds configured max_bytes :: purge raw upload; emit user-facing structured validation error.
+  - ProviderTimeout :: LLM call exceeds configured timeout :: purge raw upload; emit user-facing structured timeout error.
+  - ProviderError :: LLM provider rejects or returns error :: purge raw upload; emit user-facing structured provider error with provider status/details.
+  - DecodeError :: provider response cannot be decoded :: purge raw upload; emit user-facing structured decode error.
+  - PersistenceError :: IndexedDB write fails or is unavailable :: purge raw upload; emit user-facing structured persistence error.
+  - Cancellation :: operation canceled by caller :: purge raw upload; emit structured cancellation notice.
 
 policies:
   - Timeout: honor configured provider timeout; no implicit retries; caller may inject retry policy if desired.
   - Idempotency: when dedupe_by_hash is true and a matching SessionId+SourceHash exists, return existing ProcessedAttachment and still purge raw upload.
   - Concurrency: safe under concurrent uploads per session; isolate temp buffers per upload; IndexedDB writes are transactional per attachment.
   - Cancellation: propagate the pipeline’s CancellationToken through provider call and persistence; cancel promptly and purge temp data.
-  - Control flow: on any failure, short-circuit the pipeline with a user-facing structured error explaining why ingestion failed; on success, continue.
-  - Ordering: should run before prompt templating/transform middleware for best results; pipeline continues even if placed later.
-  - Provider ownership: middleware uses its own injected OpenAI client/policy; does not reuse pipeline provider.
+  - Control flow: ingestion is invoked independently of narration; failures affect only the attachment(s) being ingested.
+  - Ordering: ingestion completes before narration submission is enabled for the active session.
+  - Provider ownership: ingestion uses its own injected OpenAI options/context; it does not reuse narration provider-dispatch configuration.
 
 never:
   - Persist or log raw file contents after processing completes or fails.
@@ -82,7 +83,7 @@ performance:
 
 observability:
   - logs:
-      - trace_id, request_id, session_id, attachment_id, file_name, mime_type, size_bytes, stage, elapsed_ms, status, error_class, token_estimate, truncated
+    - trace_id, request_id, session_id, attachment_id, file_name, mime_type, size_bytes, stage=attachment_ingestion, elapsed_ms, status, error_class, token_estimate, truncated
   - metrics:
       - attachments_processed_count (by status/error_class), attachment_bytes_ingested, attachment_persist_latency_ms, provider_latency_ms, provider_error_count
 

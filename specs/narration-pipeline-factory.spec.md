@@ -4,7 +4,7 @@ mode:
   - compositional (constructs per-request pipeline instances from DI-provided middleware; owns no persistence)
 
 behavior:
-  - what: Compose a per-submission NarrationPipelineService from DI-provided middleware, inserting attachment ingestion steps when requested and wiring the provided observer.
+  - what: Compose a per-submission NarrationPipelineService from DI-provided middleware, inserting an attachment-context injection step when staged attachments are present and wiring the provided observer.
   - input:
       - NarrationPipelineBuildRequest : composition request
         - NarrationPipelineBuildRequest: record {
@@ -36,7 +36,7 @@ preconditions:
 
 postconditions:
   - returned pipeline contains the DI base chain in order: persistence → system prompt → content guardian → provider dispatch
-  - when request.AttachmentIds is non-empty, one attachment ingestion middleware is inserted per attachment id between content guardian and provider dispatch
+  - when request.AttachmentIds is non-empty, a single attachment context injection middleware is inserted between content guardian and provider dispatch
   - returned pipeline uses DI-provided provider dispatch and does not substitute providers
 
 invariants:
