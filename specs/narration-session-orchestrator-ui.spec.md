@@ -4,17 +4,17 @@ mode:
   - stateful (coordinates child components and session state; no external persistence beyond collaborators)
 
 behavior:
-  - what: Compose attachments dropzone, prompt input bar, and pipeline log; restore turns from storage; submit prompts; and update the log via observer.
+  - what: Compose attachments dropzone, prompt input bar, and pipeline log; restore turns from storage; ingest dropped attachments immediately; submit prompts; and update the log via observer.
   - input:
       - INarrationSessionStore : collaborator to load/save session turns
       - INarrationPipelineFactory : collaborator to compose per-submission pipelines
-      - IAttachmentUploadStore : collaborator to store raw attachment bytes before ingestion
+      - INarrationAttachmentIngestionService : collaborator to ingest dropped attachments immediately
       - IReadOnlyList<NarrationStageKind> StageOrder : canonical stage order
         - recommended_default (NarrationStageKind.Name values):
             - session_load
             - system_prompt_injection
             - content_guardian_injection
-            - attachment_ingestion
+            - attachment_context_injection
             - provider_dispatch
             - persist_context
   - output:
@@ -24,13 +24,14 @@ behavior:
       - supply StageOrder consistent with the pipeline middleware stage ids (telemetry stage names)
   - side_effects_allowed:
       - load and save turns via INarrationSessionStore
-      - write accepted attachments to IAttachmentUploadStore
+      - ingest accepted attachments immediately and persist processed summaries
       - invoke pipeline factory with prompt and attachments
 
 state:
   - turns : IReadOnlyList<NarrationPipelineTurnView> | append-only
   - is_submitting : bool | gating for prompt bar
-  - staged_attachments : IReadOnlyList<AttachmentUploadCandidate> | ephemeral (from attachments-dropzone-ui OnAccepted)
+  - is_ingesting_attachments : bool | gating for prompt bar
+  - new_attachments : IReadOnlyList<AttachmentUploadCandidate> | ephemeral (dropped, pending ingestion)
 
 preconditions:
   - StageOrder non-empty and unique
@@ -39,11 +40,13 @@ preconditions:
 postconditions:
   - restored turns render in log; new submissions append turns in chronological order
   - observer events update the latest turn’s stage statuses and output segments deterministically
+  - each prompt submission appends a new turn whose stage chips are rendered in StageOrder during streaming and completion
 
 invariants:
   - log remains append-only; prior turns are not mutated
   - only one stage per turn may be Running at a time
   - upstream failures halt downstream chips for that turn
+  - prompt submission is disabled while is_ingesting_attachments is true
 
 failure_modes:
   - store_error :: load/save failure :: show banner; keep UI usable; do not drop current state
@@ -52,7 +55,7 @@ failure_modes:
 
 policies:
   - serialized submissions: one prompt in-flight at a time
-  - cancellation: propagate cancellation to upload-store writes and pipeline execution
+  - cancellation: propagate cancellation to ingestion and pipeline execution
   - idempotency: avoid duplicate submissions via gating
 
 never:

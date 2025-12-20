@@ -8,6 +8,7 @@ behavior:
   - input:
       - Func<string, CancellationToken, ValueTask> SubmitPrompt : submission delegate invoked on user action
       - bool IsSubmitting : disables input and submission while true
+      - bool IsBlocked : additional caller-controlled gating (e.g., attachment ingestion in-flight)
       - string? InitialText : optional seed text
   - output:
       - RenderFragment : input field and submit button UI
@@ -30,6 +31,7 @@ postconditions:
 
 invariants:
   - serialized submissions: while IsSubmitting is true, submission actions are disabled
+  - while IsBlocked is true, submission actions are disabled
   - deterministic behavior: same inputs produce same UI states
 
 failure_modes:

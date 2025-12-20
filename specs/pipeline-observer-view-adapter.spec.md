@@ -4,9 +4,10 @@ mode:
   - compositional (translates observer callbacks into view-model updates; no owned persistence)
 
 behavior:
-  - what: Map `INarrationPipelineObserver` events into `NarrationPipelineTurnView` updates: stage status transitions, metadata population, and streaming output concatenation.
+  - what: Map either `INarrationPipelineObserver` events or shared `StageEvent` telemetry into `NarrationPipelineTurnView` updates: stage status transitions, metadata population, and streaming output concatenation.
   - input:
       - INarrationPipelineObserver : source of pipeline events
+      - StageEvent : shared stage telemetry events (see stage-event-contract)
       - IReadOnlyList<NarrationStageKind> StageOrder : canonical stage order
   - output:
       - Immutable updates to `NarrationPipelineTurnView` instances
