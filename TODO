@@ -26,7 +26,7 @@ Purpose
 
 ## Functionality Gaps
 
-- Restore-from-store in orchestrator: not implemented.
+- Restore-from-store in orchestrator: not implemented (needs deterministic replay using specs/narration-turn-log-record.spec.md).
 - Prompt token estimation and emission: not implemented.
 
 ## Technical Debt
