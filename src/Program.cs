@@ -158,9 +158,8 @@ builder.Services.AddScoped<INarrationPipelineFactory>(sp =>
     }
 
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-    var ingestion = sp.GetRequiredService<IAttachmentIngestionService>();
-    var attachmentOptions = sp.GetRequiredService<AttachmentIngestionOptions>();
-    return new NarrationPipelineFactory(sessions, profiles, provider, options, loggerFactory, ingestion, attachmentOptions);
+    var processed = sp.GetRequiredService<IProcessedAttachmentStore>();
+    return new NarrationPipelineFactory(sessions, profiles, provider, options, loggerFactory, processed);
 });
 
 var app = builder.Build();

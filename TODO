@@ -7,7 +7,7 @@ Purpose
 ## Spec Drift
 
 - Provider dispatch: metrics/log fields not fully aligned with spec; verify terminal/stream-composition semantics remain consistent with the streaming contract.
-- IndexedDB storage: CRUD surface incomplete (e.g., no Get/Delete); observability field completeness varies by operation.
+- IndexedDB storage: CRUD surface exists (Put/Get/Delete/List) but observability field completeness varies by operation; verify spec alignment per operation.
 - Narration pipeline log UI: render-only component implemented; hover metadata popovers present via chip title; auto-scroll remains unimplemented; expand Playwright coverage to assert hover content deterministically.
 - Prompt input bar UI: component implemented with gating and error banner; E2E SHOULD validate cancellation propagation; no implicit retries enforced.
 - Attachments dropzone UI: component implemented; accepted files are uploaded by orchestrator via IAttachmentUploadStore; drag-and-drop interactions MAY be added; Playwright covers acceptance via payload.
@@ -16,9 +16,7 @@ Purpose
 - Stage metadata provider: implemented and integrated; provider metrics (tokens/model) emitted via middleware; prompt token estimation remains unimplemented.
 
 - Pipeline composition: Program still registers a singleton NarrationPipelineService for demo/testing; ensure no production path relies on it.
-- Stage naming (current drift): StageOrder is intended to reflect middleware stage ids directly (telemetry stage names); update default/configured StageOrder to match the configured middleware stages (e.g., session_load, persist_context, provider_dispatch, attachment_ingestion) and keep these stage ids stable.
-- Attachments MIME policy (current drift): PDF is not supported; remove application/pdf from allowlists/options and ensure ingestion rejects PDFs deterministically.
-- Attachment ingestion observability (current drift): AttachmentIngestionMiddleware throws on failure but does not emit observer stage telemetry; failure-to-chip transitions must be specified and implemented.
+- Stage naming (current drift): StageOrder is intended to reflect middleware stage ids directly (telemetry stage names); update default/configured StageOrder to match the configured middleware stages (e.g., session_load, system_prompt_injection, content_guardian_injection, attachment_context_injection, provider_dispatch, persist_context) and keep these stage ids stable.
 - System prompt profile resolver (current drift): config-backed resolver implemented with success/not_found/error/cancelled metrics and logs; storage-backed or policy-based selection remains unimplemented.
 - System prompt profile resolver (potential drift): future changes to selection policies MUST remain deterministic and versioned; any caching MUST preserve consistency across a single process lifetime.
 - Provider dispatch (potential drift): future middleware additions that wrap streams must preserve early-dispose cancellation propagation upstream.
@@ -32,6 +30,6 @@ Purpose
 ## Technical Debt
 
 - Broaden Playwright coverage: hover content determinism across multiple stages; cancellation propagation for prompt bar.
-- IndexedDB observability: normalize required fields per operation; complete CRUD (Get/Delete).
+- IndexedDB observability: normalize required fields per operation.
 - Log UI auto-scroll: implement if added to spec; otherwise defer.
 - Ensure consistent cancellation normalization across middleware.

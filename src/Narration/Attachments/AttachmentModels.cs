@@ -65,9 +65,15 @@ public interface IAttachmentUploadStore
 
 public interface IProcessedAttachmentStore
 {
-    ValueTask<ProcessedAttachment?> FindByHashAsync(Guid sessionId, string sourceHash, CancellationToken cancellationToken);
+    ValueTask<StorageResult<ProcessedAttachment?>> GetAsync(Guid sessionId, string attachmentId, CancellationToken cancellationToken);
+
+    ValueTask<StorageResult<IReadOnlyList<ProcessedAttachment>>> ListBySessionAsync(Guid sessionId, CancellationToken cancellationToken);
+
+    ValueTask<StorageResult<ProcessedAttachment?>> FindByHashAsync(Guid sessionId, string sourceHash, CancellationToken cancellationToken);
 
     ValueTask<StorageResult<Unit>> SaveAsync(ProcessedAttachment attachment, CancellationToken cancellationToken);
+
+    ValueTask<StorageResult<Unit>> DeleteAsync(Guid sessionId, string attachmentId, CancellationToken cancellationToken);
 }
 
 public interface IAttachmentOpenAiContextFactory

@@ -5,27 +5,21 @@ namespace Narratoria.Components;
 
 public sealed class PipelineObserverViewAdapter : INarrationPipelineObserver
 {
-    private const string AttachmentIngestionStage = "attachment_ingestion";
-
     private readonly IReadOnlyList<NarrationStageKind> _stageOrder;
     private readonly Func<NarrationPipelineTurnView, NarrationPipelineTurnView> _getTurn;
     private readonly Action<NarrationPipelineTurnView> _setTurn;
     private readonly IStageMetadataProvider? _metadata;
-    private readonly int _attachmentExpectedCount;
-    private int _attachmentCompletedCount;
 
     public PipelineObserverViewAdapter(
         IReadOnlyList<NarrationStageKind> stageOrder,
         Func<NarrationPipelineTurnView, NarrationPipelineTurnView> getTurn,
         Action<NarrationPipelineTurnView> setTurn,
-        IStageMetadataProvider? metadata = null,
-        int attachmentExpectedCount = 0)
+        IStageMetadataProvider? metadata = null)
     {
         _stageOrder = stageOrder ?? throw new ArgumentNullException(nameof(stageOrder));
         _getTurn = getTurn ?? throw new ArgumentNullException(nameof(getTurn));
         _setTurn = setTurn ?? throw new ArgumentNullException(nameof(setTurn));
         _metadata = metadata;
-        _attachmentExpectedCount = attachmentExpectedCount;
     }
 
     public void OnStageCompleted(NarrationStageTelemetry telemetry)
@@ -46,26 +40,6 @@ public sealed class PipelineObserverViewAdapter : INarrationPipelineObserver
         };
 
         stages[stageIndex] = stages[stageIndex] with { Status = status, Duration = telemetry.Elapsed };
-
-        if (string.Equals(telemetry.Stage, AttachmentIngestionStage, StringComparison.Ordinal) && _attachmentExpectedCount > 0)
-        {
-            if (status == NarrationStageStatus.Completed)
-            {
-                _attachmentCompletedCount = Math.Min(_attachmentExpectedCount, _attachmentCompletedCount + 1);
-                if (_attachmentCompletedCount < _attachmentExpectedCount)
-                {
-                    stages[stageIndex] = stages[stageIndex] with { Status = NarrationStageStatus.Running };
-                    _setTurn(current with { Stages = stages.ToImmutableArray() });
-                    return;
-                }
-            }
-
-            if (status == NarrationStageStatus.Failed)
-            {
-                _setTurn(current with { Stages = stages.ToImmutableArray() });
-                return;
-            }
-        }
 
         if (status is NarrationStageStatus.Completed or NarrationStageStatus.Skipped)
         {
