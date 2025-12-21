@@ -52,6 +52,7 @@
 - `specs/narration-session-list-ui.spec.md`
 - `specs/narration-session-title-middleware.spec.md`
 - `specs/narration-processed-attachment-store.spec.md`
+- `specs/narration-turn-log-record.spec.md`
 
 RULE: Specification status tracking
 - The "What remains" section tracks specification work that is pending or incomplete.
