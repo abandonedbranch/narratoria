@@ -172,8 +172,7 @@
                 StageOrder,
                 getTurn: _ => _turns[^1],
                 setTurn: updated => { _turns[^1] = updated; StateHasChanged(); },
-                metadata: scopedMetadata,
-                attachmentExpectedCount: attachmentIds.Count);
+                metadata: scopedMetadata);
 
             var observer = new TurnScopedObserver(turn.TurnId, adapter);
 

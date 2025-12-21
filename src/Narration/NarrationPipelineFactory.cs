@@ -24,8 +24,7 @@ public sealed class NarrationPipelineFactory : INarrationPipelineFactory
     private readonly INarrationProvider _provider;
     private readonly ProviderDispatchOptions _dispatchOptions;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly Narratoria.Narration.Attachments.IAttachmentIngestionService _attachmentIngestion;
-    private readonly Narratoria.Narration.Attachments.AttachmentIngestionOptions _attachmentOptions;
+    private readonly Narratoria.Narration.Attachments.IProcessedAttachmentStore _processedAttachments;
 
     public NarrationPipelineFactory(
         INarrationSessionStore sessions,
@@ -33,16 +32,14 @@ public sealed class NarrationPipelineFactory : INarrationPipelineFactory
         INarrationProvider provider,
         ProviderDispatchOptions dispatchOptions,
         ILoggerFactory loggerFactory,
-        Narratoria.Narration.Attachments.IAttachmentIngestionService attachmentIngestion,
-        Narratoria.Narration.Attachments.AttachmentIngestionOptions? attachmentOptions = null)
+        Narratoria.Narration.Attachments.IProcessedAttachmentStore processedAttachments)
     {
         _sessions = sessions ?? throw new ArgumentNullException(nameof(sessions));
         _systemPromptProfiles = systemPromptProfiles ?? throw new ArgumentNullException(nameof(systemPromptProfiles));
         _provider = provider ?? throw new ArgumentNullException(nameof(provider));
         _dispatchOptions = dispatchOptions ?? throw new ArgumentNullException(nameof(dispatchOptions));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-        _attachmentIngestion = attachmentIngestion ?? throw new ArgumentNullException(nameof(attachmentIngestion));
-        _attachmentOptions = attachmentOptions ?? Narratoria.Narration.Attachments.AttachmentIngestionOptions.Default;
+        _processedAttachments = processedAttachments ?? throw new ArgumentNullException(nameof(processedAttachments));
     }
 
     public NarrationPipelineService Create(NarrationPipelineBuildRequest request)
@@ -71,18 +68,11 @@ public sealed class NarrationPipelineFactory : INarrationPipelineFactory
             guardian.InvokeAsync
         };
 
-        if (request.AttachmentIds is { Count: > 0 })
-        {
-            foreach (var attachmentId in request.AttachmentIds)
-            {
-                var ingestion = new Narratoria.Narration.Attachments.AttachmentIngestionMiddleware(
-                    attachmentId,
-                    _attachmentIngestion,
-                    observer,
-                    _attachmentOptions);
-                middleware.Add(ingestion.InvokeAsync);
-            }
-        }
+        var injection = new Narratoria.Narration.Attachments.AttachmentContextInjectionMiddleware(
+            _processedAttachments,
+            request.AttachmentIds ?? Array.Empty<string>(),
+            observer);
+        middleware.Add(injection.InvokeAsync);
 
         middleware.Add(dispatch.InvokeAsync);
 

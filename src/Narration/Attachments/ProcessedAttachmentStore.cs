@@ -53,8 +53,76 @@ public sealed class ProcessedAttachmentStore : IProcessedAttachmentStore
         _serializer = serializer ?? new ProcessedAttachmentSerializer();
     }
 
-    public async ValueTask<ProcessedAttachment?> FindByHashAsync(Guid sessionId, string sourceHash, CancellationToken cancellationToken)
+    public async ValueTask<StorageResult<ProcessedAttachment?>> GetAsync(Guid sessionId, string attachmentId, CancellationToken cancellationToken)
     {
+        if (sessionId == Guid.Empty) throw new ArgumentException("SessionId is required.", nameof(sessionId));
+        if (string.IsNullOrWhiteSpace(attachmentId)) throw new ArgumentException("AttachmentId is required.", nameof(attachmentId));
+
+        var request = new IndexedDbGetRequest<ProcessedAttachment>
+        {
+            Store = _store,
+            Key = attachmentId,
+            Serializer = _serializer,
+            Scope = _scope
+        };
+
+        var result = await _storage.GetAsync(request, cancellationToken).ConfigureAwait(false);
+        if (!result.Ok)
+        {
+            _logger.LogWarning(
+                "Processed attachment get failed session={SessionId} attachment={AttachmentId} errorClass={ErrorClass} message={Message}",
+                sessionId,
+                attachmentId,
+                result.Error?.ErrorClass,
+                result.Error?.Message);
+            return StorageResult<ProcessedAttachment?>.Failure(result.Error ?? StorageError.ProviderFailure("Unable to read processed attachment."));
+        }
+
+        var value = result.Value;
+        if (value is null) return StorageResult<ProcessedAttachment?>.Success(null);
+        if (value.SessionId != sessionId) return StorageResult<ProcessedAttachment?>.Success(null);
+        return StorageResult<ProcessedAttachment?>.Success(value);
+    }
+
+    public async ValueTask<StorageResult<IReadOnlyList<ProcessedAttachment>>> ListBySessionAsync(Guid sessionId, CancellationToken cancellationToken)
+    {
+        if (sessionId == Guid.Empty) throw new ArgumentException("SessionId is required.", nameof(sessionId));
+
+        var query = new IndexedDbQueryOptions("session_id", sessionId.ToString(), null);
+        var request = new IndexedDbListRequest<ProcessedAttachment>
+        {
+            Store = _store,
+            Serializer = _serializer,
+            Query = query,
+            Scope = _scope
+        };
+
+        var result = await _storage.ListAsync(request, cancellationToken).ConfigureAwait(false);
+        if (!result.Ok)
+        {
+            _logger.LogWarning(
+                "Processed attachments list failed session={SessionId} errorClass={ErrorClass} message={Message}",
+                sessionId,
+                result.Error?.ErrorClass,
+                result.Error?.Message);
+            return StorageResult<IReadOnlyList<ProcessedAttachment>>.Failure(result.Error ?? StorageError.ProviderFailure("Unable to list processed attachments."));
+        }
+
+        var records = result.Value ?? Array.Empty<IndexedDbRecord<ProcessedAttachment>>();
+        var attachments = records
+            .Select(r => r.Value)
+            .Where(a => a.SessionId == sessionId)
+            .OrderBy(a => a.CreatedAt)
+            .ToArray();
+
+        return StorageResult<IReadOnlyList<ProcessedAttachment>>.Success(attachments);
+    }
+
+    public async ValueTask<StorageResult<ProcessedAttachment?>> FindByHashAsync(Guid sessionId, string sourceHash, CancellationToken cancellationToken)
+    {
+        if (sessionId == Guid.Empty) throw new ArgumentException("SessionId is required.", nameof(sessionId));
+        if (string.IsNullOrWhiteSpace(sourceHash)) throw new ArgumentException("SourceHash is required.", nameof(sourceHash));
+
         var query = new IndexedDbQueryOptions("source_hash", sourceHash, null);
         var request = new IndexedDbListRequest<ProcessedAttachment>
         {
@@ -72,12 +140,12 @@ public sealed class ProcessedAttachmentStore : IProcessedAttachmentStore
                 sessionId,
                 result.Error?.ErrorClass,
                 result.Error?.Message);
-            return null;
+            return StorageResult<ProcessedAttachment?>.Failure(result.Error ?? StorageError.ProviderFailure("Unable to query processed attachments."));
         }
 
         var records = result.Value ?? Array.Empty<IndexedDbRecord<ProcessedAttachment>>();
         var match = records.FirstOrDefault(a => a.Value.SessionId == sessionId);
-        return match.Equals(default) ? null : match.Value;
+        return StorageResult<ProcessedAttachment?>.Success(match.Equals(default) ? null : match.Value);
     }
 
     public ValueTask<StorageResult<Unit>> SaveAsync(ProcessedAttachment attachment, CancellationToken cancellationToken)
@@ -97,6 +165,32 @@ public sealed class ProcessedAttachmentStore : IProcessedAttachmentStore
         };
 
         return _quotaStorage.PutIfCanAccommodateAsync(request, cancellationToken);
+    }
+
+    public async ValueTask<StorageResult<Unit>> DeleteAsync(Guid sessionId, string attachmentId, CancellationToken cancellationToken)
+    {
+        if (sessionId == Guid.Empty) throw new ArgumentException("SessionId is required.", nameof(sessionId));
+        if (string.IsNullOrWhiteSpace(attachmentId)) throw new ArgumentException("AttachmentId is required.", nameof(attachmentId));
+
+        var existing = await GetAsync(sessionId, attachmentId, cancellationToken).ConfigureAwait(false);
+        if (!existing.Ok)
+        {
+            return StorageResult<Unit>.Failure(existing.Error ?? StorageError.ProviderFailure("Unable to read processed attachment."));
+        }
+
+        if (existing.Value is null)
+        {
+            return StorageResult<Unit>.Success(Unit.Value);
+        }
+
+        var request = new IndexedDbDeleteRequest
+        {
+            Store = _store,
+            Key = attachmentId,
+            Scope = _scope
+        };
+
+        return await _storage.DeleteAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     public static IndexedDbStoreDefinition CreateStoreDefinition(string name = "attachments")

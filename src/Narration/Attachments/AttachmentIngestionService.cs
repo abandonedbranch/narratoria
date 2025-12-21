@@ -70,10 +70,17 @@ public sealed class AttachmentIngestionService : IAttachmentIngestionService
             if (options.DedupeByHash)
             {
                 var existing = await _processed.FindByHashAsync(command.SessionId, sourceHash, cancellationToken).ConfigureAwait(false);
-                if (existing is not null)
+                if (!existing.Ok)
+                {
+                    var error = new AttachmentIngestionError("PersistenceError", existing.Error?.Message ?? "Unable to query for existing processed attachment.");
+                    _metrics.RecordProcessed("failure", error.ErrorClass);
+                    return AttachmentIngestionResult.Failure(error);
+                }
+
+                if (existing.Value is not null)
                 {
                     _metrics.RecordProcessed("success", "deduped");
-                    return AttachmentIngestionResult.Success(existing);
+                    return AttachmentIngestionResult.Success(existing.Value);
                 }
             }
 

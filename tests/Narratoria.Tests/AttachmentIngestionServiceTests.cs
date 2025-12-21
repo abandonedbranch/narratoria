@@ -159,17 +159,51 @@ public sealed class AttachmentIngestionServiceTests
 
         public IReadOnlyCollection<ProcessedAttachment> Attachments => _attachments.Values.ToArray();
 
-        public ValueTask<ProcessedAttachment?> FindByHashAsync(Guid sessionId, string sourceHash, CancellationToken cancellationToken)
+        public ValueTask<StorageResult<ProcessedAttachment?>> GetAsync(Guid sessionId, string attachmentId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (_attachments.TryGetValue(attachmentId, out var found) && found.SessionId == sessionId)
+            {
+                return ValueTask.FromResult(StorageResult<ProcessedAttachment?>.Success(found));
+            }
+
+            return ValueTask.FromResult(StorageResult<ProcessedAttachment?>.Success(null));
+        }
+
+        public ValueTask<StorageResult<IReadOnlyList<ProcessedAttachment>>> ListBySessionAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var matches = _attachments.Values
+                .Where(a => a.SessionId == sessionId)
+                .OrderBy(a => a.CreatedAt)
+                .ToArray();
+            return ValueTask.FromResult(StorageResult<IReadOnlyList<ProcessedAttachment>>.Success(matches));
+        }
+
+        public ValueTask<StorageResult<ProcessedAttachment?>> FindByHashAsync(Guid sessionId, string sourceHash, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var match = _attachments.Values.FirstOrDefault(a => a.SessionId == sessionId && a.SourceHash == sourceHash);
-            return ValueTask.FromResult<ProcessedAttachment?>(match);
+            return ValueTask.FromResult(StorageResult<ProcessedAttachment?>.Success(match));
         }
 
         public ValueTask<StorageResult<Unit>> SaveAsync(ProcessedAttachment attachment, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             _attachments[attachment.AttachmentId] = attachment;
+            return ValueTask.FromResult(StorageResult<Unit>.Success(Unit.Value));
+        }
+
+        public ValueTask<StorageResult<Unit>> DeleteAsync(Guid sessionId, string attachmentId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (_attachments.TryGetValue(attachmentId, out var existing) && existing.SessionId == sessionId)
+            {
+                _attachments.TryRemove(attachmentId, out _);
+            }
+
             return ValueTask.FromResult(StorageResult<Unit>.Success(Unit.Value));
         }
     }
