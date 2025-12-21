@@ -25,33 +25,33 @@
 ### Specs Index (mirrors specs/)
 
 - `specs/_template.spec.md`
-- `specs/11-attachments-dropzone-ui.spec.md`
-- `specs/06-attachment-context-injection-middleware.spec.md`
-- `specs/13-compose-bar-ui.spec.md`
+- `specs/attachments-dropzone-ui.spec.md`
+- `specs/attachment-context-injection-middleware.spec.md`
+- `specs/compose-bar-ui.spec.md`
 - `specs/indexeddb-storage-service.spec.md`
-- `specs/05-narration-attachment-ingestion-service.spec.md`
+- `specs/narration-attachment-ingestion-service.spec.md`
 - `specs/narration-content-guardian-middleware.spec.md`
 - `specs/narration-persistence-middleware.spec.md`
-- `specs/07-narration-pipeline-factory.spec.md`
-- `specs/08-narration-pipeline-integration.spec.md`
-- `specs/09-narration-pipeline-log-ui.spec.md`
+- `specs/narration-pipeline-factory.spec.md`
+- `specs/narration-pipeline-integration.spec.md`
+- `specs/narration-pipeline-log-ui.spec.md`
 - `specs/narration-provider-dispatch-middleware.spec.md`
-- `specs/14-narration-session-orchestrator-ui.spec.md`
+- `specs/narration-session-orchestrator-ui.spec.md`
 - `specs/narration-system-prompt-middleware.spec.md`
 - `specs/narrator-pipeline-service.spec.md`
 - `specs/openai-api-service.spec.md`
-- `specs/10-pipeline-observer-view-adapter.spec.md`
-- `specs/12-prompt-input-bar-ui.spec.md`
-- `specs/03-stage-event-contract.spec.md`
-- `specs/04-stage-pipeline.spec.md`
+- `specs/pipeline-observer-view-adapter.spec.md`
+- `specs/prompt-input-bar-ui.spec.md`
+- `specs/stage-event-contract.spec.md`
+- `specs/stage-pipeline.spec.md`
 - `specs/stage-metadata-provider.spec.md`
 - `specs/storage-quota-awareness-service.spec.md`
 - `specs/system-prompt-profile-resolver.spec.md`
-- `specs/16-workspace-shell-ui.spec.md`
-- `specs/01-narration-session-store.spec.md`
-- `specs/15-narration-session-list-ui.spec.md`
-- `specs/17-narration-session-title-middleware.spec.md`
-- `specs/02-narration-processed-attachment-store.spec.md`
+- `specs/workspace-shell-ui.spec.md`
+- `specs/narration-session-store.spec.md`
+- `specs/narration-session-list-ui.spec.md`
+- `specs/narration-session-title-middleware.spec.md`
+- `specs/narration-processed-attachment-store.spec.md`
 
 RULE: Specification status tracking
 - The "What remains" section tracks specification work that is pending or incomplete.
