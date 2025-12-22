@@ -19,7 +19,7 @@
 - This PR correctly identifies and removes the deviation
 
 ### 2. Type Explicitness ✅
-**Before**: `WorkingContextSegments: ordered context segments...`  
+**Before**: `WorkingContextSegments : ordered context segments...`  
 **After**: `ImmutableArray<ContextSegment> WorkingContextSegments : ordered segments...`
 
 - Makes types explicit (aligns with CONTRIB emphasis on typed interfaces)
@@ -103,7 +103,7 @@ invariants:
 
 ## Alignment with CONTRIB Requirements
 
-Checking against `/home/runner/work/narratoria/narratoria/CONTRIB`:
+Checking against `CONTRIB`:
 
 | CONTRIB Requirement | PR Alignment |
 |---------------------|--------------|
