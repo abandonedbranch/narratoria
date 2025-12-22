@@ -34,7 +34,7 @@ state:
   - NarrationStageKind: record struct { string Name } | render label text
     - static members (convenience only): Sanitize, Context, Lore, Llm, Image
     - Custom(string name) => NarrationStageKind | creates a stage kind with an arbitrary Name
-  - NarrationStageStatus: enum { Pending, Running, Completed, Skipped, Failed } | visual state mapping
+  - NarrationStageStatus: enum { Pending, Running, Completed, Skipped, Failed, Canceled } | visual state mapping
   - NarrationStreamState: record { Guid TurnId; NarrationStageKind Stage; ImmutableArray<string> Segments } | tracks current streaming turn
   - NarrationStageHover: record { Guid TurnId; NarrationStageKind Stage; TimeSpan? Duration; int? PromptTokens; int? CompletionTokens; string? Model } | hover payload
 
@@ -46,12 +46,12 @@ preconditions:
 postconditions:
   - turns render in chronological order; prior turns are read-only
   - stage chips render in caller-supplied order; downstream chips remain Pending until upstream completes or fails
-  - streaming segments append in-order to the active turn Output; when status flips to Completed or Failed, streaming stops
+  - streaming segments append in-order to the active turn Output; when status flips to Completed, Failed, or Canceled, streaming stops
 
 invariants:
   - log is append-only; existing turn content is never edited by the component
   - only one stage per turn may be Running at a time
-  - Failed status halts rendering of Running/Completed for downstream chips until caller replays the turn
+  - Failed or Canceled status halts rendering of Running/Completed for downstream chips until caller replays the turn
   - visuals remain deterministic for a given input model (no randomness in ordering or styling choices)
 
 failure_modes:

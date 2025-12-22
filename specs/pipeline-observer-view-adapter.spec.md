@@ -24,7 +24,7 @@ preconditions:
   - events reference a valid active turn
 
 postconditions:
-  - stage chips progress deterministically: Pending → Running → Completed | Failed | Skipped
+  - stage chips progress deterministically: Pending → Running → Completed | Failed | Skipped | Canceled
   - streaming segments append in order; ellipsis visible while Running
 
 invariants:
