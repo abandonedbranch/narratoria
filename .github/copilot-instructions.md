@@ -1,8 +1,8 @@
 # Copilot Instructions
 - Spec-first repo: specs in [SPEC](SPEC) and [specs/](specs/) are authoritative; update the index when adding/removing specs and log drift/gaps in [TODO](TODO). Coding standards live in [CONTRIB](CONTRIB) (small interfaces, immutability by default, no placeholders).
-- Architecture: .NET 10 Blazor Server app. Pipeline is DI-built in [src/Program.cs](src/Program.cs) with middleware order: persistence → system prompt injection → content guardian injection → provider dispatch.
-- Pipeline contract: `NarrationPipelineService` composes delegates; `RunAsync` requires a `NarrationContext` and `CancellationToken`. `MiddlewareResult` carries `StreamedNarration` (IAsyncEnumerable) plus `UpdatedContext`. Short-circuiting/exception propagation are middleware-driven; pipeline itself is side-effect free.
-- Middleware responsibilities:
+- Architecture: .NET 10 Blazor Server app. Pipeline is DI-built in [src/Program.cs](src/Program.cs) with element order: persistence → system prompt injection → content guardian injection → provider dispatch.
+- Pipeline contract: `NarrationPipelineService` composes delegates; `RunAsync` requires a `NarrationContext` and `CancellationToken`. `MiddlewareResult` carries `StreamedNarration` (IAsyncEnumerable) plus `UpdatedContext`. Short-circuiting/exception propagation are element-driven; pipeline itself is side-effect free.
+- Pipeline element responsibilities:
   - [NarrationPersistenceMiddleware](src/Narration/NarrationPersistenceMiddleware.cs) loads session state first, merges request metadata (stripping ephemeral system/content-guardian keys), wraps downstream streaming so persistence always runs, and persists merged narration on completion; skips persistence on downstream failure/cancel.
   - [NarrationSystemPromptMiddleware](src/Narration/NarrationSystemPromptMiddleware.cs) resolves a system prompt profile via `ISystemPromptProfileResolver` (config-backed in [ConfigSystemPromptProfileResolver](src/Narration/ConfigSystemPromptProfileResolver.cs)), injects system/instruction segments, and is idempotent per profile/version metadata.
   - [NarrationContentGuardianMiddleware](src/Narration/NarrationContentGuardianMiddleware.cs) injects a safety system prompt unless already applied; expects `WorkingContextSegments` to exist.

@@ -26,18 +26,18 @@
 
 - `specs/_template.spec.md`
 - `specs/attachments-dropzone-ui.spec.md`
-- `specs/attachment-context-injection-middleware.spec.md`
+- `specs/attachment-context-injection-element.spec.md`
 - `specs/compose-bar-ui.spec.md`
 - `specs/indexeddb-storage-service.spec.md`
 - `specs/narration-attachment-ingestion-service.spec.md`
-- `specs/narration-content-guardian-middleware.spec.md`
-- `specs/narration-persistence-middleware.spec.md`
+- `specs/narration-content-guardian-element.spec.md`
+- `specs/narration-persistence-element.spec.md`
 - `specs/narration-pipeline-factory.spec.md`
 - `specs/narration-pipeline-integration.spec.md`
 - `specs/narration-pipeline-log-ui.spec.md`
-- `specs/narration-provider-dispatch-middleware.spec.md`
+- `specs/narration-provider-dispatch-element.spec.md`
 - `specs/narration-session-orchestrator-ui.spec.md`
-- `specs/narration-system-prompt-middleware.spec.md`
+- `specs/narration-system-prompt-element.spec.md`
 - `specs/narrator-pipeline-service.spec.md`
 - `specs/openai-api-service.spec.md`
 - `specs/pipeline-observer-view-adapter.spec.md`
@@ -50,7 +50,7 @@
 - `specs/workspace-shell-ui.spec.md`
 - `specs/narration-session-store.spec.md`
 - `specs/narration-session-list-ui.spec.md`
-- `specs/narration-session-title-middleware.spec.md`
+- `specs/narration-session-title-element.spec.md`
 - `specs/narration-processed-attachment-store.spec.md`
 - `specs/narration-turn-log-record.spec.md`
 
@@ -90,6 +90,12 @@ RULE: Specification status tracking
 - Coding standards, interfaces, testing practices, and implementation rules live in [CONTRIB.md](CONTRIB.md).
 - This SPEC governs specification authoring, specification status tracking, and spec-first authority only.
 - Implementation drift, functionality gaps, and technical debt tracking live in [TODO](TODO).
+
+## Terminology
+
+- **Pipeline Element**: A stage component in the narration pipeline that transforms, sources, or sinks data (see `stage-pipeline.spec.md`). Elements follow the `IStageSource<T>`, `IStageTransform<TIn,TOut>`, or `IStageSink<TIn>` contracts. Specs use "element" terminology to distinguish from ASP.NET middleware.
+- **ASP.NET Middleware**: Standard ASP.NET Core components registered in the `services` collection (not narration pipeline components).
+- Note: Current code implementations use `*Middleware.cs` file names and `NarrationMiddleware` delegate types for historical reasons; specs are authoritative and use "element" terminology going forward.
 
 ## Checklist
 

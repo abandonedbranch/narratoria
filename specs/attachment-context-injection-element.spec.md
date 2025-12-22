@@ -1,4 +1,4 @@
-## spec: attachment-context-injection-middleware
+## spec: attachment-context-injection-element
 
 mode:
   - compositional
@@ -13,7 +13,7 @@ behavior:
   - output:
       - MiddlewareResult: Downstream result with NarrationContext updated so `WorkingContextSegments` includes attachment segments.
   - caller_obligations:
-      - register this middleware before provider_dispatch and after any middleware that ensures WorkingContextSegments exists
+      - register this element before provider_dispatch and after any elements that ensure WorkingContextSegments exists
       - ensure StageOrder includes `attachment_context_injection` when stage chips are rendered
       - propagate CancellationToken
   - side_effects_allowed:
@@ -26,7 +26,7 @@ state:
 
 context:
   - StageId:
-      - this middleware MUST emit telemetry stage id `attachment_context_injection`
+      - this element MUST emit telemetry stage id `attachment_context_injection`
   - WorkingContextSegments:
       - Ordered ImmutableArray<ContextSegment> representing the prompt passed to provider_dispatch.
       - ContextSegment: { Role: system | instruction | user | attachment | history, Content: string, Source: string }.
@@ -40,8 +40,8 @@ preconditions:
 
 postconditions:
   - when there are staged processed attachments, WorkingContextSegments contains an attachment segment for each staged attachment in CreatedAt ascending order
-  - when there are no staged attachments, the middleware performs no segment insertion and MAY emit Skipped telemetry
-  - downstream middleware receives the updated WorkingContextSegments
+  - when there are no staged attachments, the element performs no segment insertion and MAY emit Skipped telemetry
+  - downstream elements receive the updated WorkingContextSegments
 
 invariants:
   - raw attachment bytes are never loaded or included; only processed attachment NormalizedText is injected

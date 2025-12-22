@@ -38,11 +38,11 @@ behavior:
       - NarrationPipelineTurnView : append-only turn with stage statuses, output stream, and hover metadata
   - caller_obligations:
       - supply a DI-resolved INarrationPipelineFactory; do not construct fallback pipelines
-      - provide StageOrder whose NarrationStageKind.Name values exactly match the telemetry stage ids emitted by the configured middleware
+      - provide StageOrder whose NarrationStageKind.Name values exactly match the telemetry stage ids emitted by the configured elements
       - propagate CancellationToken for submit and streaming
   - side_effects_allowed:
       - read staged processed attachments for SessionId and provide their identifiers to the pipeline factory
-      - persist narration context via persistence middleware
+      - persist narration context via persistence element
       - stream narration tokens to UI and update hover metadata
 
 state:
@@ -51,9 +51,9 @@ state:
 
 preconditions:
   - StageOrder is non-empty and unique
-  - every middleware stage id that should be visualized is present in StageOrder exactly once
+  - every element stage id that should be visualized is present in StageOrder exactly once
   - attachments, if any, are accepted and provide a readable stream via AttachmentUploadCandidate.OpenRead
-  - DI container is initialized with required middleware and services, including INarrationPipelineFactory
+  - DI container is initialized with required elements and services, including INarrationPipelineFactory
 
 postconditions:
   - submissions invoke a DI-composed pipeline exactly once; no fallback provider is used
@@ -65,13 +65,13 @@ invariants:
   - one active submission at a time per orchestrator instance; log is append-only
   - hover keys use TurnId (not SessionId) and NarrationStageKind.Name for lookup
   - attachment context injection precedes provider dispatch when staged attachments exist; when none, it is skipped
-  - middleware order remains: persistence → system prompt → content guardian → attachment context injection → provider dispatch
+  - element order remains: persistence → system prompt → content guardian → attachment context injection → provider dispatch
   - turn scoping: the UI integration MUST translate stage telemetry events keyed by SessionId into UI updates keyed by TurnId without requiring changes to StageEvent
   - stage identity is total for rendered stages: every telemetry stage id that should update the UI MUST equal exactly one NarrationStageKind.Name in StageOrder
 
 failure_modes:
   - attachments_load_error :: staged attachments cannot be loaded :: proceed with no attachments; log warning; chip remains Skipped
-  - stage_mismatch :: middleware stage name not found in StageOrder :: drop event; log warning; chip remains Pending
+  - stage_mismatch :: element stage name not found in StageOrder :: drop event; log warning; chip remains Pending
   - missing_pipeline :: DI NarrationPipelineService missing :: throw structured error before submission
   - cancellation :: caller token canceled :: stop streaming; mark running stage Canceled; do not mutate prior turns
 

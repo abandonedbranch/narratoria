@@ -1,4 +1,4 @@
-## spec: narration provider dispatch middleware
+## spec: narration provider dispatch element
 
 mode:
   - compositional
@@ -11,7 +11,7 @@ behavior:
   - output:
       - MiddlewareResult: Streamed narration tokens plus updated NarrationContext with WorkingNarration set to streamed tokens.
   - caller_obligations:
-      - Register middleware after context-building middleware (system prompt, attachments, templating) and inside the persistence wrapper (so persistence loads context before provider calls and persists only after streaming completes successfully).
+      - Register element after context-building elements (system prompt, attachments, templating) and inside the persistence wrapper (so persistence loads context before provider calls and persists only after streaming completes successfully).
       - Provide an INarrationProvider implementation, ProviderDispatchOptions, and CancellationToken.
       - Propagate observability hooks (observer/metrics).
   - side_effects_allowed:
@@ -26,14 +26,14 @@ preconditions:
   - CancellationToken is not canceled at invocation.
 
 postconditions:
-  - On success, narration tokens are streamed to downstream middleware/consumers; WorkingNarration reflects streamed tokens.
+  - On success, narration tokens are streamed to downstream elements/consumers; WorkingNarration reflects streamed tokens.
   - On failure, a structured NarrationPipelineError is emitted and the stream terminates faulted; downstream stops receiving tokens.
 
 streaming_contract:
-  - This middleware is a streaming source (provider) that returns immediately with:
+  - This element is a streaming source (provider) that returns immediately with:
       - StreamedNarration: an async stream of tokens.
       - UpdatedContext: a task that completes when streaming completes (success/fault/cancellation).
-  - Downstream middleware may be invoked during composition so it can wrap/observe the stream; this does not imply tokens were produced.
+  - Downstream elements may be invoked during composition so they can wrap/observe the stream; this does not imply tokens were produced.
   - If the returned stream is canceled or disposed early by the caller, the provider call must be canceled promptly.
 
 invariants:
