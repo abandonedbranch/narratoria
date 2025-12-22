@@ -6,8 +6,7 @@ mode:
 behavior:
   - what: Collect duration, tokens, and model info per stage and format `NarrationStageHover` payloads for UI chips.
   - input:
-      - NarrationStageTelemetry : events with stage, status, elapsed
-      - Provider metrics : tokens and model per completion
+      - StageEvent : shared stage telemetry events (see stage-event-contract) including stage, status, elapsed, and optional model/token fields
   - output:
       - NarrationStageHover : { TurnId, Stage, Duration?, PromptTokens?, CompletionTokens?, Model? }
   - caller_obligations:
@@ -19,13 +18,13 @@ state:
   - none (stateless aggregation functions)
 
 preconditions:
-  - telemetry events and provider metrics reference known stages/turns
+  - telemetry events reference known stages/turns
 
 postconditions:
   - hover payloads include available fields; missing fields remain null
 
 invariants:
-  - deterministic merge order: telemetry then provider metrics; provider values win on overlap
+  - deterministic merge order: timing fields from telemetry are applied first; model/token fields from terminal events (when present) win on overlap
 
 failure_modes:
   - data_mismatch :: missing identifiers :: emit warning; return null hover
