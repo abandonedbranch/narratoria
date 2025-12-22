@@ -9,11 +9,14 @@ behavior:
       - CreateSessionRequest: record { TraceMetadata Trace; string? InitialTitle }
       - Guid SessionId
       - string Title
+      - NarrationTurnRecord : persisted turn record (see narration-turn-log-record)
+      - Guid TurnId
       - CancellationToken
   - output:
       - SessionRecord: record { Guid SessionId; string Title; bool IsTitleUserSet; DateTimeOffset CreatedAt; DateTimeOffset UpdatedAt }
       - NarrationContext : stored session context used by narration pipeline persistence middleware
       - IReadOnlyList<SessionRecord> : ordered list for the Open... UI
+      - IReadOnlyList<NarrationTurnRecord> : ordered turn transcript for a session
   - caller_obligations:
       - treat the store as the source of truth for whether a session exists
       - call CreateSession before the first narration pipeline run for that session
@@ -30,10 +33,22 @@ preconditions:
 
 postconditions:
   - CreateSession creates SessionRecord + initial NarrationContext such that narration persistence middleware will not raise MissingSession
-  - DeleteSession deletes all session-scoped records (SessionRecord, NarrationContext, and processed attachments owned by the session)
+  - DeleteSession deletes all session-scoped records (SessionRecord, NarrationContext, persisted turns, and processed attachments owned by the session)
+
+turn_persistence:
+  - operations:
+      - ListTurns(SessionId, CancellationToken) => IReadOnlyList<NarrationTurnRecord>
+          - returns turns ordered by CreatedAt ascending (oldest to newest)
+      - UpsertTurn(NarrationTurnRecord, CancellationToken) => ValueTask
+          - stores the record for (SessionId, TurnId) using last-write-wins semantics
+      - DeleteTurn(SessionId, TurnId, CancellationToken) => ValueTask
+          - removes the persisted record for the turn
+  - finalization:
+      - if an existing stored record has IsFinal=true, UpsertTurn MUST reject any non-identical update for that (SessionId, TurnId) by returning a structured persistence error
 
 invariants:
   - SessionId uniquely identifies all session-scoped records
+  - TurnId uniquely identifies a turn within a SessionId
   - UpdatedAt monotonically increases per SessionId on successful writes
   - IsTitleUserSet, when true, prevents automatic title updates
 
@@ -46,6 +61,7 @@ failure_modes:
 policies:
   - ordering:
       - ListSessions returns most-recently-updated-first
+      - ListTurns returns oldest-to-newest (CreatedAt ascending)
   - idempotency:
       - DeleteSession is idempotent per SessionId (repeated deletes succeed with no-op semantics)
   - concurrency:
