@@ -12,6 +12,7 @@ behavior:
       - DateTimeOffset UpdatedAt: timestamp of last persisted update for this turn
       - string Prompt: user prompt text for the turn
   - NarrationTurnOutcome Outcome: final turn outcome (Succeeded|Failed|Canceled)
+      - NarrationTurnOutcome: enum { Succeeded, Failed, Canceled }
       - IReadOnlyList<NarrationStageKind> StageOrder: stage order used to render chips for this turn
       - IReadOnlyList<NarrationStageSnapshot> Stages: persisted stage snapshots
       - IReadOnlyList<string> OutputSegments: persisted narration output segments (ordered)
