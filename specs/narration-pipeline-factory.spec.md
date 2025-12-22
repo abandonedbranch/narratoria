@@ -20,7 +20,7 @@ behavior:
       - NarrationPipelineService : pipeline instance to be used exactly once for the submission
   - caller_obligations:
       - provide a non-null Observer that is already turn-scoped (events applied to the active turn) or otherwise safe for concurrent turns
-      - ensure any AttachmentIds have corresponding raw bytes written to IAttachmentUploadStore prior to running the returned pipeline
+      - ensure any AttachmentIds refer to processed attachments already persisted in INarrationProcessedAttachmentStore for request.SessionId
       - provide StageOrder whose NarrationStageKind.Name values match the middleware telemetry stage ids (identity; no mapping)
   - side_effects_allowed:
       - none (composition only; returned pipeline performs side effects when executed)
