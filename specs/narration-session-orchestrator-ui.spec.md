@@ -6,7 +6,7 @@ mode:
 behavior:
   - what: Compose attachments dropzone, prompt input bar, and pipeline log; restore turns from storage; ingest dropped attachments immediately; submit prompts; and update the log via observer.
   - input:
-      - INarrationSessionStore : collaborator to load/save session turns
+      - INarrationSessionStore : collaborator to list and upsert persisted session turns (NarrationTurnRecord)
       - INarrationPipelineFactory : collaborator to compose per-submission pipelines
       - INarrationAttachmentIngestionService : collaborator to ingest dropped attachments immediately
       - IReadOnlyList<NarrationStageKind> StageOrder : canonical stage order
