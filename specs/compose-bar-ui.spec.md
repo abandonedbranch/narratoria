@@ -12,7 +12,7 @@ behavior:
       - Func<Guid, string, CancellationToken, ValueTask> SubmitPrompt : submits a prompt for SessionId
       - Guid TabId : active tab identity (workspace or session)
       - Guid? SessionId : active session identity (null when workspace tab has not transitioned)
-      - IReadOnlyList<string> AllowedContentTypes : file allowlist
+      - IReadOnlyList<string> AllowedContentTypes : file allowlist (MUST align with ingestion supported types; recommended_default: text/plain, text/markdown)
       - long MaxBytesPerFile
       - long MaxBytesTotal
       - CancellationToken

@@ -29,7 +29,7 @@ state:
   - processed_attachments: per-session persistent IndexedDB records containing normalized text and metadata
 
 preconditions:
-  - UploadedFile mime type is accepted (text/plain, text/markdown, or configured allowlist).
+  - UploadedFile mime type is accepted (recommended_default: text/plain, text/markdown).
   - UploadedFile size is <= configured max_bytes and is fully captured into temporary session storage.
   - OpenAI provider configuration and credentials are available.
 
@@ -40,7 +40,7 @@ postconditions:
 invariants:
   - Raw file contents never persist beyond the temporary session upload store and are deleted after each attempt.
   - ProcessedAttachment is immutable once persisted; updates require a new AttachmentId.
-  - Only text-derived content is sent to OpenAI; non-text payloads are rejected (PDF is not supported).
+  - Only text-derived content is sent to OpenAI; non-text payloads are rejected (images and PDF are not supported).
   - No pipeline context (player prompt, prior narration, metadata) is forwarded to the OpenAI call.
   - LLM prompt explicitly instructs stripping prose and optimizing for downstream LLM consumption (not human readability) and excludes secrets.
   - Session scoping is enforced for all reads/writes; attachments do not leak across sessions.
