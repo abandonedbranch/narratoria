@@ -73,7 +73,7 @@ failure_modes:
   - attachments_load_error :: staged attachments cannot be loaded :: proceed with no attachments; log warning; chip remains Skipped
   - stage_mismatch :: middleware stage name not found in StageOrder :: drop event; log warning; chip remains Pending
   - missing_pipeline :: DI NarrationPipelineService missing :: throw structured error before submission
-  - cancellation :: caller token canceled :: stop streaming; mark running stage canceled/failed; do not mutate prior turns
+  - cancellation :: caller token canceled :: stop streaming; mark running stage Canceled; do not mutate prior turns
 
 policies:
   - cancellation: propagate caller token through attachment load and pipeline; stop streaming promptly
