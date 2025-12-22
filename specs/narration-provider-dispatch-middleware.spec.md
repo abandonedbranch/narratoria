@@ -11,7 +11,7 @@ behavior:
   - output:
       - MiddlewareResult: Streamed narration tokens plus updated NarrationContext with WorkingNarration set to streamed tokens.
   - caller_obligations:
-      - Register middleware after context-building middleware (system prompt, attachments, templating) and before persistence.
+      - Register middleware after context-building middleware (system prompt, attachments, templating) and inside the persistence wrapper (so persistence loads context before provider calls and persists only after streaming completes successfully).
       - Provide an INarrationProvider implementation, ProviderDispatchOptions, and CancellationToken.
       - Propagate observability hooks (observer/metrics).
   - side_effects_allowed:
