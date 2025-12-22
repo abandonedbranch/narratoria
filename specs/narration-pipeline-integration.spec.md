@@ -57,7 +57,7 @@ preconditions:
 
 postconditions:
   - submissions invoke a DI-composed pipeline exactly once; no fallback provider is used
-  - when staged attachments exist for SessionId, the integration supplies their identifiers to the pipeline so they are included as context
+  - when staged attachments exist for SessionId, the integration supplies their processed attachment identifiers (ProcessedAttachment.AttachmentId values from INarrationProcessedAttachmentStore) to the pipeline so they are included as context
   - stage telemetry and provider metrics populate hovers keyed by (TurnId, StageKind) matching UI lookup
   - stage status transitions reflect mapped pipeline telemetry; streaming tokens append to the latest turn only
 
