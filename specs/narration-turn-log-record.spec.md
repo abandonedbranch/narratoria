@@ -11,11 +11,12 @@ behavior:
       - DateTimeOffset CreatedAt: timestamp of turn creation
       - DateTimeOffset UpdatedAt: timestamp of last persisted update for this turn
       - string Prompt: user prompt text for the turn
+  - NarrationTurnOutcome Outcome: final turn outcome (Succeeded|Failed|Canceled)
       - IReadOnlyList<NarrationStageKind> StageOrder: stage order used to render chips for this turn
       - IReadOnlyList<NarrationStageSnapshot> Stages: persisted stage snapshots
       - IReadOnlyList<string> OutputSegments: persisted narration output segments (ordered)
       - bool IsFinal: whether the persisted record represents a completed turn (no further changes)
-      - string? FailureClass: optional structured error class for a failed turn (final only)
+  - string? FailureClass: optional structured error class for a failed turn (final only; null unless Outcome=Failed)
       - TraceMetadata Trace: trace identifiers
   - output:
       - NarrationTurnRecord: immutable record suitable for storage and replay
@@ -45,6 +46,10 @@ invariants:
   - Append-only output: OutputSegments ordering is stable; replay MUST preserve ordering.
   - Stage identity: StageId is a telemetry id and MUST equal a NarrationStageKind.Name.
   - Finality: if IsFinal is true, the record MUST NOT change except by being replaced with an identical value.
+  - Outcome consistency:
+      - If IsFinal is true, Outcome MUST be one of Succeeded|Failed|Canceled.
+      - If Outcome=Failed, FailureClass MUST be non-null.
+      - If Outcome=Succeeded or Outcome=Canceled, FailureClass MUST be null.
 
 failure_modes:
   - StageMismatch :: a persisted stage StageId is not in StageOrder :: drop the mismatched stage snapshot during replay; emit warning log; render that chip as Pending.
@@ -55,6 +60,10 @@ policies:
   - persistence_update_model:
       - A store MAY persist a non-final record during streaming.
       - A store MUST persist a final record on completion (success, failure, or cancellation) so restore can render stable transcript.
+      - Final record outcome mapping:
+          - success => Outcome=Succeeded, IsFinal=true, FailureClass=null
+          - failure => Outcome=Failed, IsFinal=true, FailureClass!=null
+          - cancellation => Outcome=Canceled, IsFinal=true, FailureClass=null
       - If non-final updates are persisted, UpdatedAt MUST monotonically increase.
   - concurrency:
       - Writes are last-write-wins per (SessionId, TurnId).
