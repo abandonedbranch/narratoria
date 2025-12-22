@@ -1,17 +1,17 @@
 ## spec: attachment-context-injection-element
 
 mode:
-  - compositional
+  - compositional (inserts processed attachment summaries into the flowing narration context; no owned state)
 
 behavior:
   - what: Inject staged processed attachment summaries into `WorkingContextSegments` before provider dispatch.
   - input:
-      - NarrationContext: SessionId, PlayerPrompt, PriorNarration, WorkingNarration, Metadata, Trace.
-      - WorkingContextSegments: ordered context segments accumulated for provider dispatch.
-      - INarrationProcessedAttachmentStore: provides staged processed attachments for SessionId.
-      - CancellationToken
+      - NarrationContext Context : { SessionId, PlayerPrompt, PriorNarration, WorkingNarration, Metadata, Trace }
+      - ImmutableArray<ContextSegment> WorkingContextSegments : ordered segments accumulated for provider dispatch
+      - INarrationProcessedAttachmentStore Store : provides staged processed attachments for SessionId
+      - CancellationToken CancellationToken
   - output:
-      - MiddlewareResult: Downstream result with NarrationContext updated so `WorkingContextSegments` includes attachment segments.
+      - MiddlewareResult Result : downstream result with NarrationContext updated so `WorkingContextSegments` includes attachment segments
   - caller_obligations:
       - register this element before provider_dispatch and after any elements that ensure WorkingContextSegments exists
       - ensure StageOrder includes `attachment_context_injection` when stage chips are rendered
@@ -19,34 +19,27 @@ behavior:
   - side_effects_allowed:
       - read staged processed attachments from store
       - mutate flowing NarrationContext via immutable copy
-      - emit structured logs/metrics; no network IO
+      - emit structured logs and metrics
 
 state:
   - none
 
-context:
-  - StageId:
-      - this element MUST emit telemetry stage id `attachment_context_injection`
-  - WorkingContextSegments:
-      - Ordered ImmutableArray<ContextSegment> representing the prompt passed to provider_dispatch.
-      - ContextSegment: { Role: system | instruction | user | attachment | history, Content: string, Source: string }.
-  - insertion:
-      - append one ContextSegment per staged processed attachment with Role=attachment
-      - Source MUST include AttachmentId and FileName in a stable, non-sensitive format
-
 preconditions:
-  - NarrationContext has a valid SessionId
+  - Context.SessionId is a non-empty Guid
   - WorkingContextSegments exists (may be empty)
 
 postconditions:
-  - when there are staged processed attachments, WorkingContextSegments contains an attachment segment for each staged attachment in CreatedAt ascending order
+  - when there are staged processed attachments, WorkingContextSegments contains one attachment segment per staged attachment in CreatedAt ascending order
   - when there are no staged attachments, the element performs no segment insertion and MAY emit Skipped telemetry
   - downstream elements receive the updated WorkingContextSegments
 
 invariants:
+  - telemetry stage id emitted by this element is `attachment_context_injection`
   - raw attachment bytes are never loaded or included; only processed attachment NormalizedText is injected
   - attachment segment ordering is deterministic for a given store state
   - attachment injection is idempotent per pipeline run: segments are inserted at most once
+  - ContextSegment structure: { Role: system | instruction | user | attachment | history, Content: string, Source: string }
+  - inserted attachment segments use Role=attachment and Source includes AttachmentId and FileName in a stable, non-sensitive format
 
 failure_modes:
   - ContextMissing :: WorkingContextSegments unavailable :: emit NarrationPipelineError(stage=attachment_context_injection) and short-circuit
