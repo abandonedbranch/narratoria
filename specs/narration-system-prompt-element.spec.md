@@ -1,4 +1,4 @@
-## spec: narration system prompt middleware
+## spec: narration system prompt element
 
 mode:
   - compositional
@@ -12,7 +12,7 @@ behavior:
   - output:
       - MiddlewareResult: Downstream result with NarrationContext updated to include system prompt and instructions as highest-priority segments plus metadata annotations.
   - caller_obligations:
-      - Register middleware ahead of provider_dispatch and after any context-building middleware that populates WorkingContextSegments.
+      - Register element ahead of provider_dispatch and after any context-building elements that populate WorkingContextSegments.
       - Supply a non-empty SystemPromptProfile per session/request (static config or injected resolver).
       - Propagate the pipeline CancellationToken.
   - side_effects_allowed:
@@ -21,7 +21,7 @@ behavior:
       - Emit structured logs and metrics only.
 
 state:
-  - none: stateless middleware with no persistence or cross-session cache
+  - none: stateless element with no persistence or cross-session cache
 
 context:
   - WorkingContextSegments:
@@ -39,7 +39,7 @@ postconditions:
   - On success, WorkingContextSegments begins with the system prompt segment followed by instruction segments; remaining segments retain their original order and content.
   - Metadata includes system_prompt_profile_id and system_prompt_version entries for downstream observability.
   - MiddlewareResult.StreamedNarration is passed through unchanged; UpdatedContext carries the modified WorkingContextSegments.
-  - On failure, emit a structured NarrationPipelineError (stage=system_prompt_injection) and do not invoke downstream middleware.
+  - On failure, emit a structured NarrationPipelineError (stage=system_prompt_injection) and do not invoke downstream elements.
 
 invariants:
   - System prompt and instruction segments appear exactly once per pipeline run and precede attachments and player/user prompts.
@@ -50,10 +50,10 @@ invariants:
 failure_modes:
   - PromptUnavailable :: System prompt profile missing or prompt_text empty :: emit NarrationPipelineError (stage=system_prompt_injection) and short-circuit.
   - ContextMissing :: WorkingContextSegments unavailable or null :: emit NarrationPipelineError (stage=system_prompt_injection) and short-circuit.
-  - Cancellation :: CancellationToken signaled :: propagate cancellation without invoking downstream middleware.
+  - Cancellation :: CancellationToken signaled :: propagate cancellation without invoking downstream elements.
 
 policies:
-  - Ordering: must execute before provider_dispatch; should follow any middleware that builds WorkingContextSegments (attachments, history, templating).
+  - Ordering: must execute before provider_dispatch; should follow any elements that build WorkingContextSegments (attachments, history, templating).
   - Idempotency: if Metadata indicates the same profile_id/version already injected, skip reinsertion to avoid duplicates.
   - Retry: none; failures are terminal for the pipeline run.
   - Concurrency: safe under concurrent sessions; no shared mutable state.
@@ -66,7 +66,7 @@ never:
   - Invoke the narration provider or perform network/file IO.
 
 non_goals:
-  - Selecting or authoring system prompts; the middleware only applies the provided profile.
+  - Selecting or authoring system prompts; the element only applies the provided profile.
   - Prompt templating, summarization, or attachment ingestion.
   - Provider selection or timeout policy changes.
 

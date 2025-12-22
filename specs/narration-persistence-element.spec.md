@@ -1,16 +1,16 @@
-## spec: narration persistence middleware
+## spec: narration persistence element
 
 mode:
   - compositional
 
 behavior:
-  - what: Load the session narration context, invoke downstream middleware, then persist the merged context after narration streaming completes.
+  - what: Load the session narration context, invoke downstream pipeline elements, then persist the merged context after narration streaming completes.
   - input:
       - NarrationContext: SessionId, PlayerPrompt, PriorNarration, WorkingNarration, Metadata, Trace.
   - output:
       - MiddlewareResult: Downstream stream wrapped to persist on completion plus the persisted NarrationContext.
   - caller_obligations:
-      - Provide INarrationSessionStore and register this middleware ahead of provider dispatch so loading occurs before provider calls and persistence wraps the result.
+      - Provide INarrationSessionStore and register this element ahead of provider dispatch so loading occurs before provider calls and persistence wraps the result.
       - Supply a CancellationToken and initial NarrationContext containing SessionId, PlayerPrompt, and Trace.
       - Propagate pipeline observability hooks (observer/metrics) if desired.
   - side_effects_allowed:
@@ -27,7 +27,7 @@ preconditions:
 postconditions:
   - On success, the stored context is updated with PlayerPrompt, merged PriorNarration + WorkingNarration, WorkingNarration cleared, and Trace/Metadata refreshed.
   - On MissingSession or persistence failure, a structured NarrationPipelineError is emitted and the pipeline short-circuits with an exception.
-  - If downstream middleware fails (e.g., provider dispatch), persistence is skipped and the original downstream error propagates.
+  - If downstream elements fail (e.g., provider dispatch), persistence is skipped and the original downstream error propagates.
 
 invariants:
   - Session scoping is preserved; no cross-session reads/writes.
@@ -43,7 +43,7 @@ failure_modes:
   - Cancellation :: CancellationToken is signaled during load or save :: propagate cancellation without persisting.
 
 policies:
-  - Ordering: should wrap provider dispatch and any context-mutating middleware so persistence captures final state.
+  - Ordering: should wrap provider dispatch and any context-mutating elements so persistence captures final state.
   - Idempotency: one load and one persist per run; caller must re-run to retry.
   - Retry: none implicit; caller may retry externally.
   - Concurrency: safe for concurrent sessions; underlying store must enforce its own consistency guarantees.

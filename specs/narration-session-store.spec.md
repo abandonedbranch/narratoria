@@ -4,7 +4,7 @@ mode:
   - stateful (persists session records and narration contexts in IndexedDB-backed storage)
 
 behavior:
-  - what: Persist and query narration sessions, including session metadata (title, timestamps), and the persisted NarrationContext used by narration middleware.
+  - what: Persist and query narration sessions, including session metadata (title, timestamps), and the persisted NarrationContext used by narration pipeline elements.
   - input:
       - CreateSessionRequest: record { TraceMetadata Trace; string? InitialTitle }
       - Guid SessionId
@@ -14,7 +14,7 @@ behavior:
       - CancellationToken
   - output:
       - SessionRecord: record { Guid SessionId; string Title; bool IsTitleUserSet; DateTimeOffset CreatedAt; DateTimeOffset UpdatedAt }
-      - NarrationContext : stored session context used by narration pipeline persistence middleware
+      - NarrationContext : stored session context used by narration pipeline persistence element
       - IReadOnlyList<SessionRecord> : ordered list for the Open... UI
       - IReadOnlyList<NarrationTurnRecord> : ordered turn transcript for a session
   - caller_obligations:
@@ -32,7 +32,7 @@ preconditions:
   - browser supports IndexedDB and schema is initialized
 
 postconditions:
-  - CreateSession creates SessionRecord + initial NarrationContext such that narration persistence middleware will not raise MissingSession
+  - CreateSession creates SessionRecord + initial NarrationContext such that narration persistence element will not raise MissingSession
   - DeleteSession deletes all session-scoped records (SessionRecord, NarrationContext, persisted turns, and processed attachments owned by the session)
 
 turn_persistence:

@@ -1,4 +1,4 @@
-## spec: narration-session-title-middleware
+## spec: narration-session-title-element
 
 mode:
   - compositional (generates and persists session title updates via collaborators)
@@ -14,7 +14,7 @@ behavior:
   - output:
       - MiddlewareResult : passes through downstream result; title update is a side effect
   - caller_obligations:
-      - register this middleware after persistence has loaded session state and after provider dispatch has produced sufficient narration
+      - register this element after persistence has loaded session state and after provider dispatch has produced sufficient narration
       - ensure title updates are guarded by IsTitleUserSet
   - side_effects_allowed:
       - call IOpenAiApiService with a system prompt that requests a short title

@@ -1,7 +1,7 @@
 ## spec: stage-metadata-provider
 
 mode:
-  - compositional (collects and formats per-stage metadata from middleware/provider; no owned persistence)
+  - compositional (collects and formats per-stage metadata from pipeline elements/provider; no owned persistence)
 
 behavior:
   - what: Collect duration, tokens, and model info per stage and format `NarrationStageHover` payloads for UI chips.
