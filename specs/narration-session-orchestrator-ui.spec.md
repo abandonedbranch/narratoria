@@ -50,8 +50,8 @@ invariants:
 
 failure_modes:
   - store_error :: load/save failure :: show banner; keep UI usable; do not drop current state
-  - submission_error :: pipeline returns fault :: show banner; do not append successful turn
-  - cancelled :: cancellation requested :: stop submission; keep prompt text
+  - submission_error :: pipeline returns fault :: show banner; append a failed turn; persist a final NarrationTurnRecord for replay
+  - cancelled :: cancellation requested during an in-flight submission :: stop streaming; append a canceled turn; persist a final NarrationTurnRecord for replay; keep prompt text
 
 policies:
   - serialized submissions: one prompt in-flight at a time
