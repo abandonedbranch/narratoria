@@ -4,12 +4,12 @@ mode:
   - compositional (translates observer callbacks into view-model updates; no owned persistence)
 
 behavior:
-  - what: Map shared `StageEvent` telemetry (canonical) into `NarrationPipelineTurnView` updates: stage status transitions, metadata population, and streaming output concatenation.
+  - what: Map shared `StageEvent` telemetry into `NarrationPipelineTurnView` updates, including stage status transitions, metadata population, and streaming output concatenation.
   - input:
       - StageEvent : shared stage telemetry events (see stage-event-contract)
-      - IReadOnlyList<NarrationStageKind> StageOrder : canonical stage order
+      - IReadOnlyList<NarrationStageKind> StageOrder : canonical stage order for chip rendering
   - output:
-      - Immutable updates to `NarrationPipelineTurnView` instances
+      - NarrationPipelineTurnView : immutable view model updates for a single turn
   - caller_obligations:
       - supply StageOrder whose NarrationStageKind.Name values match the telemetry stage ids emitted by the configured elements
       - ensure a single turn is active for streaming
