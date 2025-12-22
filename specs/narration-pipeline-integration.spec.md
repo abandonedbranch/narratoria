@@ -66,7 +66,7 @@ invariants:
   - hover keys use TurnId (not SessionId) and NarrationStageKind.Name for lookup
   - attachment context injection precedes provider dispatch when staged attachments exist; when none, it is skipped
   - middleware order remains: persistence → system prompt → content guardian → attachment context injection → provider dispatch
-  - turn scoping: the UI integration MUST translate pipeline events keyed by SessionId into UI updates keyed by TurnId without requiring changes to NarrationStageTelemetry
+  - turn scoping: the UI integration MUST translate stage telemetry events keyed by SessionId into UI updates keyed by TurnId without requiring changes to StageEvent
   - stage identity is total for rendered stages: every telemetry stage id that should update the UI MUST equal exactly one NarrationStageKind.Name in StageOrder
 
 failure_modes:
