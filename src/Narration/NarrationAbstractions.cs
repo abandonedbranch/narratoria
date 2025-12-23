@@ -25,6 +25,8 @@ public interface INarrationSessionStore
 
     ValueTask UpsertTurnAsync(NarrationTurnRecord record, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     ValueTask DeleteTurnAsync(Guid sessionId, Guid turnId, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+
+    ValueTask RenameSessionAsync(Guid sessionId, string title, bool isUserSet, CancellationToken cancellationToken) => ValueTask.CompletedTask;
 }
 
 public interface INarrationProvider

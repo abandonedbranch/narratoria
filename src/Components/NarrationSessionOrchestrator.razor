@@ -42,6 +42,7 @@
     public IAttachmentUploadStore? UploadStore { get; set; }
 
     private readonly List<NarrationPipelineTurnView> _turns = new();
+    private string _sessionTitle = "Untitled Session";
     private bool _isSubmitting;
     private string? _submissionError;
     private readonly List<AttachmentCandidate> _attachments = new();
@@ -81,32 +82,46 @@
                     Trace = new Narratoria.OpenAi.TraceMetadata(Guid.NewGuid().ToString(), Guid.NewGuid().ToString()),
                     InitialTitle = "Untitled Session"
                 }, cancellationToken).ConfigureAwait(false);
+                _sessionTitle = created.Title;
+            }
+            else
+            {
+                // Optimistic fallback: populate turns from PriorNarration immediately
+                if (!context.PriorNarration.IsDefaultOrEmpty)
+                {
+                    foreach (var line in context.PriorNarration)
+                    {
+                        var stages = StageOrder.Select(k => new NarrationStageView { Kind = k, Status = NarrationStageStatus.Completed }).ToImmutableArray();
+                        _turns.Add(new NarrationPipelineTurnView
+                        {
+                            TurnId = Guid.NewGuid(),
+                            UserPrompt = context.PlayerPrompt,
+                            PromptAt = null,
+                            Stages = stages,
+                            Output = new NarrationOutputView { FinalText = line }
+                        });
+                    }
+                    StateHasChanged();
+                }
+
+                // Load existing title via SessionService (non-blocking to turns fallback)
+                var svc = Services.GetRequiredService<ISessionService>();
+                var title = await svc.GetTitleAsync(SessionId, cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(title))
+                {
+                    _sessionTitle = title!;
+                }
             }
 
             var persistedTurns = await store.ListTurnsAsync(SessionId, cancellationToken).ConfigureAwait(false);
             if (persistedTurns.Count > 0)
             {
+                // Replace any optimistic fallback with persisted turns
+                _turns.Clear();
                 foreach (var t in persistedTurns)
                 {
                     var view = NarrationSessionOrchestratorLogic.FromRecord(t);
                     _turns.Add(view);
-                }
-                StateHasChanged();
-            }
-            else if (context is not null && !context.PriorNarration.IsDefaultOrEmpty)
-            {
-                // Fallback to legacy restore from PriorNarration for test fakes or pre-turn-persistence sessions
-                foreach (var line in context.PriorNarration)
-                {
-                    var stages = StageOrder.Select(k => new NarrationStageView { Kind = k, Status = NarrationStageStatus.Completed }).ToImmutableArray();
-                    _turns.Add(new NarrationPipelineTurnView
-                    {
-                        TurnId = Guid.NewGuid(),
-                        UserPrompt = context.PlayerPrompt,
-                        PromptAt = null,
-                        Stages = stages,
-                        Output = new NarrationOutputView { FinalText = line }
-                    });
                 }
                 StateHasChanged();
             }
@@ -341,9 +356,24 @@
         _attachments.AddRange(files);
         return ValueTask.CompletedTask;
     }
+
+    private async Task RenameTitleAsync(CancellationToken cancellationToken)
+    {
+        var svc = Services.GetRequiredService<ISessionService>();
+        var ok = await svc.RenameTitleAsync(SessionId, _sessionTitle, isUserSet: true, cancellationToken).ConfigureAwait(false);
+        if (!ok)
+        {
+            // no-op or validation failure; keep local state unchanged
+            return;
+        }
+    }
 }
 
 <div class="session-orchestrator">
+    <div class="session-title">
+        <input value="@_sessionTitle" @oninput="e => _sessionTitle = e.Value?.ToString() ?? _sessionTitle" />
+        <button @onclick="() => RenameTitleAsync(CancellationToken.None)">Save title</button>
+    </div>
     <AttachmentsDropzone AllowedContentTypes="@AllowedContentTypes" MaxBytesPerFile="@MaxBytesPerFile" MaxBytesTotal="@MaxBytesTotal" OnAccepted="AcceptAttachmentsAsync" />
     <PromptInputBar SubmitPrompt="SubmitPromptAsync" IsSubmitting="@_isSubmitting" />
     @if (!string.IsNullOrWhiteSpace(_submissionError))

@@ -120,6 +120,8 @@ builder.Services.AddOptions<SystemPromptProfileConfig>().Bind(builder.Configurat
     !string.IsNullOrWhiteSpace(config.ProfileId) && !string.IsNullOrWhiteSpace(config.PromptText) && !string.IsNullOrWhiteSpace(config.Version),
     "SystemPromptProfile requires ProfileId, PromptText, Version").ValidateOnStart();
 builder.Services.AddSingleton<ISystemPromptProfileResolver, ConfigSystemPromptProfileResolver>();
+builder.Services.AddSingleton<ISessionService, SessionService>();
+builder.Services.AddSingleton(new SessionTitleOptions { MaxChars = 64 });
 
 builder.Services.AddSingleton<ProviderDispatchMiddleware>(sp =>
 {

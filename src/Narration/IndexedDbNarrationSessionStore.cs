@@ -408,4 +408,56 @@ public sealed class IndexedDbNarrationSessionStore : INarrationSessionStore
         var del = new IndexedDbDeleteRequest { Store = _turnsStore, Key = key, Scope = _scope };
         _ = await _storage.DeleteAsync(del, cancellationToken).ConfigureAwait(false);
     }
+
+    public async ValueTask RenameSessionAsync(Guid sessionId, string title, bool isUserSet, CancellationToken cancellationToken)
+    {
+        // Load existing
+        var get = new IndexedDbGetRequest<SessionRecord>
+        {
+            Store = _sessionsStore,
+            Key = sessionId.ToString(),
+            Serializer = _sessionSerializer,
+            Scope = _scope
+        };
+        var current = await _storage.GetAsync(get, cancellationToken).ConfigureAwait(false);
+        if (!current.Ok)
+        {
+            var errorClass = current.Error?.ErrorClass.ToString() ?? "Unknown";
+            throw new InvalidOperationException($"Failed to load session for rename: {errorClass}");
+        }
+
+        var existing = current.Value ?? throw new InvalidOperationException("MissingSession: cannot rename a session that does not exist.");
+
+        // Guard user-set titles from being overwritten
+        if (existing.IsTitleUserSet && isUserSet)
+        {
+            return; // no-op
+        }
+
+        var updated = existing with
+        {
+            Title = title?.Trim() ?? existing.Title,
+            IsTitleUserSet = existing.IsTitleUserSet || isUserSet,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        var put = new IndexedDbPutRequest<SessionRecord>
+        {
+            Store = _sessionsStore,
+            Key = sessionId.ToString(),
+            Value = updated,
+            Serializer = _sessionSerializer,
+            Scope = _scope,
+            IndexValues = new Dictionary<string, object?>
+            {
+                ["session_id"] = sessionId.ToString()
+            }
+        };
+        var result = await _quotaStorage.PutIfCanAccommodateAsync(put, cancellationToken).ConfigureAwait(false);
+        if (!result.Ok)
+        {
+            var errorClass = result.Error?.ErrorClass.ToString() ?? "Unknown";
+            throw new InvalidOperationException($"Failed to rename session: {errorClass}");
+        }
+    }
 }
