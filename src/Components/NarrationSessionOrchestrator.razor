@@ -73,10 +73,29 @@
         {
             var store = SessionStore ?? Services.GetRequiredService<INarrationSessionStore>();
             var context = await store.LoadAsync(SessionId, cancellationToken).ConfigureAwait(false);
-            if (context is null) return;
-
-            if (!context.PriorNarration.IsDefaultOrEmpty)
+            if (context is null)
             {
+                var created = await store.CreateSessionAsync(new CreateSessionRequest
+                {
+                    SessionId = SessionId,
+                    Trace = new Narratoria.OpenAi.TraceMetadata(Guid.NewGuid().ToString(), Guid.NewGuid().ToString()),
+                    InitialTitle = "Untitled Session"
+                }, cancellationToken).ConfigureAwait(false);
+            }
+
+            var persistedTurns = await store.ListTurnsAsync(SessionId, cancellationToken).ConfigureAwait(false);
+            if (persistedTurns.Count > 0)
+            {
+                foreach (var t in persistedTurns)
+                {
+                    var view = NarrationSessionOrchestratorLogic.FromRecord(t);
+                    _turns.Add(view);
+                }
+                StateHasChanged();
+            }
+            else if (context is not null && !context.PriorNarration.IsDefaultOrEmpty)
+            {
+                // Fallback to legacy restore from PriorNarration for test fakes or pre-turn-persistence sessions
                 foreach (var line in context.PriorNarration)
                 {
                     var stages = StageOrder.Select(k => new NarrationStageView { Kind = k, Status = NarrationStageStatus.Completed }).ToImmutableArray();
@@ -176,6 +195,18 @@
 
             var observer = new TurnScopedObserver(turn.TurnId, adapter);
 
+            var store = SessionStore ?? Services.GetRequiredService<INarrationSessionStore>();
+            var existingContext = await store.LoadAsync(SessionId, cancellationToken).ConfigureAwait(false);
+            if (existingContext is null)
+            {
+                _ = await store.CreateSessionAsync(new CreateSessionRequest
+                {
+                    SessionId = SessionId,
+                    Trace = ctx.Trace,
+                    InitialTitle = "Untitled Session"
+                }, cancellationToken).ConfigureAwait(false);
+            }
+
             var factory = PipelineFactory ?? Services.GetRequiredService<INarrationPipelineFactory>();
             var pipeline = factory.Create(new NarrationPipelineBuildRequest(
                 SessionId: SessionId,
@@ -219,6 +250,24 @@
             _ = await result.UpdatedContext.ConfigureAwait(false);
             var finalized = NarrationSessionOrchestratorLogic.FinalizeTurn(_turns[^1], allSegments);
             _turns[^1] = finalized;
+            // Persist final turn record for replay
+            var snapshots = NarrationSessionOrchestratorLogic.ToSnapshots(finalized.Stages);
+            var turnRecord = new NarrationTurnRecord
+            {
+                SessionId = SessionId,
+                TurnId = finalized.TurnId,
+                CreatedAt = finalized.PromptAt ?? DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                Prompt = finalized.UserPrompt,
+                Outcome = NarrationTurnOutcome.Succeeded,
+                StageOrder = finalized.Stages.Select(s => s.Kind.Name).ToImmutableArray(),
+                Stages = snapshots,
+                OutputSegments = allSegments.ToImmutableArray(),
+                IsFinal = true,
+                FailureClass = null,
+                Trace = ctx.Trace
+            };
+            await store.UpsertTurnAsync(turnRecord, cancellationToken).ConfigureAwait(false);
             _attachments.Clear();
             _submissionError = null;
             StateHasChanged();
@@ -226,12 +275,57 @@
         catch (OperationCanceledException)
         {
             _submissionError = null;
+            try
+            {
+                var snapshots = NarrationSessionOrchestratorLogic.ToSnapshots(_turns[^1].Stages);
+                var canceledRecord = new NarrationTurnRecord
+                {
+                    SessionId = SessionId,
+                    TurnId = _turns[^1].TurnId,
+                    CreatedAt = _turns[^1].PromptAt ?? DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                    Prompt = _turns[^1].UserPrompt,
+                    Outcome = NarrationTurnOutcome.Canceled,
+                    StageOrder = _turns[^1].Stages.Select(s => s.Kind.Name).ToImmutableArray(),
+                    Stages = snapshots,
+                    OutputSegments = _turns[^1].Output.StreamedSegments,
+                    IsFinal = true,
+                    FailureClass = null,
+                    Trace = new Narratoria.OpenAi.TraceMetadata(Guid.NewGuid().ToString(), Guid.NewGuid().ToString())
+                };
+                var store = SessionStore ?? Services.GetRequiredService<INarrationSessionStore>();
+                await store.UpsertTurnAsync(canceledRecord, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch { }
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             _submissionError = "Submission failed. Please try again.";
             StateHasChanged();
+            try
+            {
+                var failureClass = (ex as NarrationPipelineException)?.Error.ErrorClass.ToString() ?? "Unknown";
+                var snapshots = NarrationSessionOrchestratorLogic.ToSnapshots(_turns[^1].Stages);
+                var failedRecord = new NarrationTurnRecord
+                {
+                    SessionId = SessionId,
+                    TurnId = _turns[^1].TurnId,
+                    CreatedAt = _turns[^1].PromptAt ?? DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                    Prompt = _turns[^1].UserPrompt,
+                    Outcome = NarrationTurnOutcome.Failed,
+                    StageOrder = _turns[^1].Stages.Select(s => s.Kind.Name).ToImmutableArray(),
+                    Stages = snapshots,
+                    OutputSegments = _turns[^1].Output.StreamedSegments,
+                    IsFinal = true,
+                    FailureClass = failureClass,
+                    Trace = new Narratoria.OpenAi.TraceMetadata(Guid.NewGuid().ToString(), Guid.NewGuid().ToString())
+                };
+                var store = SessionStore ?? Services.GetRequiredService<INarrationSessionStore>();
+                await store.UpsertTurnAsync(failedRecord, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch { }
             throw;
         }
         finally
