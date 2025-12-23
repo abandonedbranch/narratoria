@@ -139,18 +139,37 @@ builder.Services.AddSingleton<ProviderDispatchMiddleware>(sp =>
 });
 builder.Services.AddSingleton<NarrationPersistenceMiddleware>(sp =>
     new NarrationPersistenceMiddleware(sp.GetRequiredService<INarrationSessionStore>(), sp.GetRequiredService<INarrationPipelineObserver>()));
+builder.Services.AddSingleton<NarrationSessionTitleMiddleware>(sp =>
+    {
+        var pdOptions = sp.GetRequiredService<IOptions<ProviderDispatchOptions>>().Value;
+        if (string.IsNullOrWhiteSpace(pdOptions.SystemModel))
+        {
+            var openAi = sp.GetRequiredService<IOptions<NarrationOpenAiOptions>>().Value;
+            pdOptions = pdOptions with { SystemModel = openAi.Model };
+        }
+        return new NarrationSessionTitleMiddleware(
+            sp.GetRequiredService<INarrationSessionStore>(),
+            sp.GetRequiredService<Narratoria.OpenAi.IOpenAiApiService>(),
+            sp.GetRequiredService<INarrationOpenAiContextFactory>(),
+            sp.GetRequiredService<INarrationPipelineObserver>(),
+            TitleOptions.Default,
+            sp.GetRequiredService<ILogger<NarrationSessionTitleMiddleware>>(),
+            pdOptions);
+    });
 builder.Services.AddSingleton<NarrationPipelineService>(sp =>
 {
     var persistence = sp.GetRequiredService<NarrationPersistenceMiddleware>();
     var systemPrompt = sp.GetRequiredService<NarrationSystemPromptMiddleware>();
     var guardian = sp.GetRequiredService<NarrationContentGuardianMiddleware>();
     var dispatch = sp.GetRequiredService<ProviderDispatchMiddleware>();
+    var titleUpdate = sp.GetRequiredService<NarrationSessionTitleMiddleware>();
     return new NarrationPipelineService(new NarrationMiddleware[]
     {
         persistence.InvokeAsync,
         systemPrompt.InvokeAsync,
         guardian.InvokeAsync,
-        dispatch.InvokeAsync
+        dispatch.InvokeAsync,
+        titleUpdate.InvokeAsync
     });
 });
 
