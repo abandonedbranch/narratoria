@@ -30,17 +30,21 @@ builder.Services.AddSingleton(sp =>
 {
     var attachmentsStore = ProcessedAttachmentStore.CreateStoreDefinition();
     var uploadsStore = AttachmentUploadStore.CreateStoreDefinition();
-    var narrationStore = IndexedDbNarrationSessionStore.CreateStoreDefinition();
+    var contextStore = IndexedDbNarrationSessionStore.CreateContextStoreDefinition();
+    var sessionsStore = IndexedDbNarrationSessionStore.CreateSessionsStoreDefinition();
+    var turnsStore = IndexedDbNarrationSessionStore.CreateTurnsStoreDefinition();
     return new IndexedDbSchema
     {
         DatabaseName = "narratoria",
-        Version = 2,
-        Stores = new[] { attachmentsStore, uploadsStore, narrationStore }
+        Version = 3,
+        Stores = new[] { attachmentsStore, uploadsStore, contextStore, sessionsStore, turnsStore }
     };
 });
 builder.Services.AddIndexedDbStorageService();
 
 builder.Services.AddScoped<IIndexedDbValueSerializer<NarrationContext>, NarrationContextSerializer>();
+builder.Services.AddScoped<IIndexedDbValueSerializer<SessionRecord>, SessionRecordSerializer>();
+builder.Services.AddScoped<IIndexedDbValueSerializer<NarrationTurnRecord>, NarrationTurnRecordSerializer>();
 builder.Services.AddScoped<IIndexedDbValueSerializer<UploadedFile>, UploadedFileSerializer>();
 builder.Services.AddScoped<IIndexedDbValueSerializer<ProcessedAttachment>, ProcessedAttachmentSerializer>();
 builder.Services.AddScoped<INarrationSessionStore>(sp =>
@@ -48,11 +52,15 @@ builder.Services.AddScoped<INarrationSessionStore>(sp =>
     var storage = sp.GetRequiredService<IIndexedDbStorageService>();
     var quotaStorage = sp.GetRequiredService<IIndexedDbStorageWithQuota>();
     var schema = sp.GetRequiredService<IndexedDbSchema>();
-    var store = schema.Stores.Single(s => s.Name == "narration_sessions");
+    var context = schema.Stores.Single(s => s.Name == "narration_sessions");
+    var sessions = schema.Stores.Single(s => s.Name == "sessions");
+    var turns = schema.Stores.Single(s => s.Name == "turns");
     var serializer = sp.GetRequiredService<IIndexedDbValueSerializer<NarrationContext>>();
+    var sessionSerializer = sp.GetRequiredService<IIndexedDbValueSerializer<SessionRecord>>();
+    var turnSerializer = sp.GetRequiredService<IIndexedDbValueSerializer<NarrationTurnRecord>>();
     var logger = sp.GetRequiredService<ILogger<IndexedDbNarrationSessionStore>>();
-    var scope = new StorageScope(schema.DatabaseName, store.Name);
-    return new IndexedDbNarrationSessionStore(storage, quotaStorage, store, scope, logger, serializer);
+    var scope = new StorageScope(schema.DatabaseName, context.Name);
+    return new IndexedDbNarrationSessionStore(storage, quotaStorage, context, sessions, turns, scope, logger, serializer, sessionSerializer, turnSerializer);
 });
 
 builder.Services.AddScoped<IAttachmentUploadStore>(sp =>

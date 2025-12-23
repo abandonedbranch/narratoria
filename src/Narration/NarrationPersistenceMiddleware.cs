@@ -40,23 +40,10 @@ public sealed class NarrationPersistenceMiddleware
             var loaded = await _sessions.LoadAsync(context.SessionId, cancellationToken).ConfigureAwait(false);
             if (loaded is null)
             {
-                var newContext = context with
-                {
-                    PriorNarration = ImmutableArray<string>.Empty,
-                    WorkingNarration = ImmutableArray<string>.Empty,
-                    WorkingContextSegments = ImmutableArray<ContextSegment>.Empty
-                };
-
-                _observer.OnStageCompleted(new NarrationStageTelemetry(LoadStage, "skipped", "none", newContext.SessionId, newContext.Trace, loadStopwatch.Elapsed));
-
-                var newSessionDownstream = await next(newContext, MiddlewareResult.FromContext(newContext), cancellationToken).ConfigureAwait(false);
-
-                var newSessionPersistStopwatch = Stopwatch.StartNew();
-                var newSessionPersistenceTask = new Lazy<Task<NarrationContext>>(
-                    () => PersistWhenCompleteAsync(newSessionDownstream, newContext, newSessionPersistStopwatch, cancellationToken),
-                    LazyThreadSafetyMode.ExecutionAndPublication);
-
-                return new MiddlewareResult(StreamWithPersistence(newSessionDownstream, newSessionPersistenceTask, cancellationToken), new ValueTask<NarrationContext>(newSessionPersistenceTask.Value));
+                var error = new NarrationPipelineError(NarrationPipelineErrorClass.MissingSession, "No stored narration context for session", context.SessionId, context.Trace, LoadStage);
+                _observer.OnError(error);
+                _observer.OnStageCompleted(new NarrationStageTelemetry(LoadStage, "failure", NarrationPipelineErrorClass.MissingSession.ToString(), context.SessionId, context.Trace, loadStopwatch.Elapsed));
+                throw new NarrationPipelineException(error);
             }
 
             var mergedContext = loaded with
