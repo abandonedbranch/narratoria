@@ -106,3 +106,11 @@ RULE: Specification status tracking
 - Invariants and observability are testable and log fields are defined.
 - Never/Non-goals prevent unwanted side effects.
 - Spec is added to `specs/` and linked above.
+
+## NFR Policy (UI Specs)
+
+- UI specs (shell, orchestrator, log, input/compose bars, dropzone, session list) MUST include a `non_functional_requirements` section covering:
+  - Accessibility: WCAG 2.2 AA focus-visible, keyboard operability, ARIA roles/states, live regions, labels, contrast, reduced motion, drag-and-drop fallbacks.
+  - Responsive UX: breakpoints (360x640, 768x1024, 1280x800), container behavior, target sizes (≥44x44 px), typography scaling to 200%, truncation/overflow handling, scroll/virtualization, touch fallbacks.
+  - Performance: LCP ≤2.5s and TTI ≤2s for primary routes; interaction ≤50ms; per-keystroke ≤16ms; stream append ≤50ms; virtualization thresholds for logs/lists; batched IndexedDB patterns; telemetry sampling.
+  - Testing Hooks: axe-core integration via Playwright on `/test-orchestrator` and `/test-pipeline-log` with CI failures on violations; keyboard-only traversal; `prefers-reduced-motion`; viewport matrix assertions; perf smoke benchmarks.

@@ -84,6 +84,21 @@ non_goals:
 performance:
   - per-keystroke UI updates under 16ms
 
+non_functional_requirements:
+  - accessibility (WCAG 2.2 AA):
+    - unified controls: submit and attachment actions have accessible names; disabled states expose `aria-disabled`
+    - errors: ingestion/submission errors announced via `aria-live="assertive"`
+    - dropzone: keyboard and clickable file-picker fallback; constraints described via `aria-describedby`
+  - responsive_ux:
+    - fixed positioning: compose bar remains reachable without overlapping content at all breakpoints
+    - target_sizes: all controls ≥44x44 px; chips wrap; long filenames truncate with accessible tooltip
+  - performance_budgets:
+    - per-keystroke ≤16ms; submission UI updates ≤50ms
+  - testing_hooks:
+    - axe-core on pages with compose bar; fail CI on violations
+    - keyboard-only send and upload fallback
+    - viewport matrix assertions
+
 observability:
   - logs:
       - trace_id, event (drop|ingest_start|ingest_done|remove|send), tab_id, session_id, attachment_id, status, error_class, elapsed_ms

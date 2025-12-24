@@ -81,6 +81,25 @@ performance:
   - initial render under 150ms on target hardware
   - tab switch under 50ms for sessions up to 50 turns
 
+non_functional_requirements:
+  - accessibility (WCAG 2.2 AA):
+    - landmarks: provide `header`, `nav`, and `main`; tabstrip uses `list`/`listitem` with `aria-selected`
+    - focus-visible: sidebar toggle, tabs, and compose actions show visible focus
+    - keyboard: tab focus and activation via keyboard; ESC closes any dialogs; Enter triggers primary actions
+    - labels: sidebar toggle and tab actions have programmatic labels
+  - responsive_ux:
+    - breakpoints: sidebar collapses on 360x640; tabstrip scrolls without overlapping the compose bar
+    - layout: no horizontal scroll in main content at defined breakpoints; compose bar remains reachable
+    - target_sizes: interactive controls ≥44x44 px
+  - performance_budgets:
+    - initial LCP ≤2.5s; TTI ≤2s for shell route
+    - interactions: tab switch ≤50ms; sidebar toggle ≤50ms
+  - testing_hooks:
+    - axe-core on shell route; fail CI on violations
+    - keyboard-only traversal across tabstrip/sidebar/compose
+    - viewport matrix assertions (360x640, 768x1024, 1280x800)
+    - perf timings for tab switch
+
 observability:
   - logs:
       - trace_id, event (tab_create|tab_focus|tab_close|sidebar_toggle|workspace_transition), tab_id, session_id, status, error_class

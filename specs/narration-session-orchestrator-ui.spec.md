@@ -69,6 +69,23 @@ non_goals:
 performance:
   - restore and first render under 150ms for 50 turns
 
+non_functional_requirements:
+  - accessibility (WCAG 2.2 AA):
+    - focus management: after session creation and prompt submission, focus returns to actionable controls deterministically
+    - landmarks: `main` wraps the log; banners announce with `aria-live="assertive"`
+    - states: `aria-busy` during in-flight submission/ingestion; controls disabled with `aria-disabled`
+  - responsive_ux:
+    - layout: compose bar and log stack appropriately on mobile; attachment chips wrap; no overlap with banners
+    - target_sizes: controls ≥44x44 px; primary actions remain reachable at all breakpoints
+  - performance_budgets:
+    - orchestrator route LCP ≤2.5s; TTI ≤2s
+    - streaming updates: append ≤50ms; restore ≤150ms for 50 turns
+  - testing_hooks:
+    - axe-core on orchestrator route; fail CI on violations
+    - keyboard traversal across dropzone, input bar, log
+    - reduced motion scenario; assert animations disabled
+    - viewport matrix assertions
+
 observability:
   - logs:
       - trace_id, session_id, event (restore|submit|observer_update|save), status, error_class, elapsed_ms

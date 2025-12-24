@@ -58,6 +58,21 @@ non_goals:
 performance:
   - open and render under 100ms for 200 sessions
 
+non_functional_requirements:
+  - accessibility (WCAG 2.2 AA):
+    - dialog: `role="dialog"` with focus trap; `aria-labelledby`/`aria-describedby`; ESC closes
+    - keyboard: list items operable via keyboard; confirm dialogs accessible; labels on actions
+    - states: disabled and busy states exposed via `aria-disabled`/`aria-busy`
+  - responsive_ux:
+    - layout: drawer/modal fits viewport; list virtualizes beyond 100 rows; no horizontal scroll
+    - target_sizes: action controls ≥44x44 px
+  - performance_budgets:
+    - open/render ≤100ms (≤200 sessions); TTI ≤2s for open action
+  - testing_hooks:
+    - axe-core in modal/drawer; fail CI on violations
+    - keyboard traversal across list and actions
+    - viewport matrix assertions
+
 observability:
   - logs:
       - trace_id, event (open|close|list|open_session|delete|rename), session_id, status, error_class
