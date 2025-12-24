@@ -26,33 +26,47 @@ public class ProgramStartupSmokeTests
             return ValueTask.FromResult(StorageResult<Unit>.Success(Unit.Value));
         }
 
-        public ValueTask<StorageResult<T?>> GetAsync<T>(IndexedDbGetRequest<T> request, CancellationToken cancellationToken)
+        public async ValueTask<StorageResult<T?>> GetAsync<T>(IndexedDbGetRequest<T> request, CancellationToken cancellationToken)
         {
             if (_store.TryGetValue(request.Key, out var payload))
             {
-                var value = request.Serializer.DeserializeAsync(new IndexedDbSerializedValue(payload, payload.Length), cancellationToken).GetAwaiter().GetResult();
-                return ValueTask.FromResult(StorageResult<T?>.Success(value));
+                var value = await request.Serializer
+                    .DeserializeAsync(new IndexedDbSerializedValue(payload, payload.Length), cancellationToken)
+                    .ConfigureAwait(false);
+                return StorageResult<T?>.Success(value);
             }
 
-            return ValueTask.FromResult(StorageResult<T?>.Success(default));
+            return StorageResult<T?>.Success(default);
         }
 
-        public ValueTask<StorageResult<IReadOnlyList<IndexedDbRecord<T>>>> ListAsync<T>(IndexedDbListRequest<T> request, CancellationToken cancellationToken)
+        public async ValueTask<StorageResult<IReadOnlyList<IndexedDbRecord<T>>>> ListAsync<T>(IndexedDbListRequest<T> request, CancellationToken cancellationToken)
         {
             var results = new List<IndexedDbRecord<T>>();
             foreach (var kvp in _store)
             {
-                var value = request.Serializer.DeserializeAsync(new IndexedDbSerializedValue(kvp.Value, kvp.Value.Length), cancellationToken).GetAwaiter().GetResult();
+                var value = await request.Serializer
+                    .DeserializeAsync(new IndexedDbSerializedValue(kvp.Value, kvp.Value.Length), cancellationToken)
+                    .ConfigureAwait(false);
                 results.Add(new IndexedDbRecord<T>(kvp.Key, value));
             }
-            return ValueTask.FromResult(StorageResult<IReadOnlyList<IndexedDbRecord<T>>>.Success(results));
+            return StorageResult<IReadOnlyList<IndexedDbRecord<T>>>.Success(results);
         }
 
-        public ValueTask<StorageResult<Unit>> PutAsync<T>(IndexedDbPutRequest<T> request, CancellationToken cancellationToken)
+        public async ValueTask<StorageResult<Unit>> PutAsync<T>(IndexedDbPutRequest<T> request, CancellationToken cancellationToken)
         {
-            var serialized = request.Serializer.SerializeAsync(request.Value, cancellationToken).GetAwaiter().GetResult();
+            var serialized = await request.Serializer
+                .SerializeAsync(request.Value, cancellationToken)
+                .ConfigureAwait(false);
             _store[request.Key] = serialized.Payload ?? Array.Empty<byte>();
-            return ValueTask.FromResult(StorageResult<Unit>.Success(Unit.Value));
+            return StorageResult<Unit>.Success(Unit.Value);
+        }
+
+        public async ValueTask<StorageResult<Unit>> PutAsync<T>(IndexedDbPutRequest<T> request, CancellationToken cancellationToken)
+        {
+            var serialized = await request.Serializer.SerializeAsync(request.Value, cancellationToken)
+                .ConfigureAwait(false);
+            _store[request.Key] = serialized.Payload ?? Array.Empty<byte>();
+            return StorageResult<Unit>.Success(Unit.Value);
         }
 
         public ValueTask<StorageResult<Unit>> PutIfCanAccommodateAsync<T>(IndexedDbPutRequest<T> request, CancellationToken cancellationToken)
@@ -114,7 +128,7 @@ public class ProgramStartupSmokeTests
     }
 
     [TestMethod]
-    public async Task Program_Startup_SmokeTest_ServiceGraphBuilds()
+        var response = await client.GetAsync("/");
     {
         await using var factory = new TestWebApplicationFactory();
         using var scope = factory.Services.CreateScope();
