@@ -77,6 +77,22 @@ performance:
   - render incremental updates within 50ms per new segment on target hardware
   - keep initial render under 100ms for 50 turns and 5 stages each
 
+non_functional_requirements:
+  - accessibility (WCAG 2.2 AA):
+      - live regions: streaming output uses `aria-live="polite"` and `aria-atomic=false`; errors use `aria-live="assertive"`
+      - roles/states: chips modeled as `list`/`listitem`; status reflected via `aria-selected`/state attributes
+      - hover metadata: accessible via `aria-describedby` or details toggle; color states meet contrast requirements
+  - responsive_ux:
+      - virtualization: virtualize beyond 100 turns; maintain keyboard focus and item semantics
+      - layout: chips wrap on narrow widths; no horizontal overflow at breakpoints
+  - performance_budgets:
+      - stream append render ≤50ms; cadence ≤100ms; avoid blocking bursts >200ms
+  - testing_hooks:
+      - axe-core on pipeline log route; fail CI on violations
+      - keyboard navigation across turns/chips
+      - viewport matrix assertions
+      - perf smoke for segment append timings
+
 observability:
   - logs:
       - trace_id, request_id, turn_id, stage, status, elapsed_ms, error_class, event (submit|stream_append|render_error)

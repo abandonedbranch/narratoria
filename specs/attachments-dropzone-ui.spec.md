@@ -59,6 +59,21 @@ non_goals:
 performance:
   - validate and render lists under 50ms for up to 20 files
 
+non_functional_requirements:
+  - accessibility (WCAG 2.2 AA):
+    - fallback: provide keyboard and clickable file-picker fallback to drag-and-drop
+    - labels: announce allowed types and size limits via `aria-describedby`; accepted/rejected files are announced
+    - states: validation errors surfaced via assertive live region; controls expose `aria-disabled` when applicable
+  - responsive_ux:
+    - layout: chip list wraps; long filenames truncate with accessible tooltip; no horizontal overflow
+    - target_sizes: interactive areas ≥44x44 px
+  - performance_budgets:
+    - validation/render ≤50ms for ≤20 files; batch validation without blocking UI
+  - testing_hooks:
+    - axe-core on routes with dropzone; fail CI on violations
+    - keyboard-only upload via file-picker
+    - viewport matrix assertions
+
 observability:
   - logs:
       - trace_id, request_id, event (drop|pick|accept|reject), file_count, error_class

@@ -53,6 +53,21 @@ non_goals:
 performance:
   - submission UI updates under 50ms per action on target hardware
 
+non_functional_requirements:
+  - accessibility (WCAG 2.2 AA):
+    - labels: input has a programmatic `label` and helper description; button has accessible name
+    - states: disabled via `aria-disabled`; error banner announced via `aria-live="assertive"`
+    - keyboard: Enter submits when enabled; Space toggles; ESC clears errors only when safe
+  - responsive_ux:
+    - layout: input and button stack on mobile; controls remain fully visible; targets ≥44x44 px
+    - overflow: long input lines handle gracefully without horizontal scroll in main content
+  - performance_budgets:
+    - interaction updates ≤50ms; debounce policies explicit if introduced
+  - testing_hooks:
+    - axe-core on pages containing the bar; fail CI on violations
+    - keyboard-only submit path
+    - viewport matrix assertions
+
 observability:
   - logs:
       - trace_id, request_id, event (submit|submit_error|submit_cancelled), elapsed_ms

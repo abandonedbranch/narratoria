@@ -33,3 +33,5 @@ Purpose
 - IndexedDB observability: normalize required fields per operation.
 - Log UI auto-scroll: implement if added to spec; otherwise defer.
 - Ensure consistent cancellation normalization across pipeline elements.
+
+- Accessibility CI enforcement: integrate axe-core into Playwright on `/test-orchestrator` and `/test-pipeline-log`; fail CI on any violations; add keyboard-only traversal, reduced motion, and viewport matrix assertions.
