@@ -6,6 +6,7 @@ namespace Narratoria.Narration;
 public interface INarrationOpenAiContextFactory
 {
     OpenAiRequestContext Create(NarrationContext context);
+    OpenAiRequestContext Create(NarrationContext context, string? modelOverride);
 }
 
 public sealed class NarrationOpenAiContextFactory : INarrationOpenAiContextFactory
@@ -49,6 +50,35 @@ public sealed class NarrationOpenAiContextFactory : INarrationOpenAiContextFacto
             _metrics,
             context.Trace,
             _streamingProvider,
+            headers);
+    }
+
+    public OpenAiRequestContext Create(NarrationContext context, string? modelOverride)
+    {
+        if (string.IsNullOrWhiteSpace(modelOverride))
+        {
+            return Create(context);
+        }
+
+        var opts = _options.Value ?? new NarrationOpenAiOptions();
+        var client = _httpClientFactory.CreateClient("openai");
+        var endpoint = new Uri(opts.Endpoint);
+        var credentials = new OpenAiProviderCredentials(opts.ApiKey);
+        var policy = new OpenAiRequestPolicy(opts.Timeout, opts.Idempotent);
+        var logger = _loggerFactory.CreateLogger<NarrationOpenAiContextFactory>();
+        var headers = CreateHeaders(opts);
+
+        var overrideProvider = new Narratoria.OpenAi.OpenAiChatStreamingProvider(modelOverride!, credentials, endpoint, headers);
+
+        return new OpenAiRequestContext(
+            client,
+            endpoint,
+            credentials,
+            policy,
+            logger,
+            _metrics,
+            context.Trace,
+            overrideProvider,
             headers);
     }
 

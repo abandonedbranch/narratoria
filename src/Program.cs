@@ -30,17 +30,21 @@ builder.Services.AddSingleton(sp =>
 {
     var attachmentsStore = ProcessedAttachmentStore.CreateStoreDefinition();
     var uploadsStore = AttachmentUploadStore.CreateStoreDefinition();
-    var narrationStore = IndexedDbNarrationSessionStore.CreateStoreDefinition();
+    var contextStore = IndexedDbNarrationSessionStore.CreateContextStoreDefinition();
+    var sessionsStore = IndexedDbNarrationSessionStore.CreateSessionsStoreDefinition();
+    var turnsStore = IndexedDbNarrationSessionStore.CreateTurnsStoreDefinition();
     return new IndexedDbSchema
     {
         DatabaseName = "narratoria",
-        Version = 2,
-        Stores = new[] { attachmentsStore, uploadsStore, narrationStore }
+        Version = 3,
+        Stores = new[] { attachmentsStore, uploadsStore, contextStore, sessionsStore, turnsStore }
     };
 });
 builder.Services.AddIndexedDbStorageService();
 
 builder.Services.AddScoped<IIndexedDbValueSerializer<NarrationContext>, NarrationContextSerializer>();
+builder.Services.AddScoped<IIndexedDbValueSerializer<SessionRecord>, SessionRecordSerializer>();
+builder.Services.AddScoped<IIndexedDbValueSerializer<NarrationTurnRecord>, NarrationTurnRecordSerializer>();
 builder.Services.AddScoped<IIndexedDbValueSerializer<UploadedFile>, UploadedFileSerializer>();
 builder.Services.AddScoped<IIndexedDbValueSerializer<ProcessedAttachment>, ProcessedAttachmentSerializer>();
 builder.Services.AddScoped<INarrationSessionStore>(sp =>
@@ -48,11 +52,15 @@ builder.Services.AddScoped<INarrationSessionStore>(sp =>
     var storage = sp.GetRequiredService<IIndexedDbStorageService>();
     var quotaStorage = sp.GetRequiredService<IIndexedDbStorageWithQuota>();
     var schema = sp.GetRequiredService<IndexedDbSchema>();
-    var store = schema.Stores.Single(s => s.Name == "narration_sessions");
+    var context = schema.Stores.Single(s => s.Name == "narration_sessions");
+    var sessions = schema.Stores.Single(s => s.Name == "sessions");
+    var turns = schema.Stores.Single(s => s.Name == "turns");
     var serializer = sp.GetRequiredService<IIndexedDbValueSerializer<NarrationContext>>();
+    var sessionSerializer = sp.GetRequiredService<IIndexedDbValueSerializer<SessionRecord>>();
+    var turnSerializer = sp.GetRequiredService<IIndexedDbValueSerializer<NarrationTurnRecord>>();
     var logger = sp.GetRequiredService<ILogger<IndexedDbNarrationSessionStore>>();
-    var scope = new StorageScope(schema.DatabaseName, store.Name);
-    return new IndexedDbNarrationSessionStore(storage, quotaStorage, store, scope, logger, serializer);
+    var scope = new StorageScope(schema.DatabaseName, context.Name);
+    return new IndexedDbNarrationSessionStore(storage, quotaStorage, context, sessions, turns, scope, logger, serializer, sessionSerializer, turnSerializer);
 });
 
 builder.Services.AddScoped<IAttachmentUploadStore>(sp =>
@@ -112,6 +120,8 @@ builder.Services.AddOptions<SystemPromptProfileConfig>().Bind(builder.Configurat
     !string.IsNullOrWhiteSpace(config.ProfileId) && !string.IsNullOrWhiteSpace(config.PromptText) && !string.IsNullOrWhiteSpace(config.Version),
     "SystemPromptProfile requires ProfileId, PromptText, Version").ValidateOnStart();
 builder.Services.AddSingleton<ISystemPromptProfileResolver, ConfigSystemPromptProfileResolver>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddSingleton(new SessionTitleOptions { MaxChars = 64 });
 
 builder.Services.AddSingleton<ProviderDispatchMiddleware>(sp =>
 {
@@ -129,18 +139,37 @@ builder.Services.AddSingleton<ProviderDispatchMiddleware>(sp =>
 });
 builder.Services.AddSingleton<NarrationPersistenceMiddleware>(sp =>
     new NarrationPersistenceMiddleware(sp.GetRequiredService<INarrationSessionStore>(), sp.GetRequiredService<INarrationPipelineObserver>()));
+builder.Services.AddSingleton<NarrationSessionTitleMiddleware>(sp =>
+    {
+        var pdOptions = sp.GetRequiredService<IOptions<ProviderDispatchOptions>>().Value;
+        if (string.IsNullOrWhiteSpace(pdOptions.SystemModel))
+        {
+            var openAi = sp.GetRequiredService<IOptions<NarrationOpenAiOptions>>().Value;
+            pdOptions = pdOptions with { SystemModel = openAi.Model };
+        }
+        return new NarrationSessionTitleMiddleware(
+            sp.GetRequiredService<INarrationSessionStore>(),
+            sp.GetRequiredService<Narratoria.OpenAi.IOpenAiApiService>(),
+            sp.GetRequiredService<INarrationOpenAiContextFactory>(),
+            sp.GetRequiredService<INarrationPipelineObserver>(),
+            TitleOptions.Default,
+            sp.GetRequiredService<ILogger<NarrationSessionTitleMiddleware>>(),
+            pdOptions);
+    });
 builder.Services.AddSingleton<NarrationPipelineService>(sp =>
 {
     var persistence = sp.GetRequiredService<NarrationPersistenceMiddleware>();
     var systemPrompt = sp.GetRequiredService<NarrationSystemPromptMiddleware>();
     var guardian = sp.GetRequiredService<NarrationContentGuardianMiddleware>();
     var dispatch = sp.GetRequiredService<ProviderDispatchMiddleware>();
+    var titleUpdate = sp.GetRequiredService<NarrationSessionTitleMiddleware>();
     return new NarrationPipelineService(new NarrationMiddleware[]
     {
         persistence.InvokeAsync,
         systemPrompt.InvokeAsync,
         guardian.InvokeAsync,
-        dispatch.InvokeAsync
+        dispatch.InvokeAsync,
+        titleUpdate.InvokeAsync
     });
 });
 
@@ -159,7 +188,9 @@ builder.Services.AddScoped<INarrationPipelineFactory>(sp =>
 
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
     var processed = sp.GetRequiredService<IProcessedAttachmentStore>();
-    return new NarrationPipelineFactory(sessions, profiles, provider, options, loggerFactory, processed);
+    var ingestion = sp.GetRequiredService<IAttachmentIngestionService>();
+    var attachOpts = sp.GetRequiredService<AttachmentIngestionOptions>();
+    return new NarrationPipelineFactory(sessions, profiles, provider, options, loggerFactory, processed, ingestion, attachOpts);
 });
 
 var app = builder.Build();
@@ -181,3 +212,5 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+public partial class Program {}
