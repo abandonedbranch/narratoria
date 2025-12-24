@@ -120,7 +120,7 @@ builder.Services.AddOptions<SystemPromptProfileConfig>().Bind(builder.Configurat
     !string.IsNullOrWhiteSpace(config.ProfileId) && !string.IsNullOrWhiteSpace(config.PromptText) && !string.IsNullOrWhiteSpace(config.Version),
     "SystemPromptProfile requires ProfileId, PromptText, Version").ValidateOnStart();
 builder.Services.AddSingleton<ISystemPromptProfileResolver, ConfigSystemPromptProfileResolver>();
-builder.Services.AddSingleton<ISessionService, SessionService>();
+builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddSingleton(new SessionTitleOptions { MaxChars = 64 });
 
 builder.Services.AddSingleton<ProviderDispatchMiddleware>(sp =>
@@ -188,7 +188,9 @@ builder.Services.AddScoped<INarrationPipelineFactory>(sp =>
 
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
     var processed = sp.GetRequiredService<IProcessedAttachmentStore>();
-    return new NarrationPipelineFactory(sessions, profiles, provider, options, loggerFactory, processed);
+    var ingestion = sp.GetRequiredService<IAttachmentIngestionService>();
+    var attachOpts = sp.GetRequiredService<AttachmentIngestionOptions>();
+    return new NarrationPipelineFactory(sessions, profiles, provider, options, loggerFactory, processed, ingestion, attachOpts);
 });
 
 var app = builder.Build();
@@ -210,3 +212,5 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+public partial class Program {}

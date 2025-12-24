@@ -19,6 +19,7 @@
         NarrationStageKind.Custom("system_prompt_injection"),
         NarrationStageKind.Custom("content_guardian_injection"),
         NarrationStageKind.Custom("attachment_ingestion"),
+        NarrationStageKind.Custom("attachment_context_injection"),
         NarrationStageKind.Custom("provider_dispatch"),
         NarrationStageKind.Custom("persist_context")
     };
@@ -46,6 +47,7 @@
     private bool _isSubmitting;
     private string? _submissionError;
     private readonly List<AttachmentCandidate> _attachments = new();
+    private readonly List<Narratoria.Narration.Attachments.ProcessedAttachment> _processedAttachments = new();
     private StageMetadataProvider? _metadata;
     private CancellationTokenSource? _restoreCts;
 
@@ -124,6 +126,23 @@
                     _turns.Add(view);
                 }
                 StateHasChanged();
+            }
+
+            // Restore processed attachments for display
+            try
+            {
+                var processedStore = Services.GetRequiredService<Narratoria.Narration.Attachments.IProcessedAttachmentStore>();
+                var listResult = await processedStore.ListBySessionAsync(SessionId, cancellationToken).ConfigureAwait(false);
+                if (listResult.Ok && listResult.Value is { Count: > 0 })
+                {
+                    _processedAttachments.Clear();
+                    _processedAttachments.AddRange(listResult.Value);
+                    StateHasChanged();
+                }
+            }
+            catch
+            {
+                // Non-fatal: attachments display remains empty
             }
         }
         catch
@@ -283,6 +302,18 @@
                 Trace = ctx.Trace
             };
             await store.UpsertTurnAsync(turnRecord, cancellationToken).ConfigureAwait(false);
+            // Refresh processed attachments after ingestion
+            try
+            {
+                var processedStore = Services.GetRequiredService<Narratoria.Narration.Attachments.IProcessedAttachmentStore>();
+                var listResult = await processedStore.ListBySessionAsync(SessionId, cancellationToken).ConfigureAwait(false);
+                if (listResult.Ok)
+                {
+                    _processedAttachments.Clear();
+                    _processedAttachments.AddRange(listResult.Value ?? Array.Empty<Narratoria.Narration.Attachments.ProcessedAttachment>());
+                }
+            }
+            catch { }
             _attachments.Clear();
             _submissionError = null;
             StateHasChanged();
@@ -367,6 +398,29 @@
             return;
         }
     }
+
+    private async Task RemoveAttachmentAsync(string attachmentId)
+    {
+        if (string.IsNullOrWhiteSpace(attachmentId)) return;
+
+        try
+        {
+            var processedStore = Services.GetRequiredService<Narratoria.Narration.Attachments.IProcessedAttachmentStore>();
+            await processedStore.DeleteAsync(SessionId, attachmentId, CancellationToken.None).ConfigureAwait(false);
+
+            var listResult = await processedStore.ListBySessionAsync(SessionId, CancellationToken.None).ConfigureAwait(false);
+            if (listResult.Ok)
+            {
+                _processedAttachments.Clear();
+                _processedAttachments.AddRange(listResult.Value ?? Array.Empty<Narratoria.Narration.Attachments.ProcessedAttachment>());
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // best-effort removal; UI will remain unchanged on failure
+        }
+    }
 }
 
 <div class="session-orchestrator">
@@ -375,6 +429,21 @@
         <button @onclick="() => RenameTitleAsync(CancellationToken.None)">Save title</button>
     </div>
     <AttachmentsDropzone AllowedContentTypes="@AllowedContentTypes" MaxBytesPerFile="@MaxBytesPerFile" MaxBytesTotal="@MaxBytesTotal" OnAccepted="AcceptAttachmentsAsync" />
+    @if (_processedAttachments.Count > 0)
+    {
+        <div class="processed-attachments">
+            <h5>Attached</h5>
+            <ul>
+                @foreach (var a in _processedAttachments)
+                {
+                    <li>
+                        @a.FileName (@a.MimeType) — tokens: @a.TokenEstimate@(a.Truncated ? " (truncated)" : string.Empty)
+                        <button @onclick="() => RemoveAttachmentAsync(a.AttachmentId)">Remove</button>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
     <PromptInputBar SubmitPrompt="SubmitPromptAsync" IsSubmitting="@_isSubmitting" />
     @if (!string.IsNullOrWhiteSpace(_submissionError))
     {
