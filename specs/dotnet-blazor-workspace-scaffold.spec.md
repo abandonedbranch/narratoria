@@ -396,7 +396,7 @@ mkdir -p src tests build scripts
 dotnet new sln -n {ProjectName}
 
 # Create Blazor Server project
-dotnet new blazor -n {ProjectName} -o src --no-https false
+dotnet new blazor -n {ProjectName} -o src
 
 # Create test project
 dotnet new mstest -n {ProjectName}.Tests -o tests/{ProjectName}.Tests
