@@ -55,7 +55,7 @@ performance:
 
 observability:
   - logs:
-      - <required fields e.g., trace_id, request_id, stage, elapsed_ms, status, error_class>
+      - <required fields>
   - metrics:
       - <required metrics>
 
