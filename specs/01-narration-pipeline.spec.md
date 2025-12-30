@@ -36,12 +36,16 @@ postconditions:
   - If success, errors == ∅; else errors records source/transform/sink failures.
 
 invariants:
-  - <always-true predicate>
-  - <determinism/thread-safety constraints>
+  - no side effects beyond declared outputs
+  - deterministic for given source, transforms, sink order
+  - pipeline_state ∈ {running | paused | stopped}; transitions follow allowed edges
+  - no untyped exceptions escape; errors only from source/transforms/sink
+  - ordering preserved between produced and emitted narration
+  - pause/stop signals eventually halt source and transforms
 
 failure_modes:
-  - <error_class> :: <trigger_condition> :: <mandatory_side_effect>
-  - <error_class> :: <trigger_condition> :: <mandatory_side_effect>
+  - element_failure :: transform/source/sink error :: pipeline stops and returns error
+  - cancellation :: pause/stop/cancel requested :: pipeline halts and no further output
 
 policies:
   - <retry | timeout | idempotency | rate_limit>
