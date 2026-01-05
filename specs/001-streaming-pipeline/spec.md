@@ -25,6 +25,20 @@
 - Define clear behavior for cancellation, early termination, and errors across the pipeline.
 - Make the pipeline’s externally observable behavior testable via isolated tests (for element behavior) and end-to-end tests (for overall composition).
 
+#### Reference Elements (Recommended, Non-Normative)
+
+The following are reference element behaviors to guide implementation and testing. They are not the only allowed elements.
+
+- **Text source**: A source element that outputs a stream of UTF-8 text (either as text chunks, or as byte chunks with explicit UTF-8 decode contract) provided from outside of the pipeline by the caller.
+- **Text accumulator (transform)**: A text-specific transform that buffers upstream *text* output and only emits downstream when either:
+  - End-of-stream is reached, or
+  - A configured threshold is reached, measured by one or more of:
+    - buffered UTF-8 byte count,
+    - buffered character count (Unicode scalar values / code points),
+    - buffered chunk count.
+  After emitting, it flushes its buffer.
+- **Text sink**: A sink element that accepts a stream of UTF-8 text until end-of-stream and exposes the collected text.
+
 ### Out of Scope
 
 - Supporting image/video ingestion in the initial release (the design should not prevent it, but it is not delivered in this scope).
@@ -117,6 +131,9 @@ As a caller, I can cancel a running pipeline (or observe a failure) and get a cl
 - Very large prompt: pipeline still streams output; does not attempt to buffer the full prompt/output in memory unnecessarily.
 - Transform blocks content: transform can stop downstream streaming with an explicit “blocked” outcome.
 - Slow downstream consumer: pipeline should not lose data or reorder chunks.
+- Text accumulator thresholds: when any threshold is smaller than the smallest upstream chunk, the accumulator still emits deterministically and does not deadlock.
+- Text accumulator threshold combinations: when multiple thresholds are configured, emission occurs when any configured threshold is met.
+- Character counting: “character count” thresholds are measured in Unicode scalar values (code points), not grapheme clusters.
 - Exception mid-stream: error is observable, and the pipeline transitions to a terminal state.
 - Early termination: a transform or sink can decide to stop consuming early (e.g., “enough tokens”); upstream work should stop as soon as possible.
 
@@ -131,6 +148,12 @@ List the externally observable surface area this feature introduces or changes. 
 - Source element contract — no inputs; produces a stream and basic run metadata.
 - Transform element contract — consumes an input stream and produces an output stream; may enrich run metadata.
 - Sink element contract — consumes a stream and exposes collected results and terminal status.
+
+### Reference Element Contracts (Non-Normative)
+
+- Text source — accepts caller-provided input that may arrive incrementally; produces UTF-8 text as typed chunks.
+- Text accumulator transform — accepts a UTF-8 text chunk stream; emits a UTF-8 text chunk stream with different chunk boundaries based on configured thresholds and end-of-stream.
+- Text sink — accepts UTF-8 text stream and exposes collected text and terminal outcome.
 
 ### Events / Messages *(if applicable)*
 
@@ -177,6 +200,14 @@ List the externally observable surface area this feature introduces or changes. 
 - **FR-013**: System MUST define a typed stream chunk contract such that each chunk has an explicit payload type and associated metadata describing how it may be interpreted.
 - **FR-014**: Transforms MUST declare what chunk types they accept and what chunk types they produce, and the pipeline MUST detect incompatible connections.
 - **FR-015**: Any bytes→text normalization MUST only occur when the incoming chunk metadata declares it is decodable as text (e.g., via an explicit encoding contract).
+- **FR-016**: System SHOULD provide reference implementations for a text source, an accumulator transform, and a text sink as exemplars of the contracts.
+- **FR-017**: The text accumulator transform MUST accept UTF-8 text chunks, MUST preserve logical content order, and MUST not drop content; it MAY change chunk boundaries based on buffering rules.
+- **FR-018**: The text accumulator transform MUST support buffering thresholds based on UTF-8 byte count, character count, and/or chunk count.
+
+#### Definitions
+
+- **Character count**: measured in **Unicode scalar values** (Unicode code points).
+- **Not included**: grapheme cluster counting (what users often perceive as a single displayed character) is out of scope unless explicitly added as a separate mode.
 
 ### Acceptance Criteria
 
@@ -191,6 +222,10 @@ List the externally observable surface area this feature introduces or changes. 
 - **AC-009 (FR-012)**: For the same logical prompt, providing it as a complete value versus providing it as a stream yields the same terminal outcome and logically equivalent sink-collected text.
 - **AC-010 (FR-013, FR-015)**: A transform that converts bytes→text succeeds only when the input chunk metadata declares a supported text decoding contract.
 - **AC-011 (FR-014)**: If two adjacent stages are connected with incompatible chunk types, the run fails with a clear error outcome before silently producing incorrect output.
+- **AC-012 (FR-017, FR-018)**: Given a text accumulator threshold of N bytes, the accumulator emits buffered output whenever its buffered UTF-8 byte count reaches or exceeds N, and emits any remaining buffered output at end-of-stream.
+- **AC-013 (FR-017, FR-018)**: Given a text accumulator threshold of N characters, the accumulator emits buffered output whenever its buffered character count reaches or exceeds N, and emits any remaining buffered output at end-of-stream.
+- **AC-014 (FR-017, FR-018)**: Given a text accumulator threshold of N chunks, the accumulator emits buffered output whenever its buffered chunk count reaches or exceeds N, and emits any remaining buffered output at end-of-stream.
+- **AC-015 (FR-017)**: The text accumulator does not reorder or lose content; downstream observes the same logical content sequence as upstream (modulo chunk boundaries).
 
 ### Error Handling *(mandatory)*
 
@@ -242,6 +277,9 @@ Map each requirement to the minimum required test coverage. Do not assume existi
 | FR-013 | Y | N | N | Typed chunk envelope exists and is enforced |
 | FR-014 | Y | Y | N | Incompatible stage connections detected |
 | FR-015 | Y | N | N | Bytes→text only when declared decodable |
+| FR-016 | N | N | N | Reference implementations are optional but recommended |
+| FR-017 | Y | Y | N | Text accumulator semantics |
+| FR-018 | Y | Y | N | Thresholds by bytes/chars/chunks |
 
 *Note*: The E2E column indicates desired end-to-end verification only if future work introduces UI flows; it does not imply existing E2E infrastructure is already valid.
 

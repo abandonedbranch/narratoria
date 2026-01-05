@@ -37,3 +37,6 @@
 - This spec defines an API surface; how user input is collected and provided to the source is a caller obligation.
 - Source configuration explicitly supports incremental/streaming input (including byte/chunk streams), and complete inputs must be adaptable into equivalent streams.
 - Stream chunk contract is explicitly typed (payload type + metadata), and bytes→text conversion requires an explicit decode contract.
+- Spec includes non-normative reference element behaviors: text source (UTF-8), accumulator transform (threshold buffering), and text sink.
+- Accumulator is explicitly text-specific and supports thresholds by bytes, characters, and chunk count.
+- “Character count” thresholds are defined as Unicode scalar values (code points), not grapheme clusters.
