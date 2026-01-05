@@ -6,30 +6,4 @@ Purpose
 
 ## Spec Drift
 
-- Provider dispatch: metrics/log fields not fully aligned with spec; verify terminal/stream-composition semantics remain consistent with the streaming contract.
-- IndexedDB storage: CRUD surface exists (Put/Get/Delete/List) but observability field completeness varies by operation; verify spec alignment per operation.
-- Narration pipeline log UI: render-only component implemented; hover metadata popovers present via chip title; auto-scroll remains unimplemented; expand Playwright coverage to assert hover content deterministically.
-- Prompt input bar UI: component implemented with gating and error banner; E2E SHOULD validate cancellation propagation; no implicit retries enforced.
-- Attachments dropzone UI: component implemented; accepted files are uploaded by orchestrator via IAttachmentUploadStore; drag-and-drop interactions MAY be added; Playwright covers acceptance via payload.
-- Narration session orchestrator UI: component implemented and wired with observer→view adapter and stage metadata provider; restore-from-store behavior remains minimal.
-- Pipeline observer→view adapter: implemented and integrated; monitor for event mismatches; add unit tests for skipped/failure transitions coverage breadth.
-- Stage metadata provider: implemented and integrated; provider metrics (tokens/model) emitted via pipeline elements; prompt token estimation remains unimplemented.
-
-- Pipeline composition: Program still registers a singleton NarrationPipelineService for demo/testing; ensure no production path relies on it.
-- Stage naming (current drift): StageOrder is intended to reflect element stage ids directly (telemetry stage names); update default/configured StageOrder to match the configured element stages (e.g., session_load, system_prompt_injection, content_guardian_injection, attachment_context_injection, provider_dispatch, persist_context) and keep these stage ids stable.
-- System prompt profile resolver (current drift): config-backed resolver implemented with success/not_found/error/cancelled metrics and logs; storage-backed or policy-based selection remains unimplemented.
-- System prompt profile resolver (potential drift): future changes to selection policies MUST remain deterministic and versioned; any caching MUST preserve consistency across a single process lifetime.
-- Provider dispatch (potential drift): future element additions that wrap streams must preserve early-dispose cancellation propagation upstream.
-- Persistence (potential drift): any future changes must preserve “skip persistence on downstream failure” and must not reintroduce persistence of per-run prompt state.
-
-## Functionality Gaps
-
-- Restore-from-store in orchestrator: not implemented (needs deterministic replay using specs/narration-turn-log-record.spec.md).
-- Prompt token estimation and emission: not implemented.
-
-## Technical Debt
-
-- Broaden Playwright coverage: hover content determinism across multiple stages; cancellation propagation for prompt bar.
-- IndexedDB observability: normalize required fields per operation.
-- Log UI auto-scroll: implement if added to spec; otherwise defer.
-- Ensure consistent cancellation normalization across pipeline elements.
+No drift reported as of yet.
