@@ -25,23 +25,10 @@ Specs are created either by hand (a human hand), and refined using a coding agen
 ### Root files 🤖
 
 - `README`: Human-facing overview and context.
-- `SPEC`: Spec authoring rules and a specs index that MUST mirror `specs/`; includes drift/status tracking guidance.
-- `CONTRIB`: Non-negotiable coding standards and implementation practices; points to `SPEC` for spec authoring and to `TODO` for drift/gaps/debt.
+- `CONTRIB`: Non-negotiable coding standards and implementation practices.
 - `LICENSE`: Project license.
 - `TODO`: Tracker for spec drift, functionality gaps, and technical debt; update before finishing work when items remain.
 
 ### `specs/`
 
-Machine-oriented specifications for the system. Each `*.spec.md` file describes one component’s contract:
-
-- Required inputs/outputs
-- Failure modes and error taxonomy
-- Ordering, cancellation, idempotency, and concurrency rules
-- Observability requirements (log fields + metrics)
-
-If you’re trying to understand “what the system is supposed to do,” start here.
-
-Notable files:
-
-- `_template.spec.md`: The spec template used when adding new components.
-- `narrator-pipeline-service.spec.md`: The core pipeline execution/streaming semantics.
+<REMOVED />
