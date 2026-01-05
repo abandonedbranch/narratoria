@@ -31,4 +31,4 @@ Specs are created either by hand (a human hand), and refined using a coding agen
 
 ### `specs/`
 
-<REMOVED />
+- `specs/001-streaming-pipeline/spec.md`: Streaming narration pipeline (source → transforms → sink)
