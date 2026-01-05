@@ -32,3 +32,7 @@ Specs are created either by hand (a human hand), and refined using a coding agen
 ### `specs/`
 
 - `specs/001-streaming-pipeline/spec.md`: Streaming narration pipeline (source → transforms → sink)
+
+### `src/` 🤖
+
+- `src/Pipeline/`: Streaming pipeline API surface (typed chunks, runner, and reference transforms/sinks).
