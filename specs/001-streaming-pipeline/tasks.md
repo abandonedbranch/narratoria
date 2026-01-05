@@ -81,11 +81,13 @@ description: "Task list for implementing the streaming narration pipeline"
 
 - [ ] T020 [P] [US2] Add transform-ordering tests in tests/Narratoria.Tests/Pipeline/TransformCompatibilityTests.cs
 - [ ] T021 [P] [US2] Add transform rewrite/enrichment tests in tests/Narratoria.Tests/Pipeline/TransformCompatibilityTests.cs
+- [ ] T021a [P] [US2] Add text accumulator buffering tests (bytes/chars/chunks thresholds + end-of-stream flush) in tests/Narratoria.Tests/Pipeline/TransformCompatibilityTests.cs
 
 ### Implementation for User Story 2
 
 - [ ] T022 [US2] Implement a simple prefix transform in src/Pipeline/Transforms/PrefixTextTransform.cs
 - [ ] T023 [US2] Implement a simple enrichment transform that adds annotations/metadata in src/Pipeline/Transforms/AnnotateTransform.cs
+- [ ] T023a [US2] Implement text accumulator transform (bytes/chars/chunks thresholds + end-of-stream flush) in src/Pipeline/Transforms/TextAccumulatorTransform.cs
 - [ ] T024 [US2] Ensure transform ordering is deterministic and enforced in src/Pipeline/PipelineRunner.cs
 
 **Checkpoint**: US2 complete — transforms compose predictably without breaking streaming.

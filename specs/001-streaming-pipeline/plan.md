@@ -58,6 +58,14 @@ src/
 │   ├── IPipelineSink.cs
 │   ├── PipelineDefinition.cs
 │   └── PipelineRunner.cs
+│   ├── Transforms/
+│   │   ├── DecodeBytesToTextTransform.cs
+│   │   └── TextAccumulatorTransform.cs
+│   └── Text/
+│       ├── TextSourceConfig.cs
+│       ├── TextPromptSource.cs
+│       ├── TextInputAdapters.cs
+│       └── TextCollectingSink.cs
 └── Narration/
     └── (optional) adapters that let existing narration flows consume the new pipeline API
 
@@ -78,7 +86,7 @@ tests/
 
 - Define a typed chunk envelope (conceptually `PipelineChunk<TPayload>`) with:
   - An explicit payload type descriptor (bytes vs text vs other future payloads)
-  - Metadata that can declare interpretation rules (e.g., text encoding for byte payloads)
+  - Metadata that can declare interpretation rules (e.g., UTF-8 decode contract for byte payloads that represent text)
   - Optional annotations for downstream transforms/sinks
 
 ### Composition and Compatibility
