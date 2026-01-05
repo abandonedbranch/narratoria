@@ -36,3 +36,4 @@
 - This spec does not assume the current codebase or existing test suites are viable; the feature must be testable via newly introduced or revised automated tests.
 - This spec defines an API surface; how user input is collected and provided to the source is a caller obligation.
 - Source configuration explicitly supports incremental/streaming input (including byte/chunk streams), and complete inputs must be adaptable into equivalent streams.
+- Stream chunk contract is explicitly typed (payload type + metadata), and bytes→text conversion requires an explicit decode contract.

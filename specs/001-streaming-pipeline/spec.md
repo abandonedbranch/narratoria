@@ -147,7 +147,10 @@ List the externally observable surface area this feature introduces or changes. 
 - Source configuration — caller-provided configuration used by the source.
   - Supports both complete values (e.g., a full prompt) and streaming inputs (e.g., bytes/chunks).
   - A complete value must be representable as an equivalent stream.
-- Stream chunk — text content plus optional annotations (e.g., “redacted”, “source=memory”).
+- Stream chunk — a typed envelope containing payload + metadata.
+  - Payload type is explicit (e.g., bytes vs text) so transforms can validate compatibility.
+  - For byte payloads intended to be text, the chunk metadata declares a text encoding (or equivalent decode contract).
+  - Chunk metadata may include annotations (e.g., “redacted”, “source=memory”).
 - Run outcome — status (completed/failed/canceled/blocked) plus summary details suitable for logging and UI.
 
 ## Requirements *(mandatory)*
@@ -171,6 +174,9 @@ List the externally observable surface area this feature introduces or changes. 
 - **FR-010**: System MUST allow a minimal pipeline (text source → sink) to function without requiring any transforms.
 - **FR-011**: System MUST allow the text source to be configured with streaming input (including byte/chunk streams), and MUST process the input incrementally.
 - **FR-012**: If the caller provides a complete (non-stream) input value, the system MUST adapt it into a stream that is observationally equivalent to providing the input as a stream.
+- **FR-013**: System MUST define a typed stream chunk contract such that each chunk has an explicit payload type and associated metadata describing how it may be interpreted.
+- **FR-014**: Transforms MUST declare what chunk types they accept and what chunk types they produce, and the pipeline MUST detect incompatible connections.
+- **FR-015**: Any bytes→text normalization MUST only occur when the incoming chunk metadata declares it is decodable as text (e.g., via an explicit encoding contract).
 
 ### Acceptance Criteria
 
@@ -183,6 +189,8 @@ List the externally observable surface area this feature introduces or changes. 
 - **AC-007 (FR-009)**: If a downstream stage stops consuming early, upstream stages stop producing as soon as possible and no further chunks are delivered.
 - **AC-008 (FR-011)**: If a caller provides prompt input as a stream of bytes/chunks, the pipeline run starts without requiring the full input to be buffered first.
 - **AC-009 (FR-012)**: For the same logical prompt, providing it as a complete value versus providing it as a stream yields the same terminal outcome and logically equivalent sink-collected text.
+- **AC-010 (FR-013, FR-015)**: A transform that converts bytes→text succeeds only when the input chunk metadata declares a supported text decoding contract.
+- **AC-011 (FR-014)**: If two adjacent stages are connected with incompatible chunk types, the run fails with a clear error outcome before silently producing incorrect output.
 
 ### Error Handling *(mandatory)*
 
@@ -190,6 +198,7 @@ List the externally observable surface area this feature introduces or changes. 
 - **EH-002**: If a transform throws an error or produces an invalid stream, the run MUST terminate as failed and MUST not silently continue.
 - **EH-003**: If a sink fails while consuming the stream, the run MUST terminate as failed and MUST not report completion.
 - **EH-004**: Failures MUST be observable with a safe-to-display message and a classification suitable for troubleshooting.
+- **EH-005**: If a stage receives an incompatible chunk type or undecodable bytes (per declared decode contract), the run MUST fail with an explicit “type incompatibility / decode failure” classification.
 
 
 ### State & Data *(mandatory if feature involves data)*
@@ -230,6 +239,9 @@ Map each requirement to the minimum required test coverage. Do not assume existi
 | FR-010 | Y | N | N | Minimal pipeline works with source configuration |
 | FR-011 | Y | Y | N | Streaming input supported (byte/chunk) |
 | FR-012 | Y | N | N | Complete input adapts to equivalent stream |
+| FR-013 | Y | N | N | Typed chunk envelope exists and is enforced |
+| FR-014 | Y | Y | N | Incompatible stage connections detected |
+| FR-015 | Y | N | N | Bytes→text only when declared decodable |
 
 *Note*: The E2E column indicates desired end-to-end verification only if future work introduces UI flows; it does not imply existing E2E infrastructure is already valid.
 
