@@ -75,7 +75,7 @@ public sealed class PipelineRunnerTests
         var transform = new ThrowBlockedTransform();
         var sink = new SignalingTextSink(new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
 
-        var definition = new PipelineDefinition<string>(source, new[] { (IPipelineTransform)transform }, sink);
+        var definition = new PipelineDefinition<string>(source, [transform], sink);
         var runner = new PipelineRunner();
 
         var result = await runner.RunAsync(definition, CancellationToken.None);
