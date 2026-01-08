@@ -6,10 +6,7 @@ public static class TextInputAdapters
 
     public static IAsyncEnumerable<ReadOnlyMemory<byte>> FromBytes(params byte[][] chunks)
     {
-        if (chunks is null)
-        {
-            throw new ArgumentNullException(nameof(chunks));
-        }
+        ArgumentNullException.ThrowIfNull(chunks);
 
         return new EnumerableAsyncEnumerable<ReadOnlyMemory<byte>>(chunks.Select(static c => (ReadOnlyMemory<byte>)c));
     }
