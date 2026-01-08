@@ -24,9 +24,9 @@ description: "Task list for implementing the streaming narration pipeline"
 
 **Purpose**: Establish the new API surface area in a self-contained way.
 
-- [ ] T001 Create pipeline folder and baseline files in src/Pipeline/
-- [ ] T002 Wire pipeline source files into build in src/Narratoria.csproj
-- [ ] T003 [P] Create test folder structure in tests/Narratoria.Tests/Pipeline/
+- [X] T001 Create pipeline folder and baseline files in src/Pipeline/
+- [X] T002 Wire pipeline source files into build in src/Narratoria.csproj
+- [X] T003 [P] Create test folder structure in tests/Narratoria.Tests/Pipeline/
 
 ---
 
@@ -34,15 +34,15 @@ description: "Task list for implementing the streaming narration pipeline"
 
 **Purpose**: Core streaming primitives and typed chunk contract (blocks all user stories).
 
-- [ ] T004 Implement typed payload descriptor types in src/Pipeline/PipelineChunkType.cs
-- [ ] T005 [P] Implement chunk metadata container in src/Pipeline/PipelineChunkMetadata.cs
-- [ ] T006 Implement typed chunk envelope in src/Pipeline/PipelineChunk.cs
-- [ ] T007 Implement run outcome model (completed/failed/canceled/blocked) in src/Pipeline/PipelineOutcome.cs
-- [ ] T008 Implement run result container (outcome + collected sink value) in src/Pipeline/PipelineRunResult.cs
-- [ ] T009 Define tiny source/transform/sink interfaces in src/Pipeline/IPipelineSource.cs, src/Pipeline/IPipelineTransform.cs, src/Pipeline/IPipelineSink.cs
-- [ ] T010 Implement pipeline definition container (ordered stages + compatibility declarations) in src/Pipeline/PipelineDefinition.cs
-- [ ] T011 Implement pipeline runner/executor with cancellation support in src/Pipeline/PipelineRunner.cs
-- [ ] T012 Implement compatibility checking and failure classification for type mismatch/decode failures in src/Pipeline/PipelineRunner.cs
+- [X] T004 Implement typed payload descriptor types in src/Pipeline/PipelineChunkType.cs
+- [X] T005 [P] Implement chunk metadata container in src/Pipeline/PipelineChunkMetadata.cs
+- [X] T006 Implement typed chunk envelope in src/Pipeline/PipelineChunk.cs
+- [X] T007 Implement run outcome model (completed/failed/canceled/blocked) in src/Pipeline/PipelineOutcome.cs
+- [X] T008 Implement run result container (outcome + collected sink value) in src/Pipeline/PipelineRunResult.cs
+- [X] T009 Define tiny source/transform/sink interfaces in src/Pipeline/IPipelineSource.cs, src/Pipeline/IPipelineTransform.cs, src/Pipeline/IPipelineSink.cs
+- [X] T010 Implement pipeline definition container (ordered stages + compatibility declarations) in src/Pipeline/PipelineDefinition.cs
+- [X] T011 Implement pipeline runner/executor with cancellation support in src/Pipeline/PipelineRunner.cs
+- [X] T012 Implement compatibility checking and failure classification for type mismatch/decode failures in src/Pipeline/PipelineRunner.cs
 
 **Checkpoint**: Foundation ready — typed chunk contract + runner exist and can be tested without any external services.
 
@@ -56,16 +56,16 @@ description: "Task list for implementing the streaming narration pipeline"
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Add unit tests for typed chunk basics in tests/Narratoria.Tests/Pipeline/PipelineChunkTests.cs
-- [ ] T014 [P] [US1] Add runner streaming tests (partial output, ordering) in tests/Narratoria.Tests/Pipeline/PipelineRunnerTests.cs
+- [X] T013 [P] [US1] Add unit tests for typed chunk basics in tests/Narratoria.Tests/Pipeline/PipelineChunkTests.cs
+- [X] T014 [P] [US1] Add runner streaming tests (partial output, ordering) in tests/Narratoria.Tests/Pipeline/PipelineRunnerTests.cs
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Implement a text-source configuration model in src/Pipeline/Text/TextSourceConfig.cs
-- [ ] T016 [US1] Implement a text prompt source supporting complete input in src/Pipeline/Text/TextPromptSource.cs
-- [ ] T017 [US1] Implement adapter from complete input to equivalent stream in src/Pipeline/Text/TextInputAdapters.cs
-- [ ] T018 [US1] Implement a basic sink that collects streamed text in src/Pipeline/Text/TextCollectingSink.cs
-- [ ] T019 [US1] Ensure runner can execute minimal pipeline (source → sink) in src/Pipeline/PipelineRunner.cs
+- [X] T015 [US1] Implement a text-source configuration model in src/Pipeline/Text/TextSourceConfig.cs
+- [X] T016 [US1] Implement a text prompt source supporting complete input in src/Pipeline/Text/TextPromptSource.cs
+- [X] T017 [US1] Implement adapter from complete input to equivalent stream in src/Pipeline/Text/TextInputAdapters.cs
+- [X] T018 [US1] Implement a basic sink that collects streamed text in src/Pipeline/Text/TextCollectingSink.cs
+- [X] T019 [US1] Ensure runner can execute minimal pipeline (source → sink) in src/Pipeline/PipelineRunner.cs
 
 **Checkpoint**: US1 complete — minimal pipeline streams text and produces a terminal outcome.
 
@@ -79,16 +79,16 @@ description: "Task list for implementing the streaming narration pipeline"
 
 ### Tests for User Story 2
 
-- [ ] T020 [P] [US2] Add transform-ordering tests in tests/Narratoria.Tests/Pipeline/TransformCompatibilityTests.cs
-- [ ] T021 [P] [US2] Add transform rewrite/enrichment tests in tests/Narratoria.Tests/Pipeline/TransformCompatibilityTests.cs
-- [ ] T021a [P] [US2] Add text accumulator buffering tests (bytes/chars/chunks thresholds + end-of-stream flush) in tests/Narratoria.Tests/Pipeline/TransformCompatibilityTests.cs
+- [X] T020 [P] [US2] Add transform-ordering tests in tests/Narratoria.Tests/Pipeline/TransformCompatibilityTests.cs
+- [X] T021 [P] [US2] Add transform rewrite/enrichment tests in tests/Narratoria.Tests/Pipeline/TransformCompatibilityTests.cs
+- [X] T021a [P] [US2] Add text accumulator buffering tests (bytes/chars/chunks thresholds + end-of-stream flush) in tests/Narratoria.Tests/Pipeline/TransformCompatibilityTests.cs
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Implement a simple prefix transform in src/Pipeline/Transforms/PrefixTextTransform.cs
-- [ ] T023 [US2] Implement a simple enrichment transform that adds annotations/metadata in src/Pipeline/Transforms/AnnotateTransform.cs
-- [ ] T023a [US2] Implement text accumulator transform (bytes/chars/chunks thresholds + end-of-stream flush) in src/Pipeline/Transforms/TextAccumulatorTransform.cs
-- [ ] T024 [US2] Ensure transform ordering is deterministic and enforced in src/Pipeline/PipelineRunner.cs
+- [X] T022 [US2] Implement a simple prefix transform in src/Pipeline/Transforms/PrefixTextTransform.cs
+- [X] T023 [US2] Implement a simple enrichment transform that adds annotations/metadata in src/Pipeline/Transforms/AnnotateTransform.cs
+- [X] T023a [US2] Implement text accumulator transform (bytes/chars/chunks thresholds + end-of-stream flush) in src/Pipeline/Transforms/TextAccumulatorTransform.cs
+- [X] T024 [US2] Ensure transform ordering is deterministic and enforced in src/Pipeline/PipelineRunner.cs
 
 **Checkpoint**: US2 complete — transforms compose predictably without breaking streaming.
 
@@ -102,17 +102,17 @@ description: "Task list for implementing the streaming narration pipeline"
 
 ### Tests for User Story 3
 
-- [ ] T025 [P] [US3] Add cancellation/early termination tests in tests/Narratoria.Tests/Pipeline/PipelineRunnerTests.cs
-- [ ] T026 [P] [US3] Add type incompatibility failure tests in tests/Narratoria.Tests/Pipeline/TransformCompatibilityTests.cs
-- [ ] T027 [P] [US3] Add bytes→text decode contract tests in tests/Narratoria.Tests/Pipeline/StreamingInputAdapterTests.cs
+- [X] T025 [P] [US3] Add cancellation/early termination tests in tests/Narratoria.Tests/Pipeline/PipelineRunnerTests.cs
+- [X] T026 [P] [US3] Add type incompatibility failure tests in tests/Narratoria.Tests/Pipeline/TransformCompatibilityTests.cs
+- [X] T027 [P] [US3] Add bytes→text decode contract tests in tests/Narratoria.Tests/Pipeline/StreamingInputAdapterTests.cs
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Implement streaming byte-input support for text source in src/Pipeline/Text/TextPromptSource.cs
-- [ ] T029 [US3] Implement bytes→text transform that requires declared encoding contract in src/Pipeline/Transforms/DecodeBytesToTextTransform.cs
-- [ ] T030 [US3] Enforce that bytes→text only runs when chunk metadata declares decodability in src/Pipeline/Transforms/DecodeBytesToTextTransform.cs
-- [ ] T031 [US3] Ensure runner cancels upstream promptly when downstream stops consuming in src/Pipeline/PipelineRunner.cs
-- [ ] T032 [US3] Ensure runner emits explicit classified failures for type incompatibility/decode failure in src/Pipeline/PipelineRunner.cs
+- [X] T028 [US3] Implement streaming byte-input support for text source in src/Pipeline/Text/TextPromptSource.cs
+- [X] T029 [US3] Implement bytes→text transform that requires declared encoding contract in src/Pipeline/Transforms/DecodeBytesToTextTransform.cs
+- [X] T030 [US3] Enforce that bytes→text only runs when chunk metadata declares decodability in src/Pipeline/Transforms/DecodeBytesToTextTransform.cs
+- [X] T031 [US3] Ensure runner cancels upstream promptly when downstream stops consuming in src/Pipeline/PipelineRunner.cs
+- [X] T032 [US3] Ensure runner emits explicit classified failures for type incompatibility/decode failure in src/Pipeline/PipelineRunner.cs
 
 **Checkpoint**: US3 complete — cancellation/failure behavior is predictable and observable.
 
@@ -120,9 +120,9 @@ description: "Task list for implementing the streaming narration pipeline"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T033 [P] Update documentation entry for the pipeline API surface in README
-- [ ] T034 Add a minimal usage example (non-UI) in specs/001-streaming-pipeline/quickstart.md
-- [ ] T035 [P] Run and fix deterministic unit tests for the new pipeline in tests/Narratoria.Tests/Narratoria.Tests.csproj
+- [X] T033 [P] Update documentation entry for the pipeline API surface in README
+- [X] T034 Add a minimal usage example (non-UI) in specs/001-streaming-pipeline/quickstart.md
+- [X] T035 [P] Run and fix deterministic unit tests for the new pipeline in tests/Narratoria.Tests/Narratoria.Tests.csproj
 
 ---
 

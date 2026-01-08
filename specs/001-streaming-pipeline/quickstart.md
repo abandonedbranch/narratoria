@@ -10,6 +10,23 @@ This quickstart describes minimal, non-UI verification scenarios for the streami
   - The sink observes at least one chunk before the run completes.
   - The run completes with a terminal outcome.
 
+Example (in-process):
+
+```csharp
+using Narratoria.Pipeline;
+using Narratoria.Pipeline.Text;
+
+var source = new TextPromptSource(new TextSourceConfig { CompleteText = "Hello" });
+var sink = new TextCollectingSink();
+var definition = new PipelineDefinition<string>(source, Array.Empty<IPipelineTransform>(), sink);
+
+var runner = new PipelineRunner();
+var result = await runner.RunAsync(definition, CancellationToken.None);
+
+// result.Outcome.Status == Completed
+// result.SinkResult == "Hello"
+```
+
 ## Scenario 2: Transform chain
 
 - Add a prefix transform (e.g., prefix with "[SAFE] ").
