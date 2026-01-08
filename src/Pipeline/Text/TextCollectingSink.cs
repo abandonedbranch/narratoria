@@ -13,6 +13,8 @@ public sealed class TextCollectingSink : IPipelineSink<string>
 
     public async ValueTask<string> ConsumeAsync(IAsyncEnumerable<PipelineChunk> input, CancellationToken cancellationToken)
     {
+        _builder.Clear();
+
         await foreach (var chunk in input.WithCancellation(cancellationToken))
         {
             if (chunk is not TextChunk textChunk)

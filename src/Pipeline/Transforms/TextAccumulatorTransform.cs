@@ -3,14 +3,26 @@ using Narratoria.Pipeline;
 
 namespace Narratoria.Pipeline.Transforms;
 
-public sealed class TextAccumulatorTransform(
-    int? maxUtf8Bytes = null,
-    int? maxCharacters = null,
-    int? maxChunks = null) : IPipelineTransform
+public sealed class TextAccumulatorTransform : IPipelineTransform
 {
-    private readonly int? _maxUtf8Bytes = ValidateThreshold(maxUtf8Bytes, nameof(maxUtf8Bytes));
-    private readonly int? _maxCharacters = ValidateThreshold(maxCharacters, nameof(maxCharacters));
-    private readonly int? _maxChunks = ValidateThreshold(maxChunks, nameof(maxChunks));
+    private readonly int? _maxUtf8Bytes;
+    private readonly int? _maxCharacters;
+    private readonly int? _maxChunks;
+
+    public TextAccumulatorTransform(
+        int? maxUtf8Bytes = null,
+        int? maxCharacters = null,
+        int? maxChunks = null)
+    {
+        if (maxUtf8Bytes is null && maxCharacters is null && maxChunks is null)
+        {
+            throw new ArgumentException("At least one threshold must be provided.");
+        }
+
+        _maxUtf8Bytes = ValidateThreshold(maxUtf8Bytes, nameof(maxUtf8Bytes));
+        _maxCharacters = ValidateThreshold(maxCharacters, nameof(maxCharacters));
+        _maxChunks = ValidateThreshold(maxChunks, nameof(maxChunks));
+    }
 
     public PipelineChunkType InputType => PipelineChunkType.Text;
 

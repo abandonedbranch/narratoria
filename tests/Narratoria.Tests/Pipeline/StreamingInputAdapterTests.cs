@@ -55,7 +55,6 @@ public sealed class StreamingInputAdapterTests
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
         {
             yield return new BytesChunk(Encoding.UTF8.GetBytes("Hi"), PipelineChunkMetadata.Empty);
-            await Task.CompletedTask;
         }
     }
 }

@@ -62,10 +62,11 @@ public sealed class PipelineRunner
                 PipelineOutcome.Failed(ex.FailureKind, ex.SafeMessage),
                 default!);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            var message = $"Pipeline failed with unexpected error of type '{ex.GetType().Name}'.";
             return new PipelineRunResult<TSinkResult>(
-                PipelineOutcome.Failed(PipelineFailureKind.Unknown, "Pipeline failed"),
+                PipelineOutcome.Failed(PipelineFailureKind.Unknown, message),
                 default!);
         }
     }

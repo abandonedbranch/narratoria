@@ -43,6 +43,7 @@ public sealed class TransformCompatibilityTests
         var result = await runner.RunAsync(definition, CancellationToken.None);
 
         Assert.AreEqual(PipelineOutcomeStatus.Completed, result.Outcome.Status);
+        Assert.IsNotNull(result.SinkResult);
         Assert.AreEqual("memory", result.SinkResult["source"]);
     }
 
@@ -108,7 +109,6 @@ public sealed class TransformCompatibilityTests
             foreach (var chunk in chunks)
             {
                 yield return new TextChunk(chunk, PipelineChunkMetadata.Empty);
-                await Task.CompletedTask;
             }
         }
     }
@@ -119,12 +119,12 @@ public sealed class TransformCompatibilityTests
 
         public async ValueTask<string> ConsumeAsync(IAsyncEnumerable<PipelineChunk> input, CancellationToken cancellationToken)
         {
-            var collected = "";
+            var builder = new System.Text.StringBuilder();
             await foreach (var chunk in input.WithCancellation(cancellationToken))
             {
-                collected += ((TextChunk)chunk).Text;
+                builder.Append(((TextChunk)chunk).Text);
             }
-            return collected;
+            return builder.ToString();
         }
     }
 
@@ -160,9 +160,7 @@ public sealed class TransformCompatibilityTests
                 last = chunk.Metadata;
             }
 
-            Assert.IsNotNull(last);
-            Assert.IsNotNull(last.Annotations);
-            return last.Annotations;
+            return last?.Annotations ?? new Dictionary<string, string>();
         }
     }
 

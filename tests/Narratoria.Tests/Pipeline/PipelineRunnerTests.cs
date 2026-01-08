@@ -68,6 +68,39 @@ public sealed class PipelineRunnerTests
         await disposed.Task;
     }
 
+    [TestMethod]
+    public async Task Runner_WhenBlockedExceptionThrown_ReturnsBlockedOutcome()
+    {
+        var source = new GatedTextSource(new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+        var transform = new ThrowBlockedTransform();
+        var sink = new SignalingTextSink(new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+
+        var definition = new PipelineDefinition<string>(source, new[] { (IPipelineTransform)transform }, sink);
+        var runner = new PipelineRunner();
+
+        var result = await runner.RunAsync(definition, CancellationToken.None);
+
+        Assert.AreEqual(PipelineOutcomeStatus.Blocked, result.Outcome.Status);
+        Assert.AreEqual("Blocked", result.Outcome.SafeMessage);
+    }
+
+    [TestMethod]
+    public async Task Runner_WhenUnexpectedExceptionThrown_ReturnsUnknownFailureWithTypeInMessage()
+    {
+        var source = new GatedTextSource(new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+        var sink = new ThrowingSink();
+
+        var definition = new PipelineDefinition<string>(source, Array.Empty<IPipelineTransform>(), sink);
+        var runner = new PipelineRunner();
+
+        var result = await runner.RunAsync(definition, CancellationToken.None);
+
+        Assert.AreEqual(PipelineOutcomeStatus.Failed, result.Outcome.Status);
+        Assert.AreEqual(PipelineFailureKind.Unknown, result.Outcome.FailureKind);
+        Assert.IsNotNull(result.Outcome.SafeMessage);
+        StringAssert.Contains(result.Outcome.SafeMessage, nameof(InvalidOperationException));
+    }
+
     private sealed class GatedTextSource(TaskCompletionSource gate) : IPipelineSource
     {
         public PipelineChunkType OutputType => PipelineChunkType.Text;
@@ -179,5 +212,31 @@ public sealed class PipelineRunnerTests
 
             return count;
         }
+    }
+
+    private sealed class ThrowBlockedTransform : IPipelineTransform
+    {
+        public PipelineChunkType InputType => PipelineChunkType.Text;
+        public PipelineChunkType OutputType => PipelineChunkType.Text;
+
+        public async IAsyncEnumerable<PipelineChunk> TransformAsync(
+            IAsyncEnumerable<PipelineChunk> input,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            await foreach (var _ in input.WithCancellation(cancellationToken))
+            {
+                throw new PipelineBlockedException("Blocked");
+            }
+
+            yield break;
+        }
+    }
+
+    private sealed class ThrowingSink : IPipelineSink<string>
+    {
+        public PipelineChunkType InputType => PipelineChunkType.Text;
+
+        public ValueTask<string> ConsumeAsync(IAsyncEnumerable<PipelineChunk> input, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Boom");
     }
 }
