@@ -6,10 +6,7 @@ public sealed class PipelineRunner
         PipelineDefinition<TSinkResult> definition,
         CancellationToken cancellationToken)
     {
-        if (definition is null)
-        {
-            throw new ArgumentNullException(nameof(definition));
-        }
+        ArgumentNullException.ThrowIfNull(definition);
 
         var compatibilityFailure = ValidateCompatibility(definition);
         if (compatibilityFailure is not null)

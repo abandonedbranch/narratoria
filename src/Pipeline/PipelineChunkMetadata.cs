@@ -24,10 +24,7 @@ public sealed record PipelineChunkMetadata(
 
     public static PipelineChunkMetadata Merge(params PipelineChunkMetadata[] metadatas)
     {
-        if (metadatas is null)
-        {
-            throw new ArgumentNullException(nameof(metadatas));
-        }
+        ArgumentNullException.ThrowIfNull(metadatas);
 
         string? textEncodingName = null;
         Dictionary<string, string>? annotations = null;
