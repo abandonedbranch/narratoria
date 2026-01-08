@@ -15,7 +15,7 @@ public sealed class PipelineRunnerTests
         var source = new GatedTextSource(gate);
         var sink = new SignalingTextSink(sawFirst);
 
-        var definition = new PipelineDefinition<string>(source, Array.Empty<IPipelineTransform>(), sink);
+        var definition = new PipelineDefinition<string>(source, [], sink);
         var runner = new PipelineRunner();
 
         var runTask = runner.RunAsync(definition, CancellationToken.None);
@@ -41,7 +41,7 @@ public sealed class PipelineRunnerTests
         var source = new InfiniteTextSource();
         var sink = new CancelAfterFirstChunkSink(cts, sawFirst);
 
-        var definition = new PipelineDefinition<int>(source, Array.Empty<IPipelineTransform>(), sink);
+        var definition = new PipelineDefinition<int>(source, [], sink);
         var runner = new PipelineRunner();
 
         var result = await runner.RunAsync(definition, cts.Token);
@@ -58,7 +58,7 @@ public sealed class PipelineRunnerTests
         var source = new DisposingTextSource(disposed);
         var sink = new StopAfterFirstChunkSink();
 
-        var definition = new PipelineDefinition<int>(source, Array.Empty<IPipelineTransform>(), sink);
+        var definition = new PipelineDefinition<int>(source, [], sink);
         var runner = new PipelineRunner();
 
         var result = await runner.RunAsync(definition, CancellationToken.None);
@@ -90,7 +90,7 @@ public sealed class PipelineRunnerTests
         var source = new GatedTextSource(new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
         var sink = new ThrowingSink();
 
-        var definition = new PipelineDefinition<string>(source, Array.Empty<IPipelineTransform>(), sink);
+        var definition = new PipelineDefinition<string>(source, [], sink);
         var runner = new PipelineRunner();
 
         var result = await runner.RunAsync(definition, CancellationToken.None);

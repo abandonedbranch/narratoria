@@ -90,7 +90,7 @@ public sealed class TransformCompatibilityTests
         var source = new InlineTextSource("X");
         var sink = new BytesSink();
 
-        var definition = new PipelineDefinition<int>(source, Array.Empty<IPipelineTransform>(), sink);
+        var definition = new PipelineDefinition<int>(source, [], sink);
         var runner = new PipelineRunner();
 
         var result = await runner.RunAsync(definition, CancellationToken.None);
