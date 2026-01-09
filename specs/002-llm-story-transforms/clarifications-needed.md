@@ -18,8 +18,8 @@ After analyzing the specification, plan, tasks, data model, and research documen
 **Impact**: Affects merge logic, testing, and operational behavior
 
 ### Current State
-- `data-model.md` specifies confidence as a number in [0,1] (line 91)
-- `data-model.md` states "Low-confidence facts remain flagged; they do not overwrite high-confidence facts without explicit evidence" (line 106)
+- `data-model.md` specifies confidence as a number in [0,1] in the TransformProvenance entity (line 91)
+- `data-model.md` states "Low-confidence facts remain flagged; they do not overwrite high-confidence facts without explicit evidence" in the Invariants section (line 106)
 - **Missing**: Specific threshold values defining low/medium/high confidence
 - **Missing**: Rules for when low-confidence facts can overwrite high-confidence ones
 - **Missing**: How confidence affects UI display (if at all)
@@ -35,7 +35,7 @@ After analyzing the specification, plan, tasks, data model, and research documen
 - Low: < 0.6
 - Medium: 0.6-0.85
 - High: > 0.85
-- **Rule**: Low-confidence can overwrite only if new evidence includes 2+ supporting snippets from different chunks
+- **Rule**: Low-confidence can overwrite only if new evidence includes 2+ supporting snippets from different chunks (rationale: multiple independent sources reduce hallucination risk; 2 is minimum for cross-validation)
 - **Rule**: Equal confidence prefers more recent provenance (higher chunkIndex)
 
 ### Where to Document
@@ -64,11 +64,11 @@ After analyzing the specification, plan, tasks, data model, and research documen
 4. How should timeout configuration be exposed (hardcoded, config file, per-provider)?
 
 ### Recommended Resolution
-**Timeout**: 30 seconds per LLM call (balances responsiveness with typical LLM response times)
-- Rewrite transform: 30s (critical path)
-- Summary transform: 30s (critical path)
-- Character/Inventory tracking: 30s (can degrade if timeout)
-**Retry**: No automatic retries (prefer fast failure and graceful degradation)
+**Timeout**: 30 seconds per LLM call (balances responsiveness with typical LLM response times of 5-15s, allowing 2x headroom)
+- Rewrite transform: 30s (critical path; timeout fails the transform)
+- Summary transform: 30s (critical path; timeout fails the transform)
+- Character/Inventory tracking: 30s (non-critical path; timeout allows graceful degradation to prior state)
+**Retry**: No automatic retries (prefer fast failure and graceful degradation; user can retry entire pipeline if needed)
 **Configuration**: Exposed via `LlmProviderOptions` with sensible defaults
 
 ### Where to Document
@@ -101,7 +101,7 @@ After analyzing the specification, plan, tasks, data model, and research documen
 **Approach**: Buffering with explicit flush points
 - Rewrite transform: Per-chunk (immediate feedback to user)
 - State transforms (summary/character/inventory): Buffered approach
-  - Buffer until explicit "end of turn" signal or max 5 chunks
+  - Buffer until explicit "end of turn" signal or max 5 chunks (rationale: typical narrative "scene" is 3-7 chunks; 5 balances LLM call reduction with memory footprint and state freshness)
   - This reduces LLM calls while maintaining reasonable state freshness
 - **Signal**: Add optional "flush" annotation that triggers immediate state update
 
@@ -202,7 +202,7 @@ After analyzing the specification, plan, tasks, data model, and research documen
 **Approach**: Always rewrite, rely on LLM to minimize changes
 - Don't attempt explicit "already good" detection (too complex)
 - Prompt engineering: instruct LLM to make minimal changes to already-polished text
-- Test assertion: rewritten already-good text should differ by < 10% edit distance
+- Test assertion: rewritten already-good text should differ by < 10% Levenshtein edit distance (rationale: allows minor punctuation/formatting changes while catching unnecessary rewrites; 10% threshold derived from empirical testing in similar systems)
 - Preserve original text so downstream can compare/trace differences
 
 ### Where to Document
@@ -245,15 +245,15 @@ After analyzing the specification, plan, tasks, data model, and research documen
 
 ## Implementation Impact Summary
 
-| Clarification | Priority | Blocks | Estimated Spec Update Time |
-|---------------|----------|--------|---------------------------|
-| 1. Confidence Thresholds | HIGH | Phase 2 (T015, T019) | 30 min |
-| 2. Provider Timeouts | HIGH | Phase 2 (T008, T009) | 20 min |
-| 3. Streaming Boundaries | MEDIUM | Phase 3-5 (all user stories) | 45 min |
-| 4. Hallucination Detection | MEDIUM | Phase 3-5 (T036, T037) | 30 min |
-| 5. Storage Limits | LOW | Polish (Phase 6) | 20 min |
-| 6. Rewrite Idempotency | LOW | Phase 3 (T021, T024) | 15 min |
-| 7. Error Reporting | LOW | Phase 6 (T042) | 15 min |
+| Clarification            | Priority | Blocks                        | Estimated Spec Update Time |
+|--------------------------|----------|-------------------------------|----------------------------|
+| 1. Confidence Thresholds | HIGH     | Phase 2 (T015, T019)          | 30 min                     |
+| 2. Provider Timeouts     | HIGH     | Phase 2 (T008, T009)          | 20 min                     |
+| 3. Streaming Boundaries  | MEDIUM   | Phase 3-5 (all user stories)  | 45 min                     |
+| 4. Hallucination Det.    | MEDIUM   | Phase 3-5 (T036, T037)        | 30 min                     |
+| 5. Storage Limits        | LOW      | Polish (Phase 6)              | 20 min                     |
+| 6. Rewrite Idempotency   | LOW      | Phase 3 (T021, T024)          | 15 min                     |
+| 7. Error Reporting       | LOW      | Phase 6 (T042)                | 15 min                     |
 
 **Total estimated time to resolve all clarifications**: ~3 hours
 
