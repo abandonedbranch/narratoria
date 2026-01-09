@@ -132,6 +132,7 @@ description: "Task list for LLM Story Transforms"
 - [ ] T040 Add transform chaining example in specs/002-llm-story-transforms/quickstart.md
 - [ ] T041 Run quickstart validation by adding a runnable example test in tests/Narratoria.Tests/Pipeline/Llm/QuickstartExampleTests.cs
 - [ ] T042 [P] Add unit tests that failure paths emit expected logs (transform + session/turn) in tests/Narratoria.Tests/Pipeline/Llm/LoggingTests.cs
+- [ ] T043 [P] Add unit tests ensuring transforms are stream-safe and preserve pass-through annotations (including optional run metadata keys) in tests/Narratoria.Tests/Pipeline/Llm/StreamingAndMetadataTests.cs
 
 ---
 
@@ -167,7 +168,7 @@ description: "Task list for LLM Story Transforms"
 - US1 tests: T021–T022 can run in parallel.
 - US2 tests: T025–T026 can run in parallel.
 - US3 tests: T030–T033 can run in parallel.
-- Phase 6: T039 and T042 can run in parallel.
+- Phase 6: T039, T042, and T043 can run in parallel.
 
 ---
 

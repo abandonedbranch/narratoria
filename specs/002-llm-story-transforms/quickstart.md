@@ -41,7 +41,22 @@ Both providers are injectable services behind the same tiny abstraction used by 
 - Unit tests use a fake LLM provider that returns fixed outputs for given inputs.
 - No tests should call external networks.
 
+## Cancellation and “latest-wins”
+
+- Transforms and providers are designed to honor `CancellationToken` so callers can implement a “latest input wins” policy by cancelling any prior in-flight run when new input arrives.
+- If a consumer stops reading a stream early, upstream cancellation should be requested so any in-flight provider calls can terminate promptly.
+
 ## Where state lives
 
 - Story state (summary/characters/inventory) is carried forward as JSON stored in `PipelineChunkMetadata.Annotations`.
 - Original input text is preserved alongside rewritten text for traceability.
+
+## Optional run metadata conventions
+
+For forward compatibility with a future UI/editor spec, callers may attach these optional `PipelineChunkMetadata.Annotations` values:
+
+- `narratoria.run_id` (string): stable identifier for one pipeline run invocation
+- `narratoria.run_sequence` (int): monotonic sequence number within the run
+- `narratoria.input_snapshot_sha256` (string): lowercase hex SHA-256 of the UTF-8 bytes of the full input text snapshot
+
+Transforms should treat these as pass-through metadata when present.

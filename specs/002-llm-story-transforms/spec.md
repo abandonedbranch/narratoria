@@ -26,6 +26,7 @@
 - Long-term analytics, leaderboards, or sharing.
 - Human-in-the-loop editing workflows.
 - Multi-player shared worlds.
+- Pipeline engine changes to support per-keystroke diffs, hard backpressure guarantees, new chunk types, or new runner semantics (reserved for a future UI/editor spec).
 
 ### Assumptions
 
@@ -132,6 +133,8 @@ List the externally observable surface area this feature introduces or changes. 
 - **FR-010**: System MUST preserve the original incoming text so that downstream components can compare/trace differences between original and rewritten outputs.
 - **FR-011**: System MUST update the per-session story state (summary/characters/inventory) after each processed chunk or turn.
 - **FR-012**: System MUST include provenance for any character/inventory updates (at minimum: reference to supporting input text and the time/order it was observed).
+- **FR-013**: All transforms and provider calls MUST be cancellation-correct: they MUST honor the provided `CancellationToken`, stop work promptly when cancelled, and propagate cancellation (no swallowing `OperationCanceledException`).
+- **FR-014**: All transforms MUST be stream-safe: they MUST avoid unbounded buffering and MUST not require full input enumeration before producing any output.
 
 ### Error Handling *(mandatory)*
 
@@ -148,6 +151,18 @@ List the externally observable surface area this feature introduces or changes. 
   - Character and inventory state updates are append/merge operations with provenance; no “silent” destructive edits.
   - Low-confidence inferences are explicitly labeled as such.
 - **Migration/Compatibility**: Existing sessions without these fields MUST still load and run; missing state initializes to empty defaults.
+
+### Optional Metadata Conventions *(forward compatibility)*
+
+To enable a future UI/editor spec to implement “latest-wins” execution and input de-duplication without changing transform logic, the system MAY attach optional run metadata to `PipelineChunkMetadata.Annotations`.
+
+- **Producer**: These values are expected to be set by the caller/orchestrator (and/or a pipeline source/runner wrapper) that initiates a run. Transforms MUST NOT create, modify, or reinterpret these fields.
+
+- **Reserved keys**:
+  - `narratoria.run_id`: string. Stable identifier for one pipeline run invocation.
+  - `narratoria.run_sequence`: integer. Monotonic sequence number within a run.
+  - `narratoria.input_snapshot_sha256`: lowercase hex string. SHA-256 of the UTF-8 bytes of the full input text snapshot used to produce this output.
+- **Rule**: If these keys are present on an incoming chunk, transforms MUST pass them through unchanged.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -170,6 +185,8 @@ Map each requirement to the minimum required test coverage. If UI behavior chang
 | FR-007 | Y | Y | N | Inventory updates from text + summary |
 | FR-009 | Y | N | N | Order is deterministic and documented |
 | FR-010 | Y | N | N | Original text preserved |
+| FR-013 | Y | N | N | Cancellation is honored and propagated |
+| FR-014 | Y | N | N | Transforms remain streaming-friendly |
 | EH-001 | Y | Y | N | Service failure degrades gracefully |
 | EH-002 | Y | Y | N | Non-parseable output does not corrupt state |
 | EH-003 | Y | N | N | Conflict handling preserves evidence and avoids destructive edits |

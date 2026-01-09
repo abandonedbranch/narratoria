@@ -32,7 +32,7 @@ Transforms are chained so downstream state trackers consume the best available t
 **Target Platform**: .NET class library (cross-platform)
 **Project Type**: Single library (`src/`) + test project (`tests/`)  
 **Performance Goals**: Stream-friendly; minimize LLM calls per input; avoid unbounded buffering  
-**Constraints**: Deterministic tests (no live network calls); all async accepts `CancellationToken`; graceful degradation on provider failures  
+**Constraints**: Deterministic tests (no live network calls); all async accepts `CancellationToken` and is cancellation-correct; transforms remain stream-safe; graceful degradation on provider failures  
 **Scale/Scope**: Per-session story state updated incrementally as text streams
 
 ## Constitution Check
