@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://narratoria.local/contracts/story-state.schema.json",
+  "title": "StoryState",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "sessionId": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "minimum": 0 },
+    "lastUpdated": { "type": "string" },
+    "summary": { "type": ["string", "null"] },
+    "characters": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CharacterRecord" }
+    },
+    "inventory": { "$ref": "#/$defs/InventoryState" }
+  },
+  "required": ["sessionId", "version", "characters", "inventory"],
+  "$defs": {
+    "TransformProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "transformName": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "sourceSnippet": { "type": ["string", "null"] },
+        "chunkIndex": { "type": ["integer", "null"], "minimum": 0 }
+      },
+      "required": ["transformName", "confidence"]
+    },
+    "Relationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "otherCharacterId": { "type": "string", "minLength": 1 },
+        "relation": { "type": "string", "minLength": 1 },
+        "provenance": { "$ref": "#/$defs/TransformProvenance" }
+      },
+      "required": ["otherCharacterId", "relation", "provenance"]
+    },
+    "CharacterRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "displayName": { "type": "string", "minLength": 1 },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "traits": { "type": "object", "additionalProperties": { "type": "string" } },
+        "relationships": { "type": "array", "items": { "$ref": "#/$defs/Relationship" } },
+        "lastSeen": { "type": ["string", "null"] },
+        "provenance": { "$ref": "#/$defs/TransformProvenance" }
+      },
+      "required": ["id", "displayName", "provenance"]
+    },
+    "InventoryItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "displayName": { "type": "string", "minLength": 1 },
+        "quantity": { "type": "integer", "minimum": 0 },
+        "notes": { "type": ["string", "null"] },
+        "provenance": { "$ref": "#/$defs/TransformProvenance" }
+      },
+      "required": ["id", "displayName", "provenance"]
+    },
+    "InventoryState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/$defs/InventoryItem" } },
+        "provenance": { "$ref": "#/$defs/TransformProvenance" }
+      },
+      "required": ["items", "provenance"]
+    }
+  }
+}
