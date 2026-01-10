@@ -33,6 +33,7 @@ Specs are created either by hand (a human hand), and refined using a coding agen
 
 - `specs/001-streaming-pipeline/spec.md`: Streaming narration pipeline (source → transforms → sink)
 - `specs/002-llm-story-transforms/spec.md`: LLM-backed story transforms (rewrite → summary → character + inventory tracking)
+- `specs/003-pipeline-log-ui/spec.md`: Realtime pipeline telemetry log UI (live input + idle/send execution)
 
 ### `src/` 🤖
 
