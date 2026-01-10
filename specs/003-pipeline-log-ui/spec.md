@@ -243,7 +243,9 @@ Map each requirement to the minimum required test coverage. If UI behavior chang
 | FR-004 | Y | Y | Y | Pipeline A/B are wired correctly |
 | FR-005 | Y | N | Y | LLM selection affects subsequent runs |
 | FR-006 | Y | Y | Y | “Latest input wins” cancellation behavior |
+| FR-007 | Y | N | Y | Per-run context is sufficient to correlate telemetry |
 | FR-008 | Y | N | Y | IME/composition does not spam unstable idle runs |
+| FR-009 | Y | N | Y | Run identity metadata supports correlation and de-dup |
 | EH-001 | N | Y | Y | Failures surfaced; UI remains usable |
 | EH-002 | Y | N | Y | Cancellations are shown as cancelled |
 | EH-003 | Y | N | N | Logs contain required correlation context |
