@@ -135,6 +135,7 @@ As a player, I want the story context from prior runs to be saved locally so tha
 
 1. **Given** the user has executed one or more runs, **When** the user refreshes the page, **Then** the log component restores the prior run history and the latest story context from client IndexedDB.
 2. **Given** a new run completes, **When** its output is produced, **Then** the run’s stored outputs and latest story context are written to client IndexedDB.
+3. **Given** the user refreshes the page, **When** the prior session is restored, **Then** the input buffer and LLM selection are restored to their last persisted values.
 
 ### Edge Cases
 
@@ -196,7 +197,7 @@ List the externally observable surface area this feature introduces or changes. 
 - **FR-013**: The system MUST persist summarized run records (not full per-stage telemetry streams) and the latest story context needed to continue narration to client IndexedDB.
 - **FR-014**: On load, the system MUST restore the latest persisted story context and recent run history from client IndexedDB.
 - **FR-015**: The system MUST treat the latest persisted story context as the single current story session and auto-resume it on load (no multi-session selection UI).
-- **FR-016**: The system MUST enforce a fixed maximum count of persisted run records in IndexedDB.
+- **FR-016**: The system MUST enforce a fixed maximum count of persisted run records in IndexedDB (configurable; default 200).
 - **FR-017**: When persisted run records would exceed the maximum count, the system MUST compact the oldest run records by producing a **StoryContextDigest** via a transforming pipeline element and appending that digest to the persisted story context before deleting the compacted run records.
 - **FR-018**: The **StoryContextDigest** produced by compaction MUST contain exactly twelve bullet items (“story facts”).
 
@@ -211,7 +212,7 @@ List the externally observable surface area this feature introduces or changes. 
 ### State & Data *(mandatory if feature involves data)*
 
 - **Persistence**:
-  - The user’s current input buffer and LLM selection SHOULD be preserved for the duration of the user session.
+  - The user’s current input buffer and LLM selection MUST be stored in the single current story session and restored on load.
   - Summarized run records and latest story context MUST be stored in client IndexedDB so the session can be resumed.
   - Persisted run records MUST be capped; older run records beyond the cap are compacted into a predictable-length digest that is appended into the persisted story context.
 - **Invariants**:
@@ -242,6 +243,7 @@ Map each requirement to the minimum required test coverage. If UI behavior chang
 | FR-004 | Y | Y | Y | Pipeline A/B are wired correctly |
 | FR-005 | Y | N | Y | LLM selection affects subsequent runs |
 | FR-006 | Y | Y | Y | “Latest input wins” cancellation behavior |
+| FR-008 | Y | N | Y | IME/composition does not spam unstable idle runs |
 | EH-001 | N | Y | Y | Failures surfaced; UI remains usable |
 | EH-002 | Y | N | Y | Cancellations are shown as cancelled |
 | EH-003 | Y | N | N | Logs contain required correlation context |

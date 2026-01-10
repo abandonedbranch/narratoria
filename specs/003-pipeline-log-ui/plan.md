@@ -18,7 +18,7 @@ Implement a realtime pipeline telemetry log with embedded input that runs the ex
 -->
 
 **Language/Version**: C# / .NET 10  
-**Primary Dependencies**: Existing `Narratoria.Pipeline` core; UI framework TBD (browser UI required for IndexedDB); JSON serialization (System.Text.Json)  
+**Primary Dependencies**: Existing `Narratoria.Pipeline` core; ASP.NET Core + Blazor Server UI host (browser UI required for IndexedDB); JSON serialization (System.Text.Json)  
 **Storage**: Client IndexedDB (single session auto-resume; bounded run-record store + compaction digest)  
 **Testing**: MSTest for unit/integration; Playwright E2E required for UI behaviors (per constitution/spec)  
 **Target Platform**: Browser (required for IndexedDB); runs pipeline in-process  

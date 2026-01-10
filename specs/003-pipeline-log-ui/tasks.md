@@ -15,7 +15,7 @@ description: "Task list for feature implementation"
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Confirm UI host choice and remove “TBD” in specs/003-pipeline-log-ui/plan.md
+- [ ] T001 Confirm UI host choice matches plan/spec (Blazor Server) and keep docs consistent
 - [ ] T002 [P] Create web host project in src/Narratoria.Web/Narratoria.Web.csproj (ASP.NET Core + Blazor Server)
 - [ ] T003 [P] Add web host entrypoint and routing in src/Narratoria.Web/Program.cs (include route `/pipeline-log`)
 - [ ] T004 [P] Add launch profile URLs for local dev/E2E in src/Narratoria.Web/Properties/launchSettings.json
@@ -127,6 +127,38 @@ description: "Task list for feature implementation"
 - [ ] T052 Add schema_version migration handling in src/Narratoria.Web/Services/IndexedDbInterop.cs
 - [ ] T053 Validate quickstart steps end-to-end and update specs/003-pipeline-log-ui/quickstart.md
 - [ ] T054 [P] Update TODO with any known drift/gaps discovered during implementation in TODO
+
+---
+
+## CRITICAL/HIGH Coverage Additions (from consistency review)
+
+These tasks close the highest-impact gaps identified during the spec/plan/tasks consistency audit.
+
+### Telemetry emission (pipeline runtime -> UI)
+
+- [ ] T055 [P] Add a pipeline telemetry observer contract in src/Pipeline/Telemetry/IPipelineTelemetryObserver.cs (run start/end; per-stage start/end; outcome)
+- [ ] T056 [P] Add an observable runner in src/Pipeline/Telemetry/ObservablePipelineRunner.cs that wraps PipelineRunner and emits telemetry (no behavior changes to runner semantics)
+- [ ] T057 [P] Add stage naming rules for telemetry (transform type name + optional label) in src/Pipeline/Telemetry/PipelineStageNamer.cs
+- [ ] T058 [P] Unit tests: telemetry event ordering + cancellation behavior in tests/Narratoria.Tests/Pipeline/ObservablePipelineRunnerTests.cs
+
+### Pipeline A / Pipeline B definition wiring
+
+- [ ] T059 [P] Implement Pipeline A/B builders in src/PipelineLog/Pipelines/PipelineDefinitionFactory.cs (Pipeline A = input snapshot + LLM sink; Pipeline B = spec 002 transform segment)
+- [ ] T060 [P] Wire coordinator execution to PipelineDefinitionFactory in src/Narratoria.Web/Pages/PipelineLogPage.razor (Idle -> Pipeline A, Send -> Pipeline B)
+- [ ] T061 [P] Unit tests: Pipeline A/B composition uses correct transforms/sinks and is type-compatible in tests/Narratoria.Tests/PipelineLog/PipelineDefinitionFactoryTests.cs
+
+### FR-008 IME / composition handling
+
+- [ ] T062 [P] Add composition-aware input handling in src/Narratoria.Web/Components/PipelineLogInput.razor (ignore unstable composition events; schedule idle on stable snapshot)
+- [ ] T063 [P] Unit tests: coordinator does not schedule idle runs during composition in tests/Narratoria.Tests/PipelineLog/PipelineExecutionCoordinatorTests.cs
+- [ ] T064 [P] Playwright E2E: composition events do not spam idle runs (simulate compositionstart/update/end) in tests/Narratoria.PlaywrightTests/ImeCompositionE2E.cs
+
+### EH-003 structured logging + EH-004 send-error unlock
+
+- [ ] T065 [P] Add structured logging (ILogger) for run failures with required fields (run_id, trigger, stage, session) in src/PipelineLog/PipelineExecutionCoordinator.cs
+- [ ] T066 [P] Unit tests: failure logging includes required correlation fields in tests/Narratoria.Tests/PipelineLog/FailureLoggingTests.cs
+- [ ] T067 [P] Ensure Send-run error path re-enables input and surfaces error state in src/Narratoria.Web/Pages/PipelineLogPage.razor
+- [ ] T068 [P] Playwright E2E: Send error re-enables input (uses a deterministic failing pipeline configuration) in tests/Narratoria.PlaywrightTests/SendErrorUnlocksInputE2E.cs
 
 ---
 
