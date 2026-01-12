@@ -109,6 +109,7 @@ List the externally observable surface area this feature introduces or changes. 
 ### Data Contracts *(if applicable)*
 
 - **StoryState** — Holds current story facts: summary, characters, inventory, and per-session metadata needed to continue.
+- **Canonical StoryState schema** — The JSON stored in `PipelineChunkMetadata.Annotations["narratoria.story_state_json"]` MUST conform to `specs/002-llm-story-transforms/contracts/story-state.schema.json`. The canonical schema version identifier is the stable repository path of this schema file (`specs/002-llm-story-transforms/contracts/story-state.schema.json`), and this exact string MUST be recorded in `PipelineChunkMetadata.Annotations["narratoria.story_state_schema_version"]`. This schema-version annotation is distinct from any `version` field within the `StoryState` JSON payload, which describes the logical StoryState content rather than the schema itself.
 - **CharacterRecord** — Name/identifier, known traits, relationships, last-seen context, and confidence/source references.
 - **InventoryState** — Current items, quantities (when applicable), and notes.
 - **TransformProvenance** — For any updated field: source snippet reference (from input), timestamp/order, and confidence.
@@ -131,7 +132,7 @@ List the externally observable surface area this feature introduces or changes. 
   - Summary runs before Character and Inventory tracking.
   - Character and Inventory tracking may run in either order but MUST each be able to use the rewritten text and latest summary.
 - **FR-010**: System MUST preserve the original incoming text so that downstream components can compare/trace differences between original and rewritten outputs.
-- **FR-011**: System MUST update the per-session story state (summary/characters/inventory) after each processed chunk or turn.
+- **FR-011**: System MUST update the per-session StoryState (summary/characters/inventory) after each processed TextChunk by writing the updated state into PipelineChunkMetadata.Annotations using the key narratoria.story_state_json. Continuity across turns/runs is achieved by the caller/orchestrator injecting the most recent narratoria.story_state_json value onto subsequent incoming chunks; transforms MUST treat a missing value as an empty/default state and MUST NOT implement durable storage in this feature.
 - **FR-012**: System MUST include provenance for any character/inventory updates (at minimum: reference to supporting input text and the time/order it was observed).
 - **FR-013**: All transforms and provider calls MUST be cancellation-correct: they MUST honor the provided `CancellationToken`, stop work promptly when cancelled, and propagate cancellation (no swallowing `OperationCanceledException`).
 - **FR-014**: All transforms MUST be stream-safe: they MUST avoid unbounded buffering and MUST not require full input enumeration before producing any output.
@@ -141,11 +142,11 @@ List the externally observable surface area this feature introduces or changes. 
 - **EH-001**: If the language model service call fails, the system MUST continue the pipeline using the best available inputs (e.g., original text) and MUST NOT corrupt existing story state.
 - **EH-002**: If the language model response is missing required parts (e.g., cannot derive structured updates), the system MUST keep prior state unchanged and log an observable failure reason.
 - **EH-003**: If the language model output conflicts with existing state, the system MUST prefer evidence-backed updates and MUST not discard prior state without justification/provenance.
-- **EH-004**: System MUST record enough diagnostic context to understand failures and quality regressions (at minimum: which transform failed, and which session/turn it applied to). Log via `ILogger<T>` (terminal output buffer is sufficient).
+- **EH-004**: System MUST record enough diagnostic context to understand failures and quality regressions (at minimum: which transform failed and which session/turn it applied to). If caller-provided identity annotations are present (e.g., narratoria.session_id, narratoria.turn_id/narratoria.turn_index, narratoria.run_id), transforms MUST include them in logs; otherwise logs MUST still include the transform name and an observable failure reason. Logging MUST use ILogger<T>.
 
 ### State & Data *(mandatory if feature involves data)*
 
-- **Persistence**: Summary, character roster, and inventory state MUST be maintained across the lifetime of a story session.
+- **Persistence**: Summary, character roster, and inventory state MUST be maintained across the lifetime of a story session. In this feature, continuity across turns/runs is achieved by the caller/orchestrator injecting the most recent `narratoria.story_state_json` onto subsequent incoming chunks and transforms reading/writing updated state via `PipelineChunkMetadata.Annotations` (see FR-011). Durable session storage and restore are deferred to spec 003.
 - **Invariants**:
   - Original incoming text is never overwritten or lost.
   - Character and inventory state updates are append/merge operations with provenance; no “silent” destructive edits.
