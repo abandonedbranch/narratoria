@@ -109,7 +109,7 @@ List the externally observable surface area this feature introduces or changes. 
 ### Data Contracts *(if applicable)*
 
 - **StoryState** — Holds current story facts: summary, characters, inventory, and per-session metadata needed to continue.
-- **Canonical StoryState schema** — The JSON stored in `PipelineChunkMetadata.Annotations["narratoria.story_state_json"]` MUST conform to `specs/002-llm-story-transforms/contracts/story-state.schema.json`. The schema version MUST be recorded in `PipelineChunkMetadata.Annotations["narratoria.story_state_schema_version"]`.
+- **Canonical StoryState schema** — The JSON stored in `PipelineChunkMetadata.Annotations["narratoria.story_state_json"]` MUST conform to `specs/002-llm-story-transforms/contracts/story-state.schema.json`. The canonical schema version identifier is the stable repository path of this schema file (`specs/002-llm-story-transforms/contracts/story-state.schema.json`), and this exact string MUST be recorded in `PipelineChunkMetadata.Annotations["narratoria.story_state_schema_version"]`. This schema-version annotation is distinct from any `version` field within the `StoryState` JSON payload, which describes the logical StoryState content rather than the schema itself.
 - **CharacterRecord** — Name/identifier, known traits, relationships, last-seen context, and confidence/source references.
 - **InventoryState** — Current items, quantities (when applicable), and notes.
 - **TransformProvenance** — For any updated field: source snippet reference (from input), timestamp/order, and confidence.
@@ -146,7 +146,7 @@ List the externally observable surface area this feature introduces or changes. 
 
 ### State & Data *(mandatory if feature involves data)*
 
-- **Persistence**: Summary, character roster, and inventory state MUST be maintained across the lifetime of a story session. In this feature, continuity across turns/runs is achieved by the caller/orchestrator injecting the most recent `narratoria.story_state_json` onto subsequent incoming chunks and transforms reading/writing updated state via `PipelineChunkMetadata.Annotations` (see FR-011). Durable session storage and restore is deferred to spec 003.
+- **Persistence**: Summary, character roster, and inventory state MUST be maintained across the lifetime of a story session. In this feature, continuity across turns/runs is achieved by the caller/orchestrator injecting the most recent `narratoria.story_state_json` onto subsequent incoming chunks and transforms reading/writing updated state via `PipelineChunkMetadata.Annotations` (see FR-011). Durable session storage and restore are deferred to spec 003.
 - **Invariants**:
   - Original incoming text is never overwritten or lost.
   - Character and inventory state updates are append/merge operations with provenance; no “silent” destructive edits.
