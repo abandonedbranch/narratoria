@@ -36,6 +36,42 @@ Both providers are injectable services behind the same tiny abstraction used by 
 3. Choose a sink (e.g., `TextCollectingSink`).
 4. Run the definition with `PipelineRunner.RunAsync` and a `CancellationToken`.
 
+Example (in-process, deterministic fake provider):
+
+```csharp
+using Microsoft.Extensions.Logging.Abstractions;
+using Narratoria.Pipeline;
+using Narratoria.Pipeline.Text;
+using Narratoria.Pipeline.Transforms.Llm;
+using Narratoria.Pipeline.Transforms.Llm.Providers;
+
+var service = new FakeTextGenerationService(req => new TextGenerationResponse
+{
+	// In production, configure OpenAI/HuggingFace provider; in tests, use a deterministic fake.
+	GeneratedText = req.Prompt.Contains("rewriting assistant", StringComparison.Ordinal)
+		? "Rewritten narration."
+		: "{}" // trackers expect JSON; summary expects plain text
+});
+
+var transforms = new IPipelineTransform[]
+{
+	new RewriteNarrationTransform(service, NullLogger<RewriteNarrationTransform>.Instance),
+	new StorySummaryTransform(service, NullLogger<StorySummaryTransform>.Instance),
+	new CharacterTrackerTransform(service, NullLogger<CharacterTrackerTransform>.Instance),
+	new InventoryTrackerTransform(service, NullLogger<InventoryTrackerTransform>.Instance),
+};
+
+var source = new TextPromptSource(new TextSourceConfig { CompleteText = "Original narration." });
+var sink = new TextCollectingSink();
+var definition = new PipelineDefinition<string>(source, transforms, sink);
+
+var runner = new PipelineRunner();
+var result = await runner.RunAsync(definition, CancellationToken.None);
+
+// result.SinkResult is the rewritten narration text.
+// StoryState (summary/characters/inventory) is carried in PipelineChunkMetadata.Annotations.
+```
+
 ## Deterministic testing
 
 - Unit tests use a fake LLM provider that returns fixed outputs for given inputs.
