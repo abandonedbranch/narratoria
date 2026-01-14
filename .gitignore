@@ -470,3 +470,9 @@ $RECYCLE.BIN/
 
 # Development configuration (keep secrets out of VCS)
 src/appsettings.Development.json
+
+# Visual Studio user/cached files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
