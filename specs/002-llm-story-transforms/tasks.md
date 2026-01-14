@@ -24,12 +24,12 @@ description: "Task list for LLM Story Transforms"
 
 **Purpose**: Add shared folders, dependencies, and common primitives for LLM-backed transforms.
 
-- [ ] T001 Create LLM transform folders in src/Pipeline/Transforms/Llm/ (Providers/, Prompts/, StoryState/)
-- [ ] T002 Add OpenAI SDK NuGet package reference to src/Narratoria.csproj
-- [ ] T003 Add DI + HttpClient support NuGet packages to src/Narratoria.csproj (Microsoft.Extensions.DependencyInjection.Abstractions, Microsoft.Extensions.Http)
-- [ ] T004 [P] Add provider options records (OpenAI + HuggingFace) in src/Pipeline/Transforms/Llm/Providers/LlmProviderOptions.cs
-- [ ] T005 [P] Add a single shared abstraction for text generation in src/Pipeline/Transforms/Llm/Providers/ITextGenerationService.cs
-- [ ] T006 [P] Add deterministic fake provider for tests in tests/Narratoria.Tests/Pipeline/Llm/FakeTextGenerationService.cs
+- [X] T001 Create LLM transform folders in src/Pipeline/Transforms/Llm/ (Providers/, Prompts/, StoryState/)
+- [X] T002 Add OpenAI SDK NuGet package reference to src/Narratoria.csproj
+- [X] T003 Add DI + HttpClient support NuGet packages to src/Narratoria.csproj (Microsoft.Extensions.DependencyInjection.Abstractions, Microsoft.Extensions.Http)
+- [X] T004 [P] Add provider options records (OpenAI + HuggingFace) in src/Pipeline/Transforms/Llm/Providers/LlmProviderOptions.cs
+- [X] T005 [P] Add a single shared abstraction for text generation in src/Pipeline/Transforms/Llm/Providers/ITextGenerationService.cs
+- [X] T006 [P] Add deterministic fake provider for tests in tests/Narratoria.Tests/Pipeline/Llm/FakeTextGenerationService.cs
 
 ---
 
@@ -39,20 +39,20 @@ description: "Task list for LLM Story Transforms"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T007 [P] Add shared request/response types for generation in src/Pipeline/Transforms/Llm/Providers/TextGenerationModels.cs
-- [ ] T008 Implement OpenAI provider wrapper (official SDK) in src/Pipeline/Transforms/Llm/Providers/OpenAiTextGenerationService.cs
-- [ ] T009 Implement Hugging Face REST provider wrapper (HttpClient) in src/Pipeline/Transforms/Llm/Providers/HuggingFaceTextGenerationService.cs
-- [ ] T010 [P] Add HF request/response DTOs aligned with specs/002-llm-story-transforms/contracts/huggingface-inference.request.schema.json in src/Pipeline/Transforms/Llm/Providers/HuggingFaceDtos.cs
-- [ ] T011 Add DI registration extensions for providers in src/Pipeline/Transforms/Llm/Providers/LlmServiceCollectionExtensions.cs
-- [ ] T012 [P] Add prompt templates as constants/helpers in src/Pipeline/Transforms/Llm/Prompts/PromptTemplates.cs
-- [ ] T013 Add story state JSON models + serializer helpers in src/Pipeline/Transforms/Llm/StoryState/StoryStateModels.cs
-- [ ] T014 Add story state annotation keys + read/write helpers in src/Pipeline/Transforms/Llm/StoryState/StoryStateAnnotations.cs
-- [ ] T015 Add merge rules for character/inventory updates (provenance + confidence) in src/Pipeline/Transforms/Llm/StoryState/StoryStateMerge.cs
-- [ ] T016 [P] Add DTOs for structured character/inventory updates in src/Pipeline/Transforms/Llm/StoryState/StoryStateUpdateDtos.cs
-- [ ] T017 Add shared error handling helpers (provider failure + parse failure + log error => passthrough input unchanged) in src/Pipeline/Transforms/Llm/LlmTransformErrorHandling.cs
-- [ ] T018 [P] Add unit tests for StoryState JSON roundtrip in tests/Narratoria.Tests/Pipeline/Llm/StoryStateSerializationTests.cs
-- [ ] T019 [P] Add unit tests for merge invariants (non-destructive updates + confidence behavior) in tests/Narratoria.Tests/Pipeline/Llm/StoryStateMergeTests.cs
-- [ ] T020 Add integration test harness that runs a PipelineDefinition with FakeTextGenerationService in tests/Narratoria.Tests/Pipeline/Llm/LlmPipelineHarness.cs
+- [X] T007 [P] Add shared request/response types for generation in src/Pipeline/Transforms/Llm/Providers/TextGenerationModels.cs
+- [X] T008 Implement OpenAI provider wrapper (official SDK) in src/Pipeline/Transforms/Llm/Providers/OpenAiTextGenerationService.cs
+- [X] T009 Implement Hugging Face REST provider wrapper (HttpClient) in src/Pipeline/Transforms/Llm/Providers/HuggingFaceTextGenerationService.cs
+- [X] T010 [P] Add HF request/response DTOs aligned with specs/002-llm-story-transforms/contracts/huggingface-inference.request.schema.json in src/Pipeline/Transforms/Llm/Providers/HuggingFaceDtos.cs
+- [X] T011 Add DI registration extensions for providers in src/Pipeline/Transforms/Llm/Providers/LlmServiceCollectionExtensions.cs
+- [X] T012 [P] Add prompt templates as constants/helpers in src/Pipeline/Transforms/Llm/Prompts/PromptTemplates.cs
+- [X] T013 Add story state JSON models + serializer helpers in src/Pipeline/Transforms/Llm/StoryState/StoryStateModels.cs
+- [X] T014 Add story state annotation keys + read/write helpers in src/Pipeline/Transforms/Llm/StoryState/StoryStateAnnotations.cs
+- [X] T015 Add merge rules for character/inventory updates (provenance + confidence) in src/Pipeline/Transforms/Llm/StoryState/StoryStateMerge.cs
+- [X] T016 [P] Add DTOs for structured character/inventory updates in src/Pipeline/Transforms/Llm/StoryState/StoryStateUpdateDtos.cs
+- [X] T017 Add shared error handling helpers (provider failure + parse failure + log error => passthrough input unchanged) in src/Pipeline/Transforms/Llm/LlmTransformErrorHandling.cs
+- [X] T018 [P] Add unit tests for StoryState JSON roundtrip in tests/Narratoria.Tests/Pipeline/Llm/StoryStateSerializationTests.cs
+- [X] T019 [P] Add unit tests for merge invariants (non-destructive updates + confidence behavior) in tests/Narratoria.Tests/Pipeline/Llm/StoryStateMergeTests.cs
+- [X] T020 Add integration test harness that runs a PipelineDefinition with FakeTextGenerationService in tests/Narratoria.Tests/Pipeline/Llm/LlmPipelineHarness.cs
 
 **Checkpoint**: Foundation ready — user story transforms can now be implemented and tested.
 
@@ -66,13 +66,13 @@ description: "Task list for LLM Story Transforms"
 
 ### Tests for User Story 1
 
-- [ ] T021 [P] [US1] Add unit tests for rewrite transform (passthrough + original text annotation) in tests/Narratoria.Tests/Pipeline/Llm/RewriteTransformTests.cs
-- [ ] T022 [P] [US1] Add integration test for rewrite transform in a full pipeline in tests/Narratoria.Tests/Pipeline/Llm/RewritePipelineIntegrationTests.cs
+- [X] T021 [P] [US1] Add unit tests for rewrite transform (passthrough + original text annotation) in tests/Narratoria.Tests/Pipeline/Llm/RewriteTransformTests.cs
+- [X] T022 [P] [US1] Add integration test for rewrite transform in a full pipeline in tests/Narratoria.Tests/Pipeline/Llm/RewritePipelineIntegrationTests.cs
 
 ### Implementation for User Story 1
 
-- [ ] T023 [US1] Add provider-call prompt composition for rewrite in src/Pipeline/Transforms/Llm/Prompts/RewritePromptBuilder.cs
-- [ ] T024 [US1] Implement rewrite transform in src/Pipeline/Transforms/Llm/RewriteNarrationTransform.cs
+- [X] T023 [US1] Add provider-call prompt composition for rewrite in src/Pipeline/Transforms/Llm/Prompts/RewritePromptBuilder.cs
+- [X] T024 [US1] Implement rewrite transform in src/Pipeline/Transforms/Llm/RewriteNarrationTransform.cs
 
 **Checkpoint**: US1 is complete and independently testable.
 
@@ -86,14 +86,14 @@ description: "Task list for LLM Story Transforms"
 
 ### Tests for User Story 2
 
-- [ ] T025 [P] [US2] Add unit tests for summary transform (updates + provider failure degrade) in tests/Narratoria.Tests/Pipeline/Llm/SummaryTransformTests.cs
-- [ ] T026 [P] [US2] Add integration test for summary updates across multiple chunks in tests/Narratoria.Tests/Pipeline/Llm/SummaryPipelineIntegrationTests.cs
+- [X] T025 [P] [US2] Add unit tests for summary transform (updates + provider failure degrade) in tests/Narratoria.Tests/Pipeline/Llm/SummaryTransformTests.cs
+- [X] T026 [P] [US2] Add integration test for summary updates across multiple chunks in tests/Narratoria.Tests/Pipeline/Llm/SummaryPipelineIntegrationTests.cs
 
 ### Implementation for User Story 2
 
-- [ ] T027 [US2] Add prompt composition for summary (prior summary + new text) in src/Pipeline/Transforms/Llm/Prompts/SummaryPromptBuilder.cs
-- [ ] T028 [US2] Implement summary transform in src/Pipeline/Transforms/Llm/StorySummaryTransform.cs
-- [ ] T029 [US2] Write updated summary to StoryState JSON annotations in src/Pipeline/Transforms/Llm/StoryState/StoryStateAnnotations.cs
+- [X] T027 [US2] Add prompt composition for summary (prior summary + new text) in src/Pipeline/Transforms/Llm/Prompts/SummaryPromptBuilder.cs
+- [X] T028 [US2] Implement summary transform in src/Pipeline/Transforms/Llm/StorySummaryTransform.cs
+- [X] T029 [US2] Write updated summary to StoryState JSON annotations in src/Pipeline/Transforms/Llm/StoryState/StoryStateAnnotations.cs
 
 **Checkpoint**: US2 is complete and independently testable.
 
@@ -107,18 +107,18 @@ description: "Task list for LLM Story Transforms"
 
 ### Tests for User Story 3
 
-- [ ] T030 [P] [US3] Add unit tests for character tracker extracting a new character in tests/Narratoria.Tests/Pipeline/Llm/CharacterTrackerTransformTests.cs
-- [ ] T031 [P] [US3] Add unit tests for inventory tracker add/remove behavior in tests/Narratoria.Tests/Pipeline/Llm/InventoryTrackerTransformTests.cs
-- [ ] T032 [P] [US3] Add unit tests for parsing structured tracker updates (JSON -> DTOs) in tests/Narratoria.Tests/Pipeline/Llm/TrackerOutputParsingTests.cs
-- [ ] T033 [P] [US3] Add integration test ensuring tracker transforms can read latest summary + rewritten text in tests/Narratoria.Tests/Pipeline/Llm/TrackerPipelineIntegrationTests.cs
+- [X] T030 [P] [US3] Add unit tests for character tracker extracting a new character in tests/Narratoria.Tests/Pipeline/Llm/CharacterTrackerTransformTests.cs
+- [X] T031 [P] [US3] Add unit tests for inventory tracker add/remove behavior in tests/Narratoria.Tests/Pipeline/Llm/InventoryTrackerTransformTests.cs
+- [X] T032 [P] [US3] Add unit tests for parsing structured tracker updates (JSON -> DTOs) in tests/Narratoria.Tests/Pipeline/Llm/TrackerOutputParsingTests.cs
+- [X] T033 [P] [US3] Add integration test ensuring tracker transforms can read latest summary + rewritten text in tests/Narratoria.Tests/Pipeline/Llm/TrackerPipelineIntegrationTests.cs
 
 ### Implementation for User Story 3
 
-- [ ] T034 [US3] Add prompt composition for character extraction (text + summary) in src/Pipeline/Transforms/Llm/Prompts/CharacterPromptBuilder.cs
-- [ ] T035 [US3] Add prompt composition for inventory extraction (text + summary) in src/Pipeline/Transforms/Llm/Prompts/InventoryPromptBuilder.cs
-- [ ] T036 [US3] Implement character tracker transform in src/Pipeline/Transforms/Llm/CharacterTrackerTransform.cs
-- [ ] T037 [US3] Implement inventory tracker transform in src/Pipeline/Transforms/Llm/InventoryTrackerTransform.cs
-- [ ] T038 [US3] Ensure transforms merge structured updates into StoryState JSON annotations in src/Pipeline/Transforms/Llm/StoryState/StoryStateMerge.cs
+- [X] T034 [US3] Add prompt composition for character extraction (text + summary) in src/Pipeline/Transforms/Llm/Prompts/CharacterPromptBuilder.cs
+- [X] T035 [US3] Add prompt composition for inventory extraction (text + summary) in src/Pipeline/Transforms/Llm/Prompts/InventoryPromptBuilder.cs
+- [X] T036 [US3] Implement character tracker transform in src/Pipeline/Transforms/Llm/CharacterTrackerTransform.cs
+- [X] T037 [US3] Implement inventory tracker transform in src/Pipeline/Transforms/Llm/InventoryTrackerTransform.cs
+- [X] T038 [US3] Ensure transforms merge structured updates into StoryState JSON annotations in src/Pipeline/Transforms/Llm/StoryState/StoryStateMerge.cs
 
 **Checkpoint**: US3 is complete and independently testable.
 
@@ -128,11 +128,11 @@ description: "Task list for LLM Story Transforms"
 
 **Purpose**: Tighten correctness, resilience, and documentation across all stories.
 
-- [ ] T039 [P] Add unit tests for cancellation propagation (provider call honors CancellationToken) in tests/Narratoria.Tests/Pipeline/Llm/CancellationTests.cs
-- [ ] T040 Add transform chaining example in specs/002-llm-story-transforms/quickstart.md
-- [ ] T041 Run quickstart validation by adding a runnable example test in tests/Narratoria.Tests/Pipeline/Llm/QuickstartExampleTests.cs
-- [ ] T042 [P] Add unit tests that failure paths emit expected logs (transform + session/turn) in tests/Narratoria.Tests/Pipeline/Llm/LoggingTests.cs
-- [ ] T043 [P] Add unit tests ensuring transforms are stream-safe and preserve pass-through annotations (including optional run metadata keys) in tests/Narratoria.Tests/Pipeline/Llm/StreamingAndMetadataTests.cs
+- [X] T039 [P] Add unit tests for cancellation propagation (provider call honors CancellationToken) in tests/Narratoria.Tests/Pipeline/Llm/CancellationTests.cs
+- [X] T040 Add transform chaining example in specs/002-llm-story-transforms/quickstart.md
+- [X] T041 Run quickstart validation by adding a runnable example test in tests/Narratoria.Tests/Pipeline/Llm/QuickstartExampleTests.cs
+- [X] T042 [P] Add unit tests that failure paths emit expected logs (transform + session/turn) in tests/Narratoria.Tests/Pipeline/Llm/LoggingTests.cs
+- [X] T043 [P] Add unit tests ensuring transforms are stream-safe and preserve pass-through annotations (including optional run metadata keys) in tests/Narratoria.Tests/Pipeline/Llm/StreamingAndMetadataTests.cs
 
 ---
 

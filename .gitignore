@@ -348,7 +348,6 @@ FodyWeavers.xsd
 # VS Code files for those working on multiple tools
 .vscode/*
 !.vscode/settings.json
-!.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 *.code-workspace
@@ -470,3 +469,9 @@ $RECYCLE.BIN/
 
 # Development configuration (keep secrets out of VCS)
 src/appsettings.Development.json
+
+# Visual Studio user/cached files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
