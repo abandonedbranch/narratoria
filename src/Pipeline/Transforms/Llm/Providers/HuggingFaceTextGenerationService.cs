@@ -5,23 +5,16 @@ using Microsoft.Extensions.Logging;
 
 namespace Narratoria.Pipeline.Transforms.Llm.Providers;
 
-public sealed class HuggingFaceTextGenerationService : ITextGenerationService
+public sealed class HuggingFaceTextGenerationService(
+    HttpClient httpClient,
+    HuggingFaceProviderOptions options,
+    ILogger<HuggingFaceTextGenerationService> logger) : ITextGenerationService
 {
     private static readonly Uri DefaultBaseUri = new("https://api-inference.huggingface.co/models/", UriKind.Absolute);
 
-    private readonly HttpClient _httpClient;
-    private readonly HuggingFaceProviderOptions _options;
-    private readonly ILogger<HuggingFaceTextGenerationService> _logger;
-
-    public HuggingFaceTextGenerationService(
-        HttpClient httpClient,
-        HuggingFaceProviderOptions options,
-        ILogger<HuggingFaceTextGenerationService> logger)
-    {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+    private readonly HttpClient _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+    private readonly HuggingFaceProviderOptions _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly ILogger<HuggingFaceTextGenerationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public async Task<TextGenerationResponse> GenerateAsync(TextGenerationRequest request, CancellationToken cancellationToken)
     {

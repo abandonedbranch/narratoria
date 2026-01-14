@@ -5,18 +5,12 @@ using Narratoria.Pipeline.Transforms.Llm.StoryState;
 
 namespace Narratoria.Pipeline.Transforms.Llm;
 
-public sealed class RewriteNarrationTransform : IPipelineTransform
+public sealed class RewriteNarrationTransform(ITextGenerationService service, ILogger<RewriteNarrationTransform> logger) : IPipelineTransform
 {
     private const string TransformName = nameof(RewriteNarrationTransform);
 
-    private readonly ITextGenerationService _service;
-    private readonly ILogger<RewriteNarrationTransform> _logger;
-
-    public RewriteNarrationTransform(ITextGenerationService service, ILogger<RewriteNarrationTransform> logger)
-    {
-        _service = service ?? throw new ArgumentNullException(nameof(service));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+    private readonly ITextGenerationService _service = service ?? throw new ArgumentNullException(nameof(service));
+    private readonly ILogger<RewriteNarrationTransform> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public PipelineChunkType InputType => PipelineChunkType.Text;
 

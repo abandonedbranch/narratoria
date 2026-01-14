@@ -6,18 +6,12 @@ using StoryStateModel = Narratoria.Pipeline.Transforms.Llm.StoryState.StoryState
 
 namespace Narratoria.Pipeline.Transforms.Llm;
 
-public sealed class StorySummaryTransform : IPipelineTransform
+public sealed class StorySummaryTransform(ITextGenerationService service, ILogger<StorySummaryTransform> logger) : IPipelineTransform
 {
     private const string TransformName = nameof(StorySummaryTransform);
 
-    private readonly ITextGenerationService _service;
-    private readonly ILogger<StorySummaryTransform> _logger;
-
-    public StorySummaryTransform(ITextGenerationService service, ILogger<StorySummaryTransform> logger)
-    {
-        _service = service ?? throw new ArgumentNullException(nameof(service));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+    private readonly ITextGenerationService _service = service ?? throw new ArgumentNullException(nameof(service));
+    private readonly ILogger<StorySummaryTransform> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public PipelineChunkType InputType => PipelineChunkType.Text;
 
