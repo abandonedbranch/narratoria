@@ -16,8 +16,10 @@
   - Generate an up-to-date story summary/recap.
   - Extract and maintain a structured character roster and character facts.
   - Extract and maintain the player’s inventory state.
+  - Track player reputation and perceived standing across the world.
 - Define a required logical chaining/order so character and inventory tracking can leverage rewritten text and summary.
 - Ensure transforms are safe to run repeatedly across streamed chunks and across multiple turns within the same story session.
+- Enforce a moderation guardrail within the rewrite transform that applies the Narratoria Master Moderation & Rewrite policy: detect sexual/harmful content, rewrite safely with in-world consequences, and emit safety annotations/logs.
 
 ### Out of Scope
 
@@ -37,6 +39,13 @@
 ### Open Questions *(mandatory)*
 
 - None.
+
+
+## Clarifications
+
+### Session 2026-01-16
+
+- Q: How should the rewrite transform handle abusive or sexual content? → A: Apply the Narratoria Master Moderation & Rewrite policy to detect sexual/harmful content, rewrite to a safe alternative with in-world consequences, and log safety flags/events while keeping downstream transforms usable.
 
 
 ## User Scenarios & Testing *(mandatory)*
@@ -85,6 +94,22 @@ As a player, I want the system to remember characters I’ve met and what I’m 
 1. **Given** a story session where a new character is introduced, **When** the character tracking transform runs, **Then** the character roster includes the new character with key known facts captured.
 2. **Given** a story session where an item is acquired or consumed, **When** the inventory tracking transform runs, **Then** the inventory state reflects the update and maintains a clear current set of items.
 
+---
+
+### User Story 4 - Track Player Reputation (Priority: P3)
+
+As a player, I want the system to maintain a running reputation score that reflects my actions so that the world reacts consistently with my perceived standing.
+
+**Why this priority**: Reputation drives consequences and narrative reactivity across sessions.
+
+**Independent Test**: Provide chunks indicating a positive action and a negative action; verify reputation adjusts up/down and consequences are surfaced for downstream transforms.
+
+**Acceptance Scenarios**:
+
+1. **Given** a story session where the player performs a positive action (e.g., aiding NPCs), **When** the reputation transform runs, **Then** the reputation score increases and the updated state is written for downstream use.
+2. **Given** a story session where the player performs a negative action (e.g., harming civilians), **When** the reputation transform runs, **Then** the reputation score decreases and includes consequence cues for downstream transforms.
+3. **Given** conflicting positive and negative signals in the same chunk, **When** the reputation transform runs, **Then** the outcome reflects weighted evidence with provenance recorded.
+
 ### Edge Cases
 
 - A narration chunk contains contradictory statements about a character or inventory.
@@ -93,6 +118,10 @@ As a player, I want the system to remember characters I’ve met and what I’m 
 - The language model “hallucinates” new characters/items not supported by the input text.
 - The language model service is slow or temporarily unavailable.
 - Streaming stops early (consumer stops reading) and the session later resumes.
+- Narration includes sexual content involving minors, authority imbalance, non-consent, or captivity; must be rewritten safely with in-world consequences.
+- Narration includes sexual content in public contexts where minors may be present; must be relocated to adult-only context or rewritten to non-sexual interaction.
+- Reputation signals conflict across the same chunk (e.g., heroic act plus collateral harm) and must be merged with provenance and conservative weighting.
+- Repeated minor offenses accumulate to a threshold where consequences escalate (reputation decay/penalty over time or event count).
 
 
 ## Interface Contract *(mandatory)*
@@ -105,6 +134,7 @@ List the externally observable surface area this feature introduces or changes. 
 - Pipeline transform: **Story Summary** — Accepts story text (and prior summary) and outputs an updated summary.
 - Pipeline transform: **Character Tracker** — Accepts story text (and optional summary) and outputs updated character state.
 - Pipeline transform: **Inventory Tracker** — Accepts story text (and optional summary) and outputs updated inventory state.
+- Pipeline transform: **Player Reputation** — Accepts story text (and optional summary/state) and outputs updated reputation state with consequence cues.
 
 ### Data Contracts *(if applicable)*
 
@@ -113,6 +143,14 @@ List the externally observable surface area this feature introduces or changes. 
 - **CharacterRecord** — Name/identifier, known traits, relationships, last-seen context, and confidence/source references.
 - **InventoryState** — Current items, quantities (when applicable), and notes.
 - **TransformProvenance** — For any updated field: source snippet reference (from input), timestamp/order, and confidence.
+- **ModerationPolicy** — Operational rules defined in the Narratoria Master Moderation & Rewrite prompt; governs allowed, conditionally allowed, and disallowed sexual content handling.
+- **PolicyFlags** — Flags indicating detected categories (e.g., adult_sexual, harmful_sexual, minors, nonconsent, authority_abuse, violence) carried in annotations for downstream awareness.
+- **IncidentLog** — Records moderation incidents (timestamp, flag, severity, applied consequence identifier) for observability and auditing.
+- **TrustScores** — Optional per-NPC/faction trust impacts applied when consequences are injected.
+- **ReputationState** — Aggregated player reputation scores and faction/NPC-aligned standings.
+- **ReputationEvent** — Atomic reputation signal with source snippet, delta, confidence, and consequence cues.
+- **ReputationConsequences** — Derived consequences linked to reputation thresholds for downstream transforms.
+- **Moderation Prompt Source** — Canonical policy prompt stored at `specs/002-llm-story-transforms/moderation-prompts.md`; transforms MUST load from this path to ensure consistent enforcement.
 
 
 ## Requirements *(mandatory)*
@@ -138,6 +176,10 @@ List the externally observable surface area this feature introduces or changes. 
 - **FR-012**: System MUST include provenance for any character/inventory updates (at minimum: reference to supporting input text and the time/order it was observed).
 - **FR-013**: All transforms and provider calls MUST be cancellation-correct: they MUST honor the provided `CancellationToken`, stop work promptly when cancelled, and propagate cancellation (no swallowing `OperationCanceledException`).
 - **FR-014**: All transforms MUST be stream-safe: they MUST avoid unbounded buffering and MUST not require full input enumeration before producing any output.
+- **FR-015**: Rewrite transform MUST apply the Narratoria Master Moderation & Rewrite policy: detect sexual/harmful content, rewrite it into a safe alternative without depicting prohibited acts, and inject appropriate in-world consequences.
+- **FR-016**: When moderation triggers, transforms MUST emit safety annotations (e.g., policy flags, consequence identifiers) and log incidents while keeping outputs consumable by downstream summary/character/inventory transforms.
+- **FR-017**: System MUST support a reputation tracking transform that maintains player/global/faction reputation scores over time using incoming text (and summary) as evidence.
+- **FR-018**: Reputation updates MUST include provenance, confidence, and consequence cues, and must not invent signals unsupported by the input; conflicting signals must be merged deterministically.
 
 ### Error Handling *(mandatory)*
 
@@ -145,6 +187,8 @@ List the externally observable surface area this feature introduces or changes. 
 - **EH-002**: If the language model response is missing required parts (e.g., cannot derive structured updates), the system MUST keep prior state unchanged and log an observable failure reason.
 - **EH-003**: If the language model output conflicts with existing state, the system MUST prefer evidence-backed updates and MUST not discard prior state without justification/provenance.
 - **EH-004**: System MUST record enough diagnostic context to understand failures and quality regressions (at minimum: which transform failed and which session/turn it applied to). If caller-provided identity annotations are present (e.g., narratoria.session_id, narratoria.turn_id/narratoria.turn_index, narratoria.run_id), transforms MUST include them in logs; otherwise logs MUST still include the transform name and an observable failure reason. Logging MUST use ILogger<T>.
+- **EH-005**: If prohibited or ambiguous sexual content is detected, the system MUST avoid emitting explicit acts, rewrite to a safe alternative with consequences, retain prior safe state, and log the safety event and applied consequence.
+- **EH-006**: If reputation inputs are missing or contradictory, the system MUST fall back to the last known reputation state, merge signals conservatively with provenance, and log the resolution approach.
 
 ### State & Data *(mandatory if feature involves data)*
 
@@ -153,6 +197,7 @@ List the externally observable surface area this feature introduces or changes. 
   - Original incoming text is never overwritten or lost.
   - Character and inventory state updates are append/merge operations with provenance; no “silent” destructive edits.
   - Low-confidence inferences are explicitly labeled as such.
+  - Reputation state starts at neutral defaults and only changes via evidenced signals with provenance; conflicting updates are merged conservatively.
 - **Migration/Compatibility**: Existing sessions without these fields MUST still load and run; missing state initializes to empty defaults.
 
 ### Optional Metadata Conventions *(forward compatibility)*
@@ -174,6 +219,12 @@ To enable a future UI/editor spec to implement “latest-wins” execution and i
 - **CharacterRecord**: A structured representation of a story character.
 - **InventoryItem**: A structured representation of a player-held item.
 - **TransformProvenance**: Evidence trail for updates.
+- **PolicyFlags**: Moderation flags attached to chunks to signal detected sexual/harmful content classes.
+- **IncidentLogEntry**: A moderation record including severity and applied consequence identifiers.
+- **TrustScores**: Trust metrics per NPC/faction adjusted when consequences occur.
+- **ReputationState**: Aggregate reputation scores at global and faction/NPC levels.
+- **ReputationEvent**: A single reputation signal (delta, source snippet, confidence).
+- **ReputationConsequences**: Derived consequences attached when thresholds are reached.
 
 
 ## Test Matrix *(mandatory)*
@@ -190,9 +241,15 @@ Map each requirement to the minimum required test coverage. If UI behavior chang
 | FR-010 | Y | N | N | Original text preserved |
 | FR-013 | Y | N | N | Cancellation is honored and propagated |
 | FR-014 | Y | N | N | Transforms remain streaming-friendly |
+| FR-015 | Y | Y | N | Moderation rewrite enforces policy and injects consequences |
+| FR-016 | Y | Y | N | Safety annotations and incident logging preserved through pipeline |
+| FR-017 | Y | Y | N | Reputation tracking updates scores with provenance |
+| FR-018 | Y | Y | N | Conflicting reputation signals merge deterministically |
 | EH-001 | Y | Y | N | Service failure degrades gracefully |
 | EH-002 | Y | Y | N | Non-parseable output does not corrupt state |
 | EH-003 | Y | N | N | Conflict handling preserves evidence and avoids destructive edits |
+| EH-005 | Y | Y | N | Prohibited content is safely rewritten with logged consequences |
+| EH-006 | Y | Y | N | Reputation fallback/merge is logged and safe |
 
 
 ## Success Criteria *(mandatory)*
@@ -203,3 +260,4 @@ Map each requirement to the minimum required test coverage. If UI behavior chang
 - **SC-002**: After each new story chunk, an updated recap is available and includes the latest major events with no more than 5% critical omissions (as judged against the same test set).
 - **SC-003**: Character tracking correctly identifies and maintains character entries for at least 90% of explicit introductions and named references in the test set.
 - **SC-004**: Inventory tracking correctly adds/removes items for at least 90% of explicit acquisitions/consumptions in the test set.
+- **SC-005**: Reputation tracking correctly increases/decreases scores for at least 90% of explicit positive/negative actions in the test set and exposes consequence cues for downstream transforms.
