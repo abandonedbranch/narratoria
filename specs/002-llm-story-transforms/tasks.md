@@ -76,144 +76,129 @@ description: "Task list for LLM Story Transforms"
 
 **Checkpoint**: US1 is complete and independently testable.
 
+# Tasks: LLM Story Transforms
+
+**Input**: plan.md, spec.md, data-model.md, research.md, quickstart.md, moderation-prompts.md
+
+**Format**: `- [ ] T### [P?] [Story?] Description with file path`
+
+## Phase 1: Setup
+
+- [ ] T001 Create LLM transforms folder scaffold in src/Pipeline/Transforms/Llm/ (Providers/, Prompts/, StoryState/)
+- [ ] T002 [P] Add tests scaffold folder for LLM transforms in tests/Narratoria.Tests/Pipeline/Llm/
+- [ ] T003 [P] Ensure moderation policy source is pinned at specs/002-llm-story-transforms/moderation-prompts.md and referenced in transforms documentation
+
+---
+
+## Phase 2: Foundational (Blocking)
+
+- [ ] T004 Define shared LLM provider abstraction and request/response DTOs in src/Pipeline/Transforms/Llm/Providers/ITextGenerationService.cs
+- [ ] T005 [P] Implement provider wiring stubs (OpenAI/HuggingFace) behind the abstraction in src/Pipeline/Transforms/Llm/Providers/
+- [ ] T006 Build StoryState serializer/merger utilities for summary/characters/inventory/reputation in src/Pipeline/Transforms/Llm/StoryState/StoryStateSerializer.cs
+- [ ] T007 [P] Add moderation prompt loader and safety annotation models (PolicyFlags/IncidentLog) in src/Pipeline/Transforms/Llm/Prompts/ModerationPolicy.cs (load from specs/002-llm-story-transforms/moderation-prompts.md)
+- [ ] T008 [P] Update contracts/story-state.schema.json to include reputation, policy flags, incident log, and trust impacts
+
+---
+
+## Phase 3: User Story 1 - Improved Narration Output (Priority: P1)
+
+**Goal**: Rewrite narration with moderation guardrail while preserving meaning and chunk shape.
+
+**Independent Test**: Input noisy text; expect corrected narration and, when unsafe content is present, safe rewrite plus safety annotations.
+
+### Tests
+
+- [ ] T009 [P] [US1] Add unit tests for rewrite transform (grammar correction, no-op on clean text, moderation rewrite) in tests/Narratoria.Tests/Pipeline/Llm/RewriteNarrationTransformTests.cs
+
+### Implementation
+
+- [ ] T010 [P] [US1] Add rewrite prompt template referencing moderation policy in src/Pipeline/Transforms/Llm/Prompts/RewritePrompts.cs
+- [ ] T011 [US1] Implement RewriteNarrationTransform with moderation guardrail, original-text preservation, and safety annotations in src/Pipeline/Transforms/Llm/RewriteNarrationTransform.cs
+- [ ] T012 [US1] Wire rewrite transform into pipeline chain defaults in src/Pipeline/Transforms/Llm/PipelineDefinitionExtensions.cs
+
 ---
 
 ## Phase 4: User Story 2 - Automatic Recap (Priority: P2)
 
-**Goal**: Maintain a rolling story summary updated after new narration arrives.
+**Goal**: Maintain rolling summary updated per chunk.
 
-**Independent Test**: Feeding multiple chunks yields an updated summary annotation after each chunk/batch.
+**Independent Test**: Multiple chunks produce coherent, updated recap after each chunk.
 
-### Tests for User Story 2
+### Tests
 
-- [X] T025 [P] [US2] Add unit tests for summary transform (updates + provider failure degrade) in tests/Narratoria.Tests/Pipeline/Llm/SummaryTransformTests.cs
-- [X] T026 [P] [US2] Add integration test for summary updates across multiple chunks in tests/Narratoria.Tests/Pipeline/Llm/SummaryPipelineIntegrationTests.cs
+- [ ] T013 [P] [US2] Add unit tests for summary transform (accumulating context, resilience to missing prior state) in tests/Narratoria.Tests/Pipeline/Llm/StorySummaryTransformTests.cs
 
-### Implementation for User Story 2
+### Implementation
 
-- [X] T027 [US2] Add prompt composition for summary (prior summary + new text) in src/Pipeline/Transforms/Llm/Prompts/SummaryPromptBuilder.cs
-- [X] T028 [US2] Implement summary transform in src/Pipeline/Transforms/Llm/StorySummaryTransform.cs
-- [X] T029 [US2] Write updated summary to StoryState JSON annotations in src/Pipeline/Transforms/Llm/StoryState/StoryStateAnnotations.cs
-
-**Checkpoint**: US2 is complete and independently testable.
+- [ ] T014 [P] [US2] Add summary prompt template in src/Pipeline/Transforms/Llm/Prompts/SummaryPrompts.cs
+- [ ] T015 [US2] Implement StorySummaryTransform updating StoryState summary and annotations in src/Pipeline/Transforms/Llm/StorySummaryTransform.cs
 
 ---
 
 ## Phase 5: User Story 3 - Track Characters and Inventory (Priority: P3)
 
-**Goal**: Maintain structured character roster and inventory state, using rewritten text + latest summary.
+**Goal**: Maintain character roster and inventory state with provenance and confidence.
 
-**Independent Test**: Provide chunks that introduce a character and add/remove an item; verify merged StoryState reflects updates and retains provenance.
+**Independent Test**: Chunk with character intro and item change updates roster/inventory accordingly.
 
-### Tests for User Story 3
+### Tests
 
-- [X] T030 [P] [US3] Add unit tests for character tracker extracting a new character in tests/Narratoria.Tests/Pipeline/Llm/CharacterTrackerTransformTests.cs
-- [X] T031 [P] [US3] Add unit tests for inventory tracker add/remove behavior in tests/Narratoria.Tests/Pipeline/Llm/InventoryTrackerTransformTests.cs
-- [X] T032 [P] [US3] Add unit tests for parsing structured tracker updates (JSON -> DTOs) in tests/Narratoria.Tests/Pipeline/Llm/TrackerOutputParsingTests.cs
-- [X] T033 [P] [US3] Add integration test ensuring tracker transforms can read latest summary + rewritten text in tests/Narratoria.Tests/Pipeline/Llm/TrackerPipelineIntegrationTests.cs
+- [ ] T016 [P] [US3] Add unit tests for character tracking (new/merge/low-confidence) in tests/Narratoria.Tests/Pipeline/Llm/CharacterTrackerTransformTests.cs
+- [ ] T017 [P] [US3] Add unit tests for inventory tracking (add/remove/quantity) in tests/Narratoria.Tests/Pipeline/Llm/InventoryTrackerTransformTests.cs
 
-### Implementation for User Story 3
+### Implementation
 
-- [X] T034 [US3] Add prompt composition for character extraction (text + summary) in src/Pipeline/Transforms/Llm/Prompts/CharacterPromptBuilder.cs
-- [X] T035 [US3] Add prompt composition for inventory extraction (text + summary) in src/Pipeline/Transforms/Llm/Prompts/InventoryPromptBuilder.cs
-- [X] T036 [US3] Implement character tracker transform in src/Pipeline/Transforms/Llm/CharacterTrackerTransform.cs
-- [X] T037 [US3] Implement inventory tracker transform in src/Pipeline/Transforms/Llm/InventoryTrackerTransform.cs
-- [X] T038 [US3] Ensure transforms merge structured updates into StoryState JSON annotations in src/Pipeline/Transforms/Llm/StoryState/StoryStateMerge.cs
-
-**Checkpoint**: US3 is complete and independently testable.
+- [ ] T018 [P] [US3] Add character and inventory prompt templates in src/Pipeline/Transforms/Llm/Prompts/CharacterInventoryPrompts.cs
+- [ ] T019 [US3] Implement CharacterTrackerTransform merging roster updates with provenance in src/Pipeline/Transforms/Llm/CharacterTrackerTransform.cs
+- [ ] T020 [US3] Implement InventoryTrackerTransform merging inventory updates with provenance in src/Pipeline/Transforms/Llm/InventoryTrackerTransform.cs
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 6: User Story 4 - Track Player Reputation (Priority: P3)
 
-**Purpose**: Tighten correctness, resilience, and documentation across all stories.
+**Goal**: Maintain reputation scores (global/faction/NPC) with consequence cues.
 
-- [X] T039 [P] Add unit tests for cancellation propagation (provider call honors CancellationToken) in tests/Narratoria.Tests/Pipeline/Llm/CancellationTests.cs
-- [X] T040 Add transform chaining example in specs/002-llm-story-transforms/quickstart.md
-- [X] T041 Run quickstart validation by adding a runnable example test in tests/Narratoria.Tests/Pipeline/Llm/QuickstartExampleTests.cs
-- [X] T042 [P] Add unit tests that failure paths emit expected logs (transform + session/turn) in tests/Narratoria.Tests/Pipeline/Llm/LoggingTests.cs
-- [X] T043 [P] Add unit tests ensuring transforms are stream-safe and preserve pass-through annotations (including optional run metadata keys) in tests/Narratoria.Tests/Pipeline/Llm/StreamingAndMetadataTests.cs
+**Independent Test**: Positive and negative actions adjust reputation up/down with deterministic merge of conflicting signals.
+
+### Tests
+
+- [ ] T021 [P] [US4] Add unit tests for reputation tracking (positive/negative/conflict aggregation) in tests/Narratoria.Tests/Pipeline/Llm/ReputationTransformTests.cs
+
+### Implementation
+
+- [ ] T022 [P] [US4] Add reputation prompt templates in src/Pipeline/Transforms/Llm/Prompts/ReputationPrompts.cs
+- [ ] T023 [US4] Implement ReputationTransform updating ReputationState and consequence cues with provenance in src/Pipeline/Transforms/Llm/ReputationTransform.cs
+
+---
+
+## Phase 7: Polish & Cross-Cutting
+
+- [ ] T024 [P] Refresh quickstart with moderation/reputation usage and pipeline order in specs/002-llm-story-transforms/quickstart.md
+- [ ] T025 Add logging/telemetry guidance for safety and reputation events in specs/002-llm-story-transforms/plan.md and src/Pipeline/Transforms/Llm/README.md (create if absent)
+- [ ] T026 [P] Add integration smoke tests covering full chain (rewrite→summary→character+inventory+reputation) in tests/Narratoria.Tests/Pipeline/Llm/PipelineIntegrationTests.cs
+- [ ] T027 Verify story-state.schema.json and data-model.md remain consistent with implemented fields (reputation, policy flags, incident logs) in specs/002-llm-story-transforms/contracts/story-state.schema.json and specs/002-llm-story-transforms/data-model.md
 
 ---
 
 ## Dependencies & Execution Order
 
-### Phase Dependencies
+- Phases: Setup → Foundational → US1 (P1) → US2 (P2) → US3 (P3) → US4 (P3) → Polish.
+- Story dependency: US1 must precede US2/US3/US4; US2/US3/US4 can run in parallel once US1+Foundational complete, but chain integration validated in Polish.
+- Within each story: Tests before implementation; prompts before transforms; transforms before pipeline wiring.
 
-- **Setup (Phase 1)**: No dependencies — can start immediately.
-- **Foundational (Phase 2)**: Depends on Setup completion — BLOCKS all user stories.
-- **User Stories (Phase 3–5)**: Depend on Foundational phase completion.
-- **Polish (Phase 6)**: Depends on desired user stories being complete.
+## Parallel Opportunities (examples)
 
-### User Story Dependencies
-
-- **US1 (P1)**: Depends on Phase 2 only.
-- **US2 (P2)**: Depends on Phase 2; benefits from US1 but must be independently testable.
-- **US3 (P3)**: Depends on Phase 2; MUST run after summary within a pipeline execution order.
-
-### Required Transform Order
-
-- Rewrite -> Summary -> (Character, Inventory)
-
-### Dependency Graph (User Story Completion Order)
-
-`Phase 1 (Setup) -> Phase 2 (Foundational) -> US1 (Rewrite) -> US2 (Summary) -> US3 (Trackers) -> Phase 6 (Polish)`
-
----
-
-## Parallel Opportunities
-
-- Phase 1: T004–T006 can run in parallel.
-- Phase 2: T007, T010, T012, T016, T018, and T019 can run in parallel.
-- US1 tests: T021–T022 can run in parallel.
-- US2 tests: T025–T026 can run in parallel.
-- US3 tests: T030–T033 can run in parallel.
-- Phase 6: T039, T042, and T043 can run in parallel.
-
----
-
-## Parallel Example: User Story 3
-
-```bash
-Task: "T030 Add unit tests for character tracker extracting a new character in tests/Narratoria.Tests/Pipeline/Llm/CharacterTrackerTransformTests.cs"
-Task: "T031 Add unit tests for inventory tracker add/remove behavior in tests/Narratoria.Tests/Pipeline/Llm/InventoryTrackerTransformTests.cs"
-Task: "T032 Add unit tests for parsing structured tracker updates (JSON -> DTOs) in tests/Narratoria.Tests/Pipeline/Llm/TrackerOutputParsingTests.cs"
-Task: "T033 Add integration test ensuring tracker transforms can read latest summary + rewritten text in tests/Narratoria.Tests/Pipeline/Llm/TrackerPipelineIntegrationTests.cs"
-```
-
----
-
-## Parallel Example: User Story 1
-
-```bash
-Task: "T021 Add unit tests for rewrite transform (passthrough + original text annotation) in tests/Narratoria.Tests/Pipeline/Llm/RewriteTransformTests.cs"
-Task: "T022 Add integration test for rewrite transform in a full pipeline in tests/Narratoria.Tests/Pipeline/Llm/RewritePipelineIntegrationTests.cs"
-```
-
----
-
-## Parallel Example: User Story 2
-
-```bash
-Task: "T025 Add unit tests for summary transform (updates + provider failure degrade) in tests/Narratoria.Tests/Pipeline/Llm/SummaryTransformTests.cs"
-Task: "T026 Add integration test for summary updates across multiple chunks in tests/Narratoria.Tests/Pipeline/Llm/SummaryPipelineIntegrationTests.cs"
-```
-
----
+- Setup: T002 and T003 parallel after T001.
+- Foundational: T005, T007, T008 parallel after T004.
+- US1: T009 and T010 parallel; T011 after prompts/utilities; T012 after T011.
+- US2: T013 and T014 parallel; T015 after prompts/utilities.
+- US3: T016 and T017 parallel; T018 after prompts; T019/T020 after prompts/utilities.
+- US4: T021 and T022 parallel; T023 after prompts/utilities.
+- Polish: T024, T025, T026, T027 can parallel where file paths do not conflict.
 
 ## Implementation Strategy
 
-### MVP First (User Story 1 Only)
-
-1. Complete Phase 1 (Setup)
-2. Complete Phase 2 (Foundational)
-3. Complete Phase 3 (US1)
-4. Validate US1 independently using `RewritePipelineIntegrationTests`
-
-### Incremental Delivery
-
-1. Setup + Foundational
-2. US1 (rewrite)
-3. US2 (summary)
-4. US3 (character + inventory)
-5. Polish
+- MVP: Deliver US1 (rewrite + moderation) after Setup/Foundational, then validate chain with summary/trackers before proceeding.
+- Incremental: Add US2 recap, then US3 character/inventory, then US4 reputation; validate each independently.
+- Deterministic tests: use fake providers; no live network calls.
+## Implementation Strategy
