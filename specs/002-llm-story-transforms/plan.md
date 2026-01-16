@@ -9,10 +9,11 @@
 
 Add a set of `IPipelineTransform` implementations that enrich streamed `TextChunk` content using LLM calls:
 
-- Rewrite narration text (grammar/voice normalization)
+- Rewrite narration text (grammar/voice normalization) with a moderation guardrail sourced from [moderation-prompts.md](moderation-prompts.md)
 - Maintain a rolling story summary
 - Maintain character roster/state
 - Maintain player inventory state
+- Maintain player reputation/faction standing with consequence cues
 
 Design centers on small injectable LLM provider services:
 
@@ -21,7 +22,7 @@ Design centers on small injectable LLM provider services:
 
 Transforms are chained so downstream state trackers consume the best available text and context:
 
-`Rewrite -> Summary -> (Character + Inventory)`
+`Rewrite (with moderation guardrail) -> Summary -> (Character + Inventory + Reputation)`
 
 ## Technical Context
 
@@ -32,8 +33,8 @@ Transforms are chained so downstream state trackers consume the best available t
 **Target Platform**: .NET class library (cross-platform)
 **Project Type**: Single library (`src/`) + test project (`tests/`)  
 **Performance Goals**: Stream-friendly; minimize LLM calls per input; avoid unbounded buffering  
-**Constraints**: Deterministic tests (no live network calls); all async accepts `CancellationToken` and is cancellation-correct; transforms remain stream-safe; graceful degradation on provider failures  
-**Scale/Scope**: Per-session story state updated incrementally as text streams
+**Constraints**: Deterministic tests (no live network calls); all async accepts `CancellationToken` and is cancellation-correct; transforms remain stream-safe; graceful degradation on provider failures; moderation policy is loaded from `specs/002-llm-story-transforms/moderation-prompts.md` and applied in the rewrite transform; safety flags/logs must not block downstream consumption  
+**Scale/Scope**: Per-session story state updated incrementally as text streams (summary, characters, inventory, reputation, safety flags)
 
 ## Constitution Check
 
@@ -101,6 +102,7 @@ Deliverables:
 - [data-model.md](data-model.md)
 - [quickstart.md](quickstart.md)
 - contracts/ (see [contracts/](contracts/))
+- Update moderation prompt reference to [moderation-prompts.md](moderation-prompts.md) for rewrite guardrail inputs
 
 Constitution Re-check (post-design): PASS (design keeps IO behind small interfaces; transforms remain composable; tests remain deterministic).
 
