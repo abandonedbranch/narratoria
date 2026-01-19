@@ -29,15 +29,13 @@
 
 - Callers will provide valid credentials/tokens and network connectivity for each provider.
 - Model identifiers supplied by callers are valid for the chosen provider.
-- Capability discovery can be conservative when information is incomplete; callers can programmatically fallback.
+- Capability discovery is evaluated per model id; when unknown, capabilities default to disabled to avoid surprises.
 - DI containers are available in consuming applications but the client can be used without a container as well.
 - Providers may differ widely in supported settings; unmapped settings are ignored or cause `NotSupportedException` depending on modality/impact.
 
 ### Open Questions *(mandatory)*
 
-- [NEEDS CLARIFICATION: Minimum scope for video — which providers/models must be supported initially, and is video required at GA or allowed to be best-effort?]
-- [NEEDS CLARIFICATION: Music support — define expected capability (e.g., basic hooks vs. concrete generation), and whether absence at providers is acceptable with documented fallbacks.]
-- [NEEDS CLARIFICATION: Capability discovery granularity — per model id vs. provider baseline; how strict should unknowns be treated (e.g., assume-disabled vs. assume-partial)?]
+- All clarifications resolved: video is best-effort (optional at GA); music is hooks-only with NotSupportedException when invoked; capability discovery is per-model with unknowns treated as disabled by default.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -141,6 +139,9 @@ List the externally observable surface area this feature introduces or changes. 
 - **FR-006**: Apply conservative mapping for `GenerationSettings`; unsupported/mismatched fields MUST be ignored or cause `NotSupportedException` per rules.
 - **FR-007**: Provide stable request/response abstractions for each modality, decoupled from provider specifics.
 - **FR-008**: Expose a mechanism for advanced callers to access underlying native clients/transports without breaking the unified surface.
+- **FR-009**: Video support is best-effort/optional; if unsupported for a provider/model, capabilities must mark it disabled and calls must throw `NotSupportedException`.
+- **FR-010**: Music is hooks-only; capabilities must mark it unsupported by default and invocations must throw `NotSupportedException`.
+- **FR-011**: Capability discovery must operate per model id; unknown models default to all modalities/settings disabled until confirmed.
 
 ### Error Handling *(mandatory)*
 
