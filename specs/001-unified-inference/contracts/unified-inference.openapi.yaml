@@ -1,0 +1,263 @@
+openapi: 3.0.3
+info:
+  title: Unified Inference (Library Contracts)
+  version: 0.1.0
+  description: Documentation of unified inference surface as if exposed via HTTP; actual deliverable is a .NET class library.
+paths:
+  /inference/text:
+    post:
+      summary: Generate text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TextResponse'
+        '400':
+          description: Not supported or invalid request
+  /inference/image:
+    post:
+      summary: Generate image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageRequest'
+      responses:
+        '200':
+          description: OK (binary or URI)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResponse'
+        '400':
+          description: Not supported or invalid request
+  /inference/audio/tts:
+    post:
+      summary: Text-to-speech
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioTtsRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioResponse'
+        '400':
+          description: Not supported or invalid request
+  /inference/audio/stt:
+    post:
+      summary: Speech-to-text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioSttRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioResponse'
+        '400':
+          description: Not supported or invalid request
+  /inference/video:
+    post:
+      summary: Generate video (best-effort)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoResponse'
+        '400':
+          description: Not supported or invalid request
+  /capabilities:
+    get:
+      summary: Query capabilities for provider+model
+      parameters:
+        - in: query
+          name: provider
+          schema:
+            $ref: '#/components/schemas/InferenceProvider'
+          required: true
+        - in: query
+          name: modelId
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelCapabilities'
+components:
+  schemas:
+    InferenceProvider:
+      type: string
+      enum: [OpenAI, Ollama, HuggingFace]
+    GenerationSettings:
+      type: object
+      properties:
+        temperature:
+          type: number
+        top_p:
+          type: number
+        top_k:
+          type: integer
+        max_tokens:
+          type: integer
+        presence_penalty:
+          type: number
+        frequency_penalty:
+          type: number
+        stop_sequences:
+          type: array
+          items:
+            type: string
+        seed:
+          type: integer
+        provider_overrides:
+          type: object
+    ModelCapabilities:
+      type: object
+      properties:
+        supportsText:
+          type: boolean
+        supportsImage:
+          type: boolean
+        supportsAudioTts:
+          type: boolean
+        supportsAudioStt:
+          type: boolean
+        supportsVideo:
+          type: boolean
+        supportsMusic:
+          type: boolean
+        settingsSupport:
+          type: object
+        notes:
+          type: string
+    TextRequest:
+      type: object
+      properties:
+        provider:
+          $ref: '#/components/schemas/InferenceProvider'
+        modelId:
+          type: string
+        prompt:
+          type: string
+        settings:
+          $ref: '#/components/schemas/GenerationSettings'
+    TextResponse:
+      type: object
+      properties:
+        text:
+          type: string
+        tokensUsed:
+          type: integer
+        providerMetadata:
+          type: object
+    ImageRequest:
+      type: object
+      properties:
+        provider:
+          $ref: '#/components/schemas/InferenceProvider'
+        modelId:
+          type: string
+        prompt:
+          type: string
+        size:
+          type: string
+        settings:
+          $ref: '#/components/schemas/GenerationSettings'
+    ImageResponse:
+      type: object
+      properties:
+        uri:
+          type: string
+        bytesBase64:
+          type: string
+        providerMetadata:
+          type: object
+    AudioTtsRequest:
+      type: object
+      properties:
+        provider:
+          $ref: '#/components/schemas/InferenceProvider'
+        modelId:
+          type: string
+        text:
+          type: string
+        voice:
+          type: string
+        settings:
+          $ref: '#/components/schemas/GenerationSettings'
+    AudioSttRequest:
+      type: object
+      properties:
+        provider:
+          $ref: '#/components/schemas/InferenceProvider'
+        modelId:
+          type: string
+        audioBase64:
+          type: string
+        language:
+          type: string
+        settings:
+          $ref: '#/components/schemas/GenerationSettings'
+    AudioResponse:
+      type: object
+      properties:
+        audioBase64:
+          type: string
+        transcriptText:
+          type: string
+        providerMetadata:
+          type: object
+    VideoRequest:
+      type: object
+      properties:
+        provider:
+          $ref: '#/components/schemas/InferenceProvider'
+        modelId:
+          type: string
+        prompt:
+          type: string
+        duration:
+          type: integer
+        settings:
+          $ref: '#/components/schemas/GenerationSettings'
+    VideoResponse:
+      type: object
+      properties:
+        uri:
+          type: string
+        bytesBase64:
+          type: string
+        providerMetadata:
+          type: object
