@@ -6,20 +6,23 @@ using UnifiedInference.Providers.OpenAI;
 
 namespace UnifiedInference.Core;
 
-public sealed class UnifiedInferenceClient : IUnifiedInferenceClient
+public sealed partial class UnifiedInferenceClient : IUnifiedInferenceClient
 {
     private readonly OpenAiInferenceClient _openAi;
     private readonly OllamaInferenceClient _ollama;
     private readonly HuggingFaceInferenceClient _huggingFace;
+    private readonly ICapabilitiesProvider _caps;
 
     public UnifiedInferenceClient(
         OpenAiInferenceClient openAi,
         OllamaInferenceClient ollama,
-        HuggingFaceInferenceClient huggingFace)
+        HuggingFaceInferenceClient huggingFace,
+        ICapabilitiesProvider? capabilities = null)
     {
         _openAi = openAi;
         _ollama = ollama;
         _huggingFace = huggingFace;
+        _caps = capabilities ?? new DefaultCapabilitiesProvider();
     }
 
     public Task<TextResponse> GenerateTextAsync(TextRequest request, CancellationToken cancellationToken = default) =>
@@ -48,8 +51,5 @@ public sealed class UnifiedInferenceClient : IUnifiedInferenceClient
         throw Errors.ModalityNotSupported("music", request.Provider, request.ModelId);
 
     public Task<ModelCapabilities> GetCapabilitiesAsync(InferenceProvider provider, string modelId, CancellationToken cancellationToken = default)
-    {
-        _ = cancellationToken;
-        return Task.FromResult(ModelCapabilitiesDefaults.Disabled());
-    }
+        => _caps.GetAsync(provider, modelId, cancellationToken);
 }
