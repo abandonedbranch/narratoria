@@ -64,6 +64,35 @@ if (caps.supportsText)
 }
 ```
 
+## Images
+
+```csharp
+// OpenAI image (DALL·E/gpt-4o images where supported)
+var imgReq = new ImageRequest(InferenceProvider.OpenAI, modelId: "dall-e-3", prompt: "a watercolor fox", size: "1024x1024", settings: new GenerationSettings());
+var imgRes = await client.GenerateImageAsync(imgReq, ct);
+File.WriteAllBytes("out-openai.png", imgRes.Bytes!);
+
+// Hugging Face image (generic inference endpoint, diffusion models)
+var hfReq = new ImageRequest(InferenceProvider.HuggingFace, modelId: "stabilityai/stable-diffusion-2", prompt: "a watercolor fox", size: null, settings: new GenerationSettings());
+var hfRes = await client.GenerateImageAsync(hfReq, ct);
+File.WriteAllBytes("out-hf.png", hfRes.Bytes!);
+```
+
+## Audio
+
+```csharp
+// Text-to-Speech (OpenAI Audio)
+var ttsReq = new AudioRequest(InferenceProvider.OpenAI, modelId: "gpt-4o-mini-tts", mode: AudioMode.TextToSpeech, textInput: "Hello there!", audioInput: null, voice: "Alloy", language: null, settings: new GenerationSettings());
+var ttsRes = await client.GenerateAudioTtsAsync(ttsReq, ct);
+File.WriteAllBytes("out-tts.mp3", ttsRes.AudioBytes!);
+
+// Speech-to-Text (OpenAI Whisper)
+var audioBytes = await File.ReadAllBytesAsync("sample.wav", ct);
+var sttReq = new AudioRequest(InferenceProvider.OpenAI, modelId: "whisper-1", mode: AudioMode.SpeechToText, textInput: null, audioInput: audioBytes, voice: null, language: "en", settings: new GenerationSettings());
+var sttRes = await client.GenerateAudioSttAsync(sttReq, ct);
+Console.WriteLine(sttRes.TranscriptText);
+```
+
 ## Build
 
 ```bash

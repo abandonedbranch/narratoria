@@ -1,3 +1,31 @@
 # Narratoria
 
 A work in progress app for an AI-backed narrative driven storyteller and game master.
+
+## UnifiedInference Library (feature specs)
+
+This repo includes a provider-agnostic .NET library under src/lib/UnifiedInference that unifies inference across OpenAI, Ollama, and Hugging Face.
+
+- Quickstart and examples: [specs/001-unified-inference/quickstart.md](specs/001-unified-inference/quickstart.md)
+- Contracts and mapping: [specs/001-unified-inference/contracts/](specs/001-unified-inference/contracts)
+
+Basic usage sketch:
+
+```csharp
+var client = UnifiedInference.Factory.InferenceClientFactory.Create(
+	openAiClient: new OpenAI.OpenAIClient("api-key"),
+	ollamaHttp: new HttpClient(),
+	ollamaBaseUrl: "http://localhost:11434",
+	huggingFaceHttp: new HttpClient()
+);
+
+var text = await client.GenerateTextAsync(
+	new UnifiedInference.Abstractions.TextRequest(
+		UnifiedInference.Abstractions.InferenceProvider.OpenAI,
+		"gpt-4o-mini",
+		"Hello world",
+		new UnifiedInference.Abstractions.GenerationSettings(Temperature: 0.7)
+	)
+);
+Console.WriteLine(text.Text);
+```
