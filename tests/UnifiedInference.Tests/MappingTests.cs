@@ -8,7 +8,7 @@ public class MappingTests
     [Fact]
     public void OpenAI_Text_Mapping()
     {
-        var s = new GenerationSettings(Temperature: 0.5, TopP: 0.9, MaxTokens: 128, PresencePenalty: 0.1, FrequencyPenalty: 0.2, StopSequences: new[] { "END" });
+        var s = new GenerationSettings(Temperature: 0.5, TopP: 0.9, MaxTokens: 128, PresencePenalty: 0.1, FrequencyPenalty: 0.2, StopSequences: ["END"]);
         var d = SettingsMapperText.ToOpenAiOptions(s);
         Assert.Equal(0.5, d["temperature"]);
         Assert.Equal(0.9, d["top_p"]);
@@ -22,7 +22,7 @@ public class MappingTests
     [Fact]
     public void Ollama_Text_Mapping()
     {
-        var s = new GenerationSettings(Temperature: 0.7, TopP: 0.8, TopK: 50, MaxTokens: 64, StopSequences: new[] { "\n" });
+        var s = new GenerationSettings(Temperature: 0.7, TopP: 0.8, TopK: 50, MaxTokens: 64, StopSequences: ["\n"]);
         var d = SettingsMapperText.ToOllamaOptions(s);
         Assert.Equal(0.7, d["temperature"]);
         Assert.Equal(0.8, d["top_p"]);
@@ -34,7 +34,7 @@ public class MappingTests
     [Fact]
     public void HuggingFace_Text_Mapping()
     {
-        var s = new GenerationSettings(Temperature: 0.3, TopP: 0.95, TopK: 20, MaxTokens: 200, StopSequences: new[] { "STOP" });
+        var s = new GenerationSettings(Temperature: 0.3, TopP: 0.95, TopK: 20, MaxTokens: 200, StopSequences: ["STOP"]);
         var d = SettingsMapperText.ToHuggingFaceOptions(s);
         Assert.Equal(0.3, d["temperature"]);
         Assert.Equal(0.95, d["top_p"]);
