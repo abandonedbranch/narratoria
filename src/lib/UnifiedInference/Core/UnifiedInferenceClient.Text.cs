@@ -54,6 +54,7 @@ public sealed partial class UnifiedInferenceClient : IUnifiedInferenceClient
         return request.Provider switch
         {
             InferenceProvider.OpenAI => await _openAi.GenerateImageAsync(request, cancellationToken).ConfigureAwait(false),
+            InferenceProvider.HuggingFace => await _huggingFace.GenerateImageAsync(request, cancellationToken).ConfigureAwait(false),
             _ => throw Errors.ModalityNotSupported("image", request.Provider, request.ModelId)
         };
     }
@@ -88,11 +89,29 @@ public sealed partial class UnifiedInferenceClient : IUnifiedInferenceClient
         };
     }
 
-    public Task<VideoResponse> GenerateVideoAsync(VideoRequest request, CancellationToken cancellationToken = default) =>
-        throw Errors.ModalityNotSupported("video", request.Provider, request.ModelId);
+    public async Task<VideoResponse> GenerateVideoAsync(VideoRequest request, CancellationToken cancellationToken = default)
+    {
+        var caps = await _caps.GetAsync(request.Provider, request.ModelId, cancellationToken).ConfigureAwait(false);
+        if (!caps.SupportsVideo)
+        {
+            throw Errors.ModalityNotSupported("video", request.Provider, request.ModelId);
+        }
 
-    public Task<MusicResponse> GenerateMusicAsync(MusicRequest request, CancellationToken cancellationToken = default) =>
+        // No providers currently implement video; route would go here when supported.
+        throw Errors.ModalityNotSupported("video", request.Provider, request.ModelId);
+    }
+
+    public async Task<MusicResponse> GenerateMusicAsync(MusicRequest request, CancellationToken cancellationToken = default)
+    {
+        var caps = await _caps.GetAsync(request.Provider, request.ModelId, cancellationToken).ConfigureAwait(false);
+        if (!caps.SupportsMusic)
+        {
+            throw Errors.ModalityNotSupported("music", request.Provider, request.ModelId);
+        }
+
+        // Music is hooks-only per spec; no provider implementations.
         throw Errors.ModalityNotSupported("music", request.Provider, request.ModelId);
+    }
 
     public Task<ModelCapabilities> GetCapabilitiesAsync(InferenceProvider provider, string modelId, CancellationToken cancellationToken = default)
         => _caps.GetAsync(provider, modelId, cancellationToken);
