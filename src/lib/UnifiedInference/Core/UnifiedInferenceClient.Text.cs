@@ -25,24 +25,68 @@ public sealed partial class UnifiedInferenceClient : IUnifiedInferenceClient
         _caps = capabilities ?? new DefaultCapabilitiesProvider();
     }
 
-    public Task<TextResponse> GenerateTextAsync(TextRequest request, CancellationToken cancellationToken = default) =>
-        request.Provider switch
+    public async Task<TextResponse> GenerateTextAsync(TextRequest request, CancellationToken cancellationToken = default)
+    {
+        var caps = await _caps.GetAsync(request.Provider, request.ModelId, cancellationToken).ConfigureAwait(false);
+        if (!caps.SupportsText)
         {
-            InferenceProvider.OpenAI => _openAi.GenerateTextAsync(request, cancellationToken),
-            InferenceProvider.Ollama => _ollama.GenerateTextAsync(request, cancellationToken),
-            InferenceProvider.HuggingFace => _huggingFace.GenerateTextAsync(request, cancellationToken),
+            throw Errors.ModalityNotSupported("text", request.Provider, request.ModelId);
+        }
+
+        return request.Provider switch
+        {
+            InferenceProvider.OpenAI => await _openAi.GenerateTextAsync(request, cancellationToken).ConfigureAwait(false),
+            InferenceProvider.Ollama => await _ollama.GenerateTextAsync(request, cancellationToken).ConfigureAwait(false),
+            InferenceProvider.HuggingFace => await _huggingFace.GenerateTextAsync(request, cancellationToken).ConfigureAwait(false),
             _ => throw Errors.ModalityNotSupported("text", request.Provider, request.ModelId)
         };
+    }
 
     // Other modalities to be implemented in separate partials/files.
-    public Task<ImageResponse> GenerateImageAsync(ImageRequest request, CancellationToken cancellationToken = default) =>
-        throw Errors.ModalityNotSupported("image", request.Provider, request.ModelId);
+    public async Task<ImageResponse> GenerateImageAsync(ImageRequest request, CancellationToken cancellationToken = default)
+    {
+        var caps = await _caps.GetAsync(request.Provider, request.ModelId, cancellationToken).ConfigureAwait(false);
+        if (!caps.SupportsImage)
+        {
+            throw Errors.ModalityNotSupported("image", request.Provider, request.ModelId);
+        }
 
-    public Task<AudioResponse> GenerateAudioTtsAsync(AudioRequest request, CancellationToken cancellationToken = default) =>
-        throw Errors.ModalityNotSupported("audio-tts", request.Provider, request.ModelId);
+        return request.Provider switch
+        {
+            InferenceProvider.OpenAI => await _openAi.GenerateImageAsync(request, cancellationToken).ConfigureAwait(false),
+            _ => throw Errors.ModalityNotSupported("image", request.Provider, request.ModelId)
+        };
+    }
 
-    public Task<AudioResponse> GenerateAudioSttAsync(AudioRequest request, CancellationToken cancellationToken = default) =>
-        throw Errors.ModalityNotSupported("audio-stt", request.Provider, request.ModelId);
+    public async Task<AudioResponse> GenerateAudioTtsAsync(AudioRequest request, CancellationToken cancellationToken = default)
+    {
+        var caps = await _caps.GetAsync(request.Provider, request.ModelId, cancellationToken).ConfigureAwait(false);
+        if (!caps.SupportsAudioTts)
+        {
+            throw Errors.ModalityNotSupported("audio-tts", request.Provider, request.ModelId);
+        }
+
+        return request.Provider switch
+        {
+            InferenceProvider.OpenAI => await _openAi.GenerateAudioTtsAsync(request, cancellationToken).ConfigureAwait(false),
+            _ => throw Errors.ModalityNotSupported("audio-tts", request.Provider, request.ModelId)
+        };
+    }
+
+    public async Task<AudioResponse> GenerateAudioSttAsync(AudioRequest request, CancellationToken cancellationToken = default)
+    {
+        var caps = await _caps.GetAsync(request.Provider, request.ModelId, cancellationToken).ConfigureAwait(false);
+        if (!caps.SupportsAudioStt)
+        {
+            throw Errors.ModalityNotSupported("audio-stt", request.Provider, request.ModelId);
+        }
+
+        return request.Provider switch
+        {
+            InferenceProvider.OpenAI => await _openAi.GenerateAudioSttAsync(request, cancellationToken).ConfigureAwait(false),
+            _ => throw Errors.ModalityNotSupported("audio-stt", request.Provider, request.ModelId)
+        };
+    }
 
     public Task<VideoResponse> GenerateVideoAsync(VideoRequest request, CancellationToken cancellationToken = default) =>
         throw Errors.ModalityNotSupported("video", request.Provider, request.ModelId);
