@@ -15,28 +15,19 @@ public sealed partial class OpenAiInferenceClient
         var clientResult = await audioClient.GenerateSpeechFromTextAsync(text, voice, options, cancellationToken).ConfigureAwait(false);
         dynamic value = clientResult.Value;
 
-        byte[]? audioBytes = null;
+        BinaryData? audioData = null;
         try
         {
-            var bin = (object?)value?.AudioData ?? (object?)value;
-            if (bin is null)
-            {
-                bin = (object?)value?.AudioBytes;
-            }
-
-            if (bin is not null)
-            {
-                var toArray = bin.GetType().GetMethod("ToArray", BindingFlags.Public | BindingFlags.Instance);
-                if (toArray is not null)
-                {
-                    audioBytes = toArray.Invoke(bin, null) as byte[];
-                }
-            }
+            audioData = value?.AudioData as BinaryData
+                        ?? value?.AudioBytes as BinaryData
+                        ?? value as BinaryData;
         }
         catch
         {
             // ignore extraction issues
         }
+
+        byte[]? audioBytes = audioData?.ToArray();
 
         return new AudioResponse(audioBytes, null, new { id = (string?)value?.Id });
     }
@@ -53,7 +44,7 @@ public sealed partial class OpenAiInferenceClient
         string? text = null;
         try
         {
-            text = value?.Text;
+            text = value?.Text as string ?? value?.Text?.ToString();
         }
         catch
         {
