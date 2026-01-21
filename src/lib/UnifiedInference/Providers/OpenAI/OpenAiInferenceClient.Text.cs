@@ -5,7 +5,7 @@ using UnifiedInference.Core;
 
 namespace UnifiedInference.Providers.OpenAI;
 
-public sealed class OpenAiInferenceClient
+public sealed partial class OpenAiInferenceClient
 {
     private readonly OpenAIClient _client;
 

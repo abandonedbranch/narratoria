@@ -7,10 +7,11 @@ public sealed class HuggingFaceCapabilities
 {
     public Task<ModelCapabilities> GetAsync(string modelId, CancellationToken cancellationToken)
     {
-        _ = modelId;
         _ = cancellationToken;
+        var id = modelId.ToLowerInvariant();
 
-        // Conservative default: assume text generation supported; other modalities disabled unless explicitly modeled.
+        var supportsImage = id.Contains("stable-diffusion") || id.Contains("sdxl") || id.Contains("diffusion");
+
         var settings = new CapabilitySettings(
             Temperature: true,
             TopP: true,
@@ -22,6 +23,15 @@ public sealed class HuggingFaceCapabilities
             Seed: false
         );
 
-        return Task.FromResult(ModelCapabilitiesDefaults.TextOnly(settings));
+        var caps = new ModelCapabilities(
+            SupportsText: true,
+            SupportsImage: supportsImage,
+            SupportsAudioTts: false,
+            SupportsAudioStt: false,
+            SupportsVideo: false,
+            SupportsMusic: false,
+            Support: settings
+        );
+        return Task.FromResult(caps);
     }
 }
