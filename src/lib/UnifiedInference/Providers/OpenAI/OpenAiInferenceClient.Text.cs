@@ -1,7 +1,6 @@
 using OpenAI;
 using OpenAI.Chat;
 using UnifiedInference.Abstractions;
-using UnifiedInference.Core;
 
 namespace UnifiedInference.Providers.OpenAI;
 

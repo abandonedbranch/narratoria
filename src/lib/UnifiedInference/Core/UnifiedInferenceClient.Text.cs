@@ -1,5 +1,4 @@
 using UnifiedInference.Abstractions;
-using UnifiedInference.Core;
 using UnifiedInference.Providers.HuggingFace;
 using UnifiedInference.Providers.Ollama;
 using UnifiedInference.Providers.OpenAI;

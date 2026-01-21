@@ -1,6 +1,5 @@
 using UnifiedInference.Core;
 using UnifiedInference.Abstractions;
-using Xunit;
 
 public class MappingTests
 {
