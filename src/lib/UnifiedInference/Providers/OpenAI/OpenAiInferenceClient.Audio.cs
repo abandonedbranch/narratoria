@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.IO;
 using OpenAI.Audio;
 using UnifiedInference.Abstractions;
 
@@ -11,8 +12,8 @@ public sealed partial class OpenAiInferenceClient
         var audioClient = _client.GetAudioClient(request.ModelId);
         var text = request.TextInput ?? string.Empty;
         var (voice, options) = CreateSpeechOptions(request);
-        var response = await audioClient.GenerateSpeechFromTextAsync(text, voice, options, cancellationToken).ConfigureAwait(false);
-        dynamic value = response?.Value ?? response;
+        var clientResult = await audioClient.GenerateSpeechFromTextAsync(text, voice, options, cancellationToken).ConfigureAwait(false);
+        dynamic value = clientResult.Value;
 
         byte[]? audioBytes = null;
         try
@@ -46,8 +47,8 @@ public sealed partial class OpenAiInferenceClient
         using var stream = new MemoryStream(request.AudioInput ?? Array.Empty<byte>());
         var options = CreateTranscriptionOptions(request);
 
-        var response = await audioClient.TranscribeAudioAsync(stream, "audio.wav", options, cancellationToken).ConfigureAwait(false);
-        dynamic value = response?.Value ?? response;
+        var clientResult = await audioClient.TranscribeAudioAsync(stream, "audio.wav", options, cancellationToken).ConfigureAwait(false);
+        dynamic value = clientResult.Value;
 
         string? text = null;
         try
