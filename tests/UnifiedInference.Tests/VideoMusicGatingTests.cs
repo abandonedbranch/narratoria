@@ -6,6 +6,8 @@ using UnifiedInference.Providers.HuggingFace;
 using UnifiedInference.Providers.Ollama;
 using UnifiedInference.Providers.OpenAI;
 
+namespace UnifiedInference.Tests;
+
 public class VideoMusicGatingTests
 {
     private static UnifiedInferenceClient MakeClient(ICapabilitiesProvider? caps = null)

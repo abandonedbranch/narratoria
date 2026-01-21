@@ -1,6 +1,8 @@
 using UnifiedInference.Core;
 using UnifiedInference.Abstractions;
 
+namespace UnifiedInference.Tests;
+
 public class MappingTests
 {
     [Fact]

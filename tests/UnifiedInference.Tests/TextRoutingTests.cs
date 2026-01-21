@@ -3,6 +3,8 @@ using OpenAI;
 using UnifiedInference.Abstractions;
 using UnifiedInference.Factory;
 
+namespace UnifiedInference.Tests;
+
 public class TextRoutingTests
 {
     [Fact]
