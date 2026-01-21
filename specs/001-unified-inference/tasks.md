@@ -123,12 +123,12 @@ description: "Task list for UnifiedInference implementation"
 
 **Purpose**: Hardening, docs, and packaging.
 
-- [ ] T038 [P] Update mapping documentation in specs/001-unified-inference/contracts/mapping.md
-- [ ] T039 Validate quickstart steps and build output `inference.dll`
-- [ ] T040 Performance and memory pass for large media payloads
-- [ ] T041 Security review for HTTP calls (timeouts, retries, headers)
-- [ ] T042 [P] Add minimal unit tests for core mapping/capabilities in tests/UnifiedInference.Tests/Unit/
-- [ ] T043 Final README update under specs/001-unified-inference/quickstart.md (examples per provider)
+- [X] T038 [P] Update mapping documentation in specs/001-unified-inference/contracts/mapping.md
+- [X] T039 Validate quickstart steps and build output `inference.dll`
+- [X] T040 Performance and memory pass for large media payloads
+- [X] T041 Security review for HTTP calls (timeouts, retries, headers)
+- [X] T042 [P] Add minimal unit tests for core mapping/capabilities in tests/UnifiedInference.Tests/Unit/
+- [X] T043 Final README update under specs/001-unified-inference/quickstart.md (examples per provider)
 
 ---
 

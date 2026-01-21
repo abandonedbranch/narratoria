@@ -26,8 +26,13 @@ public sealed partial class HuggingFaceInferenceClient
         {
             Content = JsonContent.Create(payload)
         };
+        var token = GetAuthToken(request.Settings);
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            httpReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
 
-        using var resp = await _http.SendAsync(httpReq, cancellationToken).ConfigureAwait(false);
+        using var resp = await _http.SendAsync(httpReq, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         resp.EnsureSuccessStatusCode();
 
         var contentType = resp.Content.Headers.ContentType?.MediaType ?? string.Empty;
@@ -41,6 +46,15 @@ public sealed partial class HuggingFaceInferenceClient
         var text = await resp.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         var bytesFromJson = TryParseImageBytes(text);
         return new ImageResponse(bytesFromJson, null, new { url });
+    }
+
+    private static string? GetAuthToken(GenerationSettings s)
+    {
+        if (s.ProviderOverrides is JsonObject map && map.TryGetPropertyValue("hf_token", out var node))
+        {
+            return node?.ToString();
+        }
+        return null;
     }
 
     private static byte[]? TryParseImageBytes(string json)

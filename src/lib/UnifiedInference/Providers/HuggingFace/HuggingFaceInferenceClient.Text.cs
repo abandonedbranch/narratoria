@@ -31,6 +31,11 @@ public sealed partial class HuggingFaceInferenceClient
         {
             Content = JsonContent.Create(payload)
         };
+        var token = GetAuthToken(request.Settings);
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            httpReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
 
         using var resp = await _http.SendAsync(httpReq, cancellationToken).ConfigureAwait(false);
         resp.EnsureSuccessStatusCode();
