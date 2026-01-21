@@ -15,7 +15,7 @@ public class MappingTests
         Assert.Equal(128, d["max_tokens"]);
         Assert.Equal(0.1, d["presence_penalty"]);
         Assert.Equal(0.2, d["frequency_penalty"]);
-        Assert.Contains("END", (System.Collections.Generic.IEnumerable<string>)d["stop"]);
+        Assert.Contains("END", (IEnumerable<string>)d["stop"]);
         Assert.False(d.ContainsKey("top_k"));
     }
 
@@ -28,7 +28,7 @@ public class MappingTests
         Assert.Equal(0.8, d["top_p"]);
         Assert.Equal(50, d["top_k"]);
         Assert.Equal(64, d["num_predict"]);
-        Assert.Contains("\n", (System.Collections.Generic.IEnumerable<string>)d["stop"]);
+        Assert.Contains("\n", (IEnumerable<string>)d["stop"]);
     }
 
     [Fact]
@@ -40,6 +40,6 @@ public class MappingTests
         Assert.Equal(0.95, d["top_p"]);
         Assert.Equal(20, d["top_k"]);
         Assert.Equal(200, d["max_new_tokens"]);
-        Assert.Contains("STOP", (System.Collections.Generic.IEnumerable<string>)d["stop"]);
+        Assert.Contains("STOP", (IEnumerable<string>)d["stop"]);
     }
 }
