@@ -6,16 +6,10 @@ using UnifiedInference.Core;
 
 namespace UnifiedInference.Providers.Ollama;
 
-public sealed class OllamaInferenceClient
+public sealed class OllamaInferenceClient(HttpClient http, string baseUrl)
 {
-    private readonly HttpClient _http;
-    private readonly Uri _baseUri;
-
-    public OllamaInferenceClient(HttpClient http, string baseUrl)
-    {
-        _http = http;
-        _baseUri = new Uri(baseUrl, UriKind.Absolute);
-    }
+    private readonly HttpClient _http = http;
+    private readonly Uri _baseUri = new Uri(baseUrl, UriKind.Absolute);
 
     // POST {base}/api/generate { model, prompt, stream=false, options:{...} }
     public async Task<TextResponse> GenerateTextAsync(TextRequest request, CancellationToken cancellationToken)

@@ -6,14 +6,9 @@ using UnifiedInference.Core;
 
 namespace UnifiedInference.Providers.HuggingFace;
 
-public sealed partial class HuggingFaceInferenceClient
+public sealed partial class HuggingFaceInferenceClient(HttpClient http)
 {
-    private readonly HttpClient _http;
-
-    public HuggingFaceInferenceClient(HttpClient http)
-    {
-        _http = http;
-    }
+    private readonly HttpClient _http = http;
 
     // Generic model endpoint: POST https://api-inference.huggingface.co/models/{modelId}
     public async Task<TextResponse> GenerateTextAsync(TextRequest request, CancellationToken cancellationToken)

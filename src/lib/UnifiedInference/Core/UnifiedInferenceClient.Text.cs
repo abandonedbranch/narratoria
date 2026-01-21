@@ -5,24 +5,16 @@ using UnifiedInference.Providers.OpenAI;
 
 namespace UnifiedInference.Core;
 
-public sealed partial class UnifiedInferenceClient : IUnifiedInferenceClient
+public sealed partial class UnifiedInferenceClient(
+    OpenAiInferenceClient openAi,
+    OllamaInferenceClient ollama,
+    HuggingFaceInferenceClient huggingFace,
+    ICapabilitiesProvider? capabilities = null) : IUnifiedInferenceClient
 {
-    private readonly OpenAiInferenceClient _openAi;
-    private readonly OllamaInferenceClient _ollama;
-    private readonly HuggingFaceInferenceClient _huggingFace;
-    private readonly ICapabilitiesProvider _caps;
-
-    public UnifiedInferenceClient(
-        OpenAiInferenceClient openAi,
-        OllamaInferenceClient ollama,
-        HuggingFaceInferenceClient huggingFace,
-        ICapabilitiesProvider? capabilities = null)
-    {
-        _openAi = openAi;
-        _ollama = ollama;
-        _huggingFace = huggingFace;
-        _caps = capabilities ?? new DefaultCapabilitiesProvider();
-    }
+    private readonly OpenAiInferenceClient _openAi = openAi;
+    private readonly OllamaInferenceClient _ollama = ollama;
+    private readonly HuggingFaceInferenceClient _huggingFace = huggingFace;
+    private readonly ICapabilitiesProvider _caps = capabilities ?? new DefaultCapabilitiesProvider();
 
     public async Task<TextResponse> GenerateTextAsync(TextRequest request, CancellationToken cancellationToken = default)
     {

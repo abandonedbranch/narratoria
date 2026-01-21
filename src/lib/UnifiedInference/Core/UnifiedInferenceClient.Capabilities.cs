@@ -10,21 +10,14 @@ public interface ICapabilitiesProvider
     Task<ModelCapabilities> GetAsync(InferenceProvider provider, string modelId, CancellationToken cancellationToken);
 }
 
-public sealed class DefaultCapabilitiesProvider : ICapabilitiesProvider
+public sealed class DefaultCapabilitiesProvider(
+    OpenAiCapabilities? openAi = null,
+    OllamaCapabilities? ollama = null,
+    HuggingFaceCapabilities? huggingFace = null) : ICapabilitiesProvider
 {
-    private readonly OpenAiCapabilities _openAi;
-    private readonly OllamaCapabilities _ollama;
-    private readonly HuggingFaceCapabilities _huggingFace;
-
-    public DefaultCapabilitiesProvider(
-        OpenAiCapabilities? openAi = null,
-        OllamaCapabilities? ollama = null,
-        HuggingFaceCapabilities? huggingFace = null)
-    {
-        _openAi = openAi ?? new OpenAiCapabilities();
-        _ollama = ollama ?? new OllamaCapabilities();
-        _huggingFace = huggingFace ?? new HuggingFaceCapabilities();
-    }
+    private readonly OpenAiCapabilities _openAi = openAi ?? new OpenAiCapabilities();
+    private readonly OllamaCapabilities _ollama = ollama ?? new OllamaCapabilities();
+    private readonly HuggingFaceCapabilities _huggingFace = huggingFace ?? new HuggingFaceCapabilities();
 
     public Task<ModelCapabilities> GetAsync(InferenceProvider provider, string modelId, CancellationToken cancellationToken) =>
         provider switch

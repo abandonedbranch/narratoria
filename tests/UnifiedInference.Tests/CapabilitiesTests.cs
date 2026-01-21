@@ -46,13 +46,9 @@ public class CapabilitiesTests
         await Assert.ThrowsAsync<NotSupportedException>(() => client.GenerateTextAsync(req));
     }
 
-    private sealed class StubCapabilities : ICapabilitiesProvider
+    private sealed class StubCapabilities(ModelCapabilities result) : ICapabilitiesProvider
     {
-        private readonly ModelCapabilities _result;
-        public StubCapabilities(ModelCapabilities result)
-        {
-            _result = result;
-        }
+        private readonly ModelCapabilities _result = result;
 
         public Task<ModelCapabilities> GetAsync(InferenceProvider provider, string modelId, CancellationToken cancellationToken)
         {

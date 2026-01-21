@@ -4,14 +4,9 @@ using UnifiedInference.Abstractions;
 
 namespace UnifiedInference.Providers.OpenAI;
 
-public sealed partial class OpenAiInferenceClient
+public sealed partial class OpenAiInferenceClient(OpenAIClient client)
 {
-    private readonly OpenAIClient _client;
-
-    public OpenAiInferenceClient(OpenAIClient client)
-    {
-        _client = client;
-    }
+    private readonly OpenAIClient _client = client;
 
     public async Task<TextResponse> GenerateTextAsync(TextRequest request, CancellationToken cancellationToken)
     {
