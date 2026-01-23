@@ -2,30 +2,34 @@
 
 A work in progress app for an AI-backed narrative driven storyteller and game master.
 
-## UnifiedInference Library (feature specs)
+## UnifiedInference Library (HF-only)
 
-This repo includes a provider-agnostic .NET library under src/lib/UnifiedInference that unifies inference across OpenAI, Ollama, and Hugging Face.
+This repo now focuses solely on Hugging Face via the tryAGI/HuggingFace client (v0.4.0). The library lives at src/lib/UnifiedInference and exposes a unified surface for text and image generation, with gated hooks for audio/video/music that default to NotSupported.
 
 - Quickstart and examples: [specs/001-unified-inference/quickstart.md](specs/001-unified-inference/quickstart.md)
 - Contracts and mapping: [specs/001-unified-inference/contracts/](specs/001-unified-inference/contracts)
 
-Basic usage sketch:
+Basic usage sketch (text):
 
 ```csharp
-var client = UnifiedInference.Factory.InferenceClientFactory.Create(
-	openAiClient: new OpenAI.OpenAIClient("api-key"),
-	ollamaHttp: new HttpClient(),
-	ollamaBaseUrl: "http://localhost:11434",
-	huggingFaceHttp: new HttpClient()
+using UnifiedInference;
+using UnifiedInference.Abstractions;
+using UnifiedInference.Factory;
+
+var http = new HttpClient();
+var client = InferenceClientFactory.Create(
+    apiKey: Environment.GetEnvironmentVariable("HF_TOKEN")!,
+    httpClient: http
 );
 
 var text = await client.GenerateTextAsync(
-	new UnifiedInference.Abstractions.TextRequest(
-		UnifiedInference.Abstractions.InferenceProvider.OpenAI,
-		"gpt-4o-mini",
-		"Hello world",
-		new UnifiedInference.Abstractions.GenerationSettings(Temperature: 0.7)
-	)
+    new TextRequest
+    {
+        ModelId = "mistralai/Mistral-7B-Instruct",
+        Prompt = "Hello world",
+        Settings = new GenerationSettings { Temperature = 0.7f, MaxNewTokens = 128 }
+    },
+    CancellationToken.None
 );
 Console.WriteLine(text.Text);
 ```

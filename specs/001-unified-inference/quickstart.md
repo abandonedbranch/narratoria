@@ -46,34 +46,31 @@ tests/
 ## HF Client Setup
 
 ```csharp
-using TryAGI.HuggingFace;
+using UnifiedInference;
+using UnifiedInference.Abstractions;
+using UnifiedInference.Factory;
 
 var http = new HttpClient();
-// HF_TOKEN must be a personal/org token with inference access (set env var HF_TOKEN)
-var hf = new HuggingFaceClient(new HuggingFaceSettings
-{
-    ApiKey = Environment.GetEnvironmentVariable("HF_TOKEN")!,
-    BaseUrl = "https://api-inference.huggingface.co/models"
-});
-
-// Unified client wraps tryAGI/HuggingFace; only HF provider is exposed
-var client = new UnifiedInferenceClient(hf, http);
+var client = InferenceClientFactory.Create(
+  apiKey: Environment.GetEnvironmentVariable("HF_TOKEN")!,
+  httpClient: http
+);
 ```
 
 ## Text Generation
 
 ```csharp
 var caps = await client.GetCapabilitiesAsync("mistralai/Mistral-7B-Instruct", ct);
-if (!caps.supportsText) throw new NotSupportedException();
+if (!caps.SupportsText) throw new NotSupportedException();
 
 var text = await client.GenerateTextAsync(
-    new TextRequest(
-        modelId: "mistralai/Mistral-7B-Instruct",
-        prompt: "Give me three bullet facts about the Pacific Ocean",
-        stream: false,
-        settings: new GenerationSettings { temperature = 0.7, top_p = 0.9, max_new_tokens = 256 }
-    ),
-    ct
+  new TextRequest
+  {
+    ModelId = "mistralai/Mistral-7B-Instruct",
+    Prompt = "Give me three bullet facts about the Pacific Ocean",
+    Settings = new GenerationSettings { Temperature = 0.7f, TopP = 0.9f, MaxNewTokens = 256 }
+  },
+  ct
 );
 Console.WriteLine(text.Text);
 ```
@@ -82,18 +79,19 @@ Console.WriteLine(text.Text);
 
 ```csharp
 var imgCaps = await client.GetCapabilitiesAsync("stabilityai/stable-diffusion-2", ct);
-if (!imgCaps.supportsImage) throw new NotSupportedException();
+if (!imgCaps.SupportsImage) throw new NotSupportedException();
 
 var img = await client.GenerateImageAsync(
-    new ImageRequest(
-        modelId: "stabilityai/stable-diffusion-2",
-        prompt: "a watercolor fox in a forest",
-        negativePrompt: "blurry",
-        height: 768,
-        width: 768,
-        settings: new GenerationSettings { guidance_scale = 7.5f, num_inference_steps = 30 }
-    ),
-    ct
+  new ImageRequest
+  {
+    ModelId = "stabilityai/stable-diffusion-2",
+    Prompt = "a watercolor fox in a forest",
+    NegativePrompt = "blurry",
+    Height = 768,
+    Width = 768,
+    Settings = new GenerationSettings { GuidanceScale = 7.5f, NumInferenceSteps = 30 }
+  },
+  ct
 );
 File.WriteAllBytes("out-hf.png", img.Bytes!);
 ```

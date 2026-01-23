@@ -1,24 +1,30 @@
-# Mapping Rules: UnifiedInference
+# Mapping Rules: UnifiedInference (HF-Only)
 
-This document summarizes how unified `GenerationSettings` map to provider-specific options.
+Mapping aligns `GenerationSettings` with Hugging Face Inference parameters. Unsupported settings are dropped unless explicitly allowed by model capabilities.
 
-## Text Mapping
-- OpenAI: `temperature`, `top_p`, `max_tokens`, `presence_penalty`, `frequency_penalty`, `stop` → mapped directly. `top_k`/`seed` ignored.
-- Ollama: `temperature`, `top_p`, `top_k`, `num_predict` (from `max_tokens`), `stop` → mapped. Penalties ignored.
-- Hugging Face: `temperature`, `top_p`, `top_k`, `max_new_tokens` (from `max_tokens`), `stop` → mapped. Penalties ignored.
+## Text Mapping (HF)
+- `temperature` → `temperature`
+- `top_p` → `top_p`
+- `top_k` → `top_k`
+- `max_new_tokens` → `max_new_tokens`
+- `do_sample` → `do_sample`
+- `repetition_penalty` → `repetition_penalty`
+- `return_full_text` → `return_full_text`
+- `stop_sequences` → `stop`
+- `seed` → `seed` (only when pipeline supports it)
 
-See implementation in [SettingsMapper.Text.cs](../../src/lib/UnifiedInference/Core/SettingsMapper.Text.cs).
+## Image Mapping (HF Diffusion)
+- `guidance_scale` → `guidance_scale`
+- `num_inference_steps` → `num_inference_steps`
+- `height`/`width` → `height`/`width`
+- `scheduler` → `scheduler`
+- `negative_prompt` (request-level or setting) → `negative_prompt`
+- `seed` → `seed` when supported
 
-## Media Mapping
-Image/Audio/Video mapping currently minimal and conservative; providers vary widely.
+## Options
+- `use_cache` and `wait_for_model` flow into `options`. `wait_for_model` defaults to `true` on retries for 503/cold paths.
+- `ProviderOverrides` merges opaque keys into `parameters` unless a mapped key already exists. Special keys:
+	- `hf_token`: overrides Authorization bearer token
+	- `header:<Name>`: adds custom HTTP header
 
-- Image (OpenAI): `ImageGenerationOptions` supports `Size` (enum), response formats. We avoid strict enums and default to provider defaults for stability.
-- Image (Hugging Face): `parameters` passed as generic JSON via `SettingsMapperMedia.ToImageOptions()` (currently placeholder). Extend as models require.
-- Audio TTS (OpenAI): `SpeechGenerationOptions` and `GeneratedSpeechVoice` used; select a voice by name where available.
-- Audio STT (OpenAI): `AudioTranscriptionOptions.Language` optionally set via initializer to honor init-only.
-- Video: Best-effort/optional; no mapping implemented.
-
-See stubs in [SettingsMapper.Media.cs](../../src/lib/UnifiedInference/Core/SettingsMapper.Media.cs) for extension points.
-
-## Overrides
-Per-provider advanced options can be passed via `GenerationSettings.ProviderOverrides` (opaque JSON object). Document specific keys as needed (e.g., `hf_base_url`).
+See implementation in [SettingsMapper.Text.cs](../../src/lib/UnifiedInference/Core/SettingsMapper.Text.cs) and [SettingsMapper.Media.cs](../../src/lib/UnifiedInference/Core/SettingsMapper.Media.cs).

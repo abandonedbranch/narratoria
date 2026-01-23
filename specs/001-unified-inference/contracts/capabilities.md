@@ -19,3 +19,4 @@
 - Always call `GetCapabilitiesAsync(modelId)` before invoking a modality.
 - Treat `gated=true` or `inference_status != loaded` as a hard gate unless overrides explicitly opt in.
 - When settings are unsupported, omit them or expect `NotSupportedException`.
+- If a model is gated/cold/unsupported, fall back to another model whose capabilities allow the requested modality and settings before retrying.

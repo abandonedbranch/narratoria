@@ -1,23 +1,22 @@
-# Security & Resilience Guidance
+# Security & Resilience Guidance (HF-Only)
 
 ## HTTP Clients
-- Inject and reuse `HttpClient` instances; do not construct per request.
-- Set reasonable timeouts (e.g., 30–60s) at the client level externally; the library honors `CancellationToken`.
-- Configure retries/backoff using a handler (e.g., Polly) in the calling app; the library does not implement retries to avoid hidden behavior.
+- Inject and reuse a single `HttpClient`; avoid per-request instantiation.
+- Set timeouts at the client level (e.g., 30–60s) and flow `CancellationToken` through calls.
+- The library retries 503 responses with `Retry-After` honoring; additional retry policies (Polly) can be added by callers if desired.
 
 ## Authentication
-- Hugging Face: provide an access token via `GenerationSettings.ProviderOverrides["hf_token"]`; the client will set `Authorization: Bearer ...` on requests.
-- OpenAI: provide the API key when constructing `OpenAIClient`.
-- Ollama: typically local; secure remote deployments via network controls and any applicable auth.
+- Provide the HF token via constructor or `GenerationSettings.ProviderOverrides["hf_token"]`; requests use `Authorization: Bearer ...`.
+- Do not log tokens; prefer environment variables or secret stores.
 
 ## Data Handling
-- For images, we stream responses with `ResponseHeadersRead` to reduce buffering; callers should write to disk or process streams promptly for large payloads.
-- Be mindful of memory usage when materializing large media; consider streaming APIs in provider-specific clients when available.
+- Image responses may be binary; callers should stream to disk or process without large in-memory buffering when possible.
+- Capability lookups use the HF `/api/models/{id}` endpoint; respect HF rate limits and cache where possible.
 
 ## Headers & Content Types
-- The library sets JSON bodies; When using Hugging Face endpoints, binary image responses are supported.
-- Callers may add custom headers at the provided `HttpClient` level for advanced scenarios.
+- Payloads are JSON with `inputs`, `parameters`, and `options` fields; image responses can be binary or JSON wrappers.
+- Custom headers can be injected via `ProviderOverrides` keys prefixed with `header:`.
 
-## Secrets
-- Do not hardcode secrets; use environment variables or secure secret stores.
-- Avoid logging tokens or payload content.
+## Resilience
+- 503/cold starts: `wait_for_model` is set when retrying and `Retry-After` is honored to avoid hammering unloaded models.
+- Unsupported modalities/settings result in `NotSupportedException` before issuing network calls when capabilities disallow.
