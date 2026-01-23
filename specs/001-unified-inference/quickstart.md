@@ -1,8 +1,8 @@
-# Quickstart: UnifiedInference Client
+# Quickstart: UnifiedInference (Hugging Face Only)
 
 ## Goals
-- Create a .NET class library under `src/lib` named `UnifiedInference` with output assembly `inference.dll`.
-- Implement unified API for OpenAI, Ollama, and Hugging Face.
+- Deliver a .NET class library under `src/lib/UnifiedInference` (assembly `inference.dll`).
+- Use the tryAGI/HuggingFace client to call HF Inference API for text and image; gate other modalities unless HF exposes them.
 
 ## Scaffold
 
@@ -13,10 +13,7 @@ cd src/lib
 dotnet new classlib -n UnifiedInference
 ```
 
-Edit `src/lib/UnifiedInference.csproj`:
-
-- Set target framework to net10.0 (or net8.0 if net10.0 unavailable locally):
-- Enforce assembly name:
+Edit `src/lib/UnifiedInference.csproj` to enforce target and assembly name:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -26,6 +23,9 @@ Edit `src/lib/UnifiedInference.csproj`:
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="TryAGI.HuggingFace" Version="0.4.0" />
+  </ItemGroup>
 </Project>
 ```
 
@@ -36,62 +36,74 @@ src/lib/
   UnifiedInference.csproj
   Abstractions/
   Core/
-  Providers/OpenAI/
-  Providers/Ollama/
   Providers/HuggingFace/
   Factory/
+
+tests/
+  UnifiedInference.Tests/
 ```
 
-## DI Usage Example (Conceptual)
+## HF Client Setup
 
 ```csharp
-var openAiClient = new OpenAIClient("api-key");
-var httpClient = new HttpClient();
-IUnifiedInferenceClient client = new UnifiedInferenceClient(
-    openAiClient: openAiClient,
-    ollamaTransport: new OllamaHttpTransport(httpClient, baseUrl: "http://localhost:11434"),
-    huggingFaceHttp: httpClient
-);
+using TryAGI.HuggingFace;
 
-var caps = await client.GetCapabilitiesAsync(InferenceProvider.OpenAI, "gpt-4o", ct);
-if (caps.supportsText)
+var http = new HttpClient();
+// HF_TOKEN must be a personal/org token with inference access (set env var HF_TOKEN)
+var hf = new HuggingFaceClient(new HuggingFaceSettings
 {
-    var text = await client.GenerateTextAsync(
-        new TextRequest { provider = InferenceProvider.OpenAI, modelId = "gpt-4o", prompt = "Hello" },
-        new GenerationSettings { temperature = 0.7, top_p = 0.9, max_tokens = 256 },
-        ct
-    );
-}
+    ApiKey = Environment.GetEnvironmentVariable("HF_TOKEN")!,
+    BaseUrl = "https://api-inference.huggingface.co/models"
+});
+
+// Unified client wraps tryAGI/HuggingFace; only HF provider is exposed
+var client = new UnifiedInferenceClient(hf, http);
 ```
 
-## Images
+## Text Generation
 
 ```csharp
-// OpenAI image (DALL·E/gpt-4o images where supported)
-var imgReq = new ImageRequest(InferenceProvider.OpenAI, modelId: "dall-e-3", prompt: "a watercolor fox", size: "1024x1024", settings: new GenerationSettings());
-var imgRes = await client.GenerateImageAsync(imgReq, ct);
-File.WriteAllBytes("out-openai.png", imgRes.Bytes!);
+var caps = await client.GetCapabilitiesAsync("mistralai/Mistral-7B-Instruct", ct);
+if (!caps.supportsText) throw new NotSupportedException();
 
-// Hugging Face image (generic inference endpoint, diffusion models)
-var hfReq = new ImageRequest(InferenceProvider.HuggingFace, modelId: "stabilityai/stable-diffusion-2", prompt: "a watercolor fox", size: null, settings: new GenerationSettings());
-var hfRes = await client.GenerateImageAsync(hfReq, ct);
-File.WriteAllBytes("out-hf.png", hfRes.Bytes!);
+var text = await client.GenerateTextAsync(
+    new TextRequest(
+        modelId: "mistralai/Mistral-7B-Instruct",
+        prompt: "Give me three bullet facts about the Pacific Ocean",
+        stream: false,
+        settings: new GenerationSettings { temperature = 0.7, top_p = 0.9, max_new_tokens = 256 }
+    ),
+    ct
+);
+Console.WriteLine(text.Text);
 ```
 
-## Audio
+## Image Generation (Diffusion)
 
 ```csharp
-// Text-to-Speech (OpenAI Audio)
-var ttsReq = new AudioRequest(InferenceProvider.OpenAI, modelId: "gpt-4o-mini-tts", mode: AudioMode.TextToSpeech, textInput: "Hello there!", audioInput: null, voice: "Alloy", language: null, settings: new GenerationSettings());
-var ttsRes = await client.GenerateAudioTtsAsync(ttsReq, ct);
-File.WriteAllBytes("out-tts.mp3", ttsRes.AudioBytes!);
+var imgCaps = await client.GetCapabilitiesAsync("stabilityai/stable-diffusion-2", ct);
+if (!imgCaps.supportsImage) throw new NotSupportedException();
 
-// Speech-to-Text (OpenAI Whisper)
-var audioBytes = await File.ReadAllBytesAsync("sample.wav", ct);
-var sttReq = new AudioRequest(InferenceProvider.OpenAI, modelId: "whisper-1", mode: AudioMode.SpeechToText, textInput: null, audioInput: audioBytes, voice: null, language: "en", settings: new GenerationSettings());
-var sttRes = await client.GenerateAudioSttAsync(sttReq, ct);
-Console.WriteLine(sttRes.TranscriptText);
+var img = await client.GenerateImageAsync(
+    new ImageRequest(
+        modelId: "stabilityai/stable-diffusion-2",
+        prompt: "a watercolor fox in a forest",
+        negativePrompt: "blurry",
+        height: 768,
+        width: 768,
+        settings: new GenerationSettings { guidance_scale = 7.5f, num_inference_steps = 30 }
+    ),
+    ct
+);
+File.WriteAllBytes("out-hf.png", img.Bytes!);
 ```
+
+## Notes
+- Audio/Video/Music remain gated by capabilities; throw `NotSupportedException` until tryAGI/HuggingFace adds stable endpoints.
+- Use `ProviderOverrides` to pass `use_cache=false` or `wait_for_model=true` when needed.
+- Honor `CancellationToken` on all calls; retries on HF 503 should respect `Retry-After` with backoff.
+- Performance sanity targets: warm-path text p50 < 2s, warm-path image p50 < 15s; avoid extra retries beyond 503 backoff.
+- Configure HF_TOKEN in your environment before running (e.g., `export HF_TOKEN=...`).
 
 ## Build
 

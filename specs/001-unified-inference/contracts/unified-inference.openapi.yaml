@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Unified Inference (Library Contracts)
-  version: 0.1.0
-  description: Documentation of unified inference surface as if exposed via HTTP; actual deliverable is a .NET class library.
+  title: Unified Inference (HF-Only Library Contracts)
+  version: 0.2.0
+  description: HF-only unified inference surface (documented as HTTP for clarity). The real deliverable is a .NET class library wrapping the Hugging Face Inference API via tryAGI/HuggingFace.
 paths:
   /inference/text:
     post:
@@ -99,11 +99,6 @@ paths:
       summary: Query capabilities for provider+model
       parameters:
         - in: query
-          name: provider
-          schema:
-            $ref: '#/components/schemas/InferenceProvider'
-          required: true
-        - in: query
           name: modelId
           schema:
             type: string
@@ -117,9 +112,6 @@ paths:
                 $ref: '#/components/schemas/ModelCapabilities'
 components:
   schemas:
-    InferenceProvider:
-      type: string
-      enum: [OpenAI, Ollama, HuggingFace]
     GenerationSettings:
       type: object
       properties:
@@ -129,18 +121,36 @@ components:
           type: number
         top_k:
           type: integer
-        max_tokens:
+        max_new_tokens:
           type: integer
-        presence_penalty:
+        do_sample:
+          type: boolean
+        repetition_penalty:
           type: number
-        frequency_penalty:
-          type: number
+        return_full_text:
+          type: boolean
         stop_sequences:
           type: array
           items:
             type: string
         seed:
           type: integer
+        guidance_scale:
+          type: number
+        num_inference_steps:
+          type: integer
+        height:
+          type: integer
+        width:
+          type: integer
+        scheduler:
+          type: string
+        negative_prompt:
+          type: string
+        use_cache:
+          type: boolean
+        wait_for_model:
+          type: boolean
         provider_overrides:
           type: object
     ModelCapabilities:
@@ -160,13 +170,17 @@ components:
           type: boolean
         settingsSupport:
           type: object
+        pipeline_tag:
+          type: string
+        gated:
+          type: boolean
+        inference_status:
+          type: string
         notes:
           type: string
     TextRequest:
       type: object
       properties:
-        provider:
-          $ref: '#/components/schemas/InferenceProvider'
         modelId:
           type: string
         prompt:
@@ -185,8 +199,6 @@ components:
     ImageRequest:
       type: object
       properties:
-        provider:
-          $ref: '#/components/schemas/InferenceProvider'
         modelId:
           type: string
         prompt:
@@ -207,8 +219,6 @@ components:
     AudioTtsRequest:
       type: object
       properties:
-        provider:
-          $ref: '#/components/schemas/InferenceProvider'
         modelId:
           type: string
         text:
@@ -220,8 +230,6 @@ components:
     AudioSttRequest:
       type: object
       properties:
-        provider:
-          $ref: '#/components/schemas/InferenceProvider'
         modelId:
           type: string
         audioBase64:
@@ -242,8 +250,6 @@ components:
     VideoRequest:
       type: object
       properties:
-        provider:
-          $ref: '#/components/schemas/InferenceProvider'
         modelId:
           type: string
         prompt:

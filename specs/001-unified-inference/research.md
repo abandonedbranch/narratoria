@@ -1,33 +1,34 @@
-# Phase 0 Research: UnifiedInference Client
+# Phase 0 Research: UnifiedInference HF-Only
 
 ## Decisions
 
-- OpenAI Access: Use the official OpenAI .NET SDK (wrap SDK types directly; expose `NativeClient`).
-- Ollama Access: Prefer official/de-facto .NET client; if absent, implement HTTP API via `HttpClient` with transport abstraction; expose native transport/client.
-- Hugging Face Access: Use `HttpClient` for generic Inference APIs and configurable Inference Endpoints; support any `model id` and task-dependent responses.
-- Capability Discovery: Per provider+model; unknown capabilities default disabled; callers use discovery to avoid exceptions.
-- Error Handling: Throw `NotSupportedException` for unsupported modalities/settings; propagate `HttpRequestException`/SDK exceptions with stable contextual info.
-- Output Assembly: Project file may be `UnifiedInference.csproj`; enforce `<AssemblyName>inference</AssemblyName>` so artifact is `inference.dll`.
+- Scope: Restrict to Hugging Face only; remove OpenAI and Ollama paths from spec and capability rules.
+- Client Library: Adopt tryAGI/HuggingFace client (NuGet ID/version to be pinned; assumed to wrap HF Inference API). Use `HttpClient` fallback only if a needed modality API is missing.
+- Endpoint Usage: Use the universal POST `https://api-inference.huggingface.co/models/{modelId}` with bearer token; allow base URL override for private endpoints.
+- Capability Discovery: Pull from `https://huggingface.co/api/models` (pipeline_tag, gated, inference status) and cache; treat gated/unloaded models as unsupported unless allow-listed.
+- Settings Mapping: Map `GenerationSettings` to HF parameters (`temperature`, `top_p`, `top_k`, `max_new_tokens`, `do_sample`, `repetition_penalty`, `return_full_text`, `stop`, `seed` when supported). For diffusion, map `guidance_scale`, `num_inference_steps`, `height/width`, `scheduler`, and optional `negative_prompt`.
+- Resilience: Add retry/backoff on 503 with `wait_for_model=true` and honor `Retry-After`; allow `use_cache=false` override to force fresh generations.
+- Modalities: Support text and image now; audio/video remain best-effort if tryAGI/HuggingFace exposes them, otherwise mark unsupported and throw `NotSupportedException` per constitution.
+- Performance Goal: Align with HF warm-path expectations (text p50 < 2s, image p50 < 15s) and avoid unnecessary retries; treat rate-limit errors as caller-visible.
 
 ## Rationale
 
-- Official OpenAI SDK ensures forward compatibility and reduces maintenance risk; exposing `NativeClient` enables advanced usage without breaking unified surface.
-- Ollama’s HTTP API is stable and well-documented; wrapping it avoids dependency on unofficial libraries if no de-facto standard exists.
-- Hugging Face lacks an official .NET SDK; `HttpClient` offers full control for generic endpoints and Inference Endpoints.
-- Capability-first integration avoids runtime surprises, aligning with conservative defaults and small/stable interfaces.
-- Clear error semantics simplify caller logic: capabilities guide behavior; exceptions only for unsupported or transport failures.
-- Assembly naming constraint (`inference.dll`) meets downstream packaging/runtime expectations.
+- HF-only simplifies surface area and matches team direction while leveraging the broad HF model catalog and billing.
+- tryAGI/HuggingFace provides typed helpers over the Inference API, reducing manual payload shaping; retaining `HttpClient` fallback avoids lock-in if gaps arise.
+- Using `/api/models` metadata enables safer capability gating (pipeline tags, gating, status) than name heuristics.
+- Expanded settings mapping brings parity with HF pipelines and avoids underpowered generations versus HF UI defaults.
+- Explicit resilience for cold starts and cache control matches HF guidance and prevents opaque failures.
 
 ## Alternatives Considered
 
-- Re-implementing OpenAI endpoints via `HttpClient`: rejected due to requirement to use official SDK and high maintenance.
-- Mandatory video/music support at GA: rejected; clarified as best-effort (video) and hooks-only (music).
-- Provider-wide capability defaults: rejected; per-model discovery is more precise and aligns with conservative defaults.
+- Keep OpenAI/Ollama for “just in case”: rejected to reduce surface and maintenance; can be reintroduced via new spec if needed.
+- Only raw `HttpClient` with custom JSON: rejected; tryAGI/HuggingFace likely covers retries/serialization; fallback retained for gaps.
+- Full multimodal (video/audio) commitment: rejected until tryAGI/HuggingFace confirms stable endpoints; mark unsupported to stay deterministic.
 
 ## Best Practices
 
-- DI-Friendly: constructors accept preconfigured `OpenAIClient`, `HttpClient`, and/or Ollama native/transport.
-- Cancellation: honor `CancellationToken` in all public methods; propagate cancellation exceptions.
-- Immutability: prefer `record` types for requests/responses/settings; treat `ProviderOverrides` as opaque immutable map.
-- Mapping: ignore or error on unsupported settings per provider; document mapping rules.
-- Streaming: where supported (text/audio), expose stream-friendly methods in provider-specific classes, while keeping unified surface minimal.
+- DI-Friendly: accept preconfigured `HttpClient`/tryAGI client; avoid static singletons.
+- Cancellation: honor `CancellationToken` across all calls and retries.
+- Immutability: prefer records/init-only for settings and responses; `ProviderOverrides` remains opaque.
+- Mapping: document ignored/unsupported settings; for unsupported modalities throw `NotSupportedException` early using capability checks.
+- Streaming: if tryAGI/HuggingFace exposes streaming, surface optional streaming APIs; otherwise return buffered responses.

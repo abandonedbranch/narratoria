@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2026-01-19
 
 ## Active Technologies
+- C# / .NET 10 (001-unified-inference)
+- N/A (request-scoped operations only) (001-unified-inference)
 
 - .NET 10 (TFM `net10.0`); if unavailable in toolchain locally, use `net8.0` during development and plan upgrade. (001-unified-inference)
 
@@ -22,6 +24,7 @@ tests/
 .NET 10 (TFM `net10.0`); if unavailable in toolchain locally, use `net8.0` during development and plan upgrade.: Follow standard conventions
 
 ## Recent Changes
+- 001-unified-inference: Added C# / .NET 10
 
 - 001-unified-inference: Added .NET 10 (TFM `net10.0`); if unavailable in toolchain locally, use `net8.0` during development and plan upgrade.
 
