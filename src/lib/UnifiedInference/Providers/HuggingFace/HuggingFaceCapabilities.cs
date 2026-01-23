@@ -9,19 +9,12 @@ using UnifiedInference.Core;
 
 namespace UnifiedInference.Providers.HuggingFace;
 
-public sealed class HuggingFaceCapabilities
+public sealed class HuggingFaceCapabilities(HttpClient httpClient, string? apiToken, string? metadataBaseUrl = null)
 {
-    private readonly HttpClient _httpClient;
-    private readonly string _metadataBaseUrl;
-    private readonly string? _apiToken;
+    private readonly HttpClient _httpClient = httpClient;
+    private readonly string _metadataBaseUrl = string.IsNullOrWhiteSpace(metadataBaseUrl) ? "https://huggingface.co/api" : metadataBaseUrl.TrimEnd('/');
+    private readonly string? _apiToken = apiToken;
     private readonly ConcurrentDictionary<string, ModelCapabilities> _cache = new(StringComparer.OrdinalIgnoreCase);
-
-    public HuggingFaceCapabilities(HttpClient httpClient, string? apiToken, string? metadataBaseUrl = null)
-    {
-        _httpClient = httpClient;
-        _apiToken = apiToken;
-        _metadataBaseUrl = string.IsNullOrWhiteSpace(metadataBaseUrl) ? "https://huggingface.co/api" : metadataBaseUrl.TrimEnd('/');
-    }
 
     public Task<ModelCapabilities> GetCachedOrFetchAsync(string modelId, CancellationToken cancellationToken)
     {

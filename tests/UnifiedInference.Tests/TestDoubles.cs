@@ -6,16 +6,11 @@ using System.Threading.Tasks;
 
 namespace UnifiedInference.Tests;
 
-public sealed class QueuedHandler : HttpMessageHandler
+public sealed class QueuedHandler(IEnumerable<HttpResponseMessage> responses) : HttpMessageHandler
 {
-    private readonly Queue<HttpResponseMessage> _responses;
+    private readonly Queue<HttpResponseMessage> _responses = new Queue<HttpResponseMessage>(responses);
     public List<HttpRequestMessage> Requests { get; } = new();
     public List<string?> Bodies { get; } = new();
-
-    public QueuedHandler(IEnumerable<HttpResponseMessage> responses)
-    {
-        _responses = new Queue<HttpResponseMessage>(responses);
-    }
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -37,15 +32,10 @@ public sealed class QueuedHandler : HttpMessageHandler
     }
 }
 
-public sealed class DelegateHandler : HttpMessageHandler
+public sealed class DelegateHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
 {
-    private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
+    private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder = responder;
     public List<HttpRequestMessage> Requests { get; } = new();
-
-    public DelegateHandler(Func<HttpRequestMessage, HttpResponseMessage> responder)
-    {
-        _responder = responder;
-    }
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
