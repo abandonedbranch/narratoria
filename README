@@ -22,14 +22,6 @@ var client = InferenceClientFactory.Create(
     httpClient: http
 );
 
-var text = await client.GenerateTextAsync(
-    new TextRequest
-    {
-        ModelId = "mistralai/Mistral-7B-Instruct",
-        Prompt = "Hello world",
-        Settings = new GenerationSettings { Temperature = 0.7f, MaxNewTokens = 128 }
-    },
-    CancellationToken.None
-);
-Console.WriteLine(text.Text);
-```
+## Branch: narrator-skills 🧑‍💻
+
+This branch explores implementing agent skills rather than a pipeline. The focus shifts from a pipeline-based architecture to a skills-based approach where agents can utilize specific capabilities to accomplish tasks.
