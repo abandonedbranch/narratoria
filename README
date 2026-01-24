@@ -2,26 +2,6 @@
 
 A work in progress app for an AI-backed narrative driven storyteller and game master.
 
-## UnifiedInference Library (HF-only)
+## Dart+Flutter Rich Desktop App with Agent Skills
 
-This repo now focuses solely on Hugging Face via the tryAGI/HuggingFace client (v0.4.0). The library lives at src/lib/UnifiedInference and exposes a unified surface for text and image generation, with gated hooks for audio/video/music that default to NotSupported.
-
-- Quickstart and examples: [specs/001-unified-inference/quickstart.md](specs/001-unified-inference/quickstart.md)
-- Contracts and mapping: [specs/001-unified-inference/contracts/](specs/001-unified-inference/contracts)
-
-Basic usage sketch (text):
-
-```csharp
-using UnifiedInference;
-using UnifiedInference.Abstractions;
-using UnifiedInference.Factory;
-
-var http = new HttpClient();
-var client = InferenceClientFactory.Create(
-    apiKey: Environment.GetEnvironmentVariable("HF_TOKEN")!,
-    httpClient: http
-);
-
-## Branch: narrator-skills 🧑‍💻
-
-This branch explores implementing agent skills rather than a pipeline. The focus shifts from a pipeline-based architecture to a skills-based approach where agents can utilize specific capabilities to accomplish tasks.
+This branch explores using Dart and Flutter to build a crossplatform rich desktop app that leverages agents with skills and CLI tools to execute workflows for the narrator AI.
