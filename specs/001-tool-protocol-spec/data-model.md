@@ -1,6 +1,6 @@
 # Data Model
 
-## Entities
+## Protocol Event Entities
 
 ### EventEnvelope
 - **Fields:**
@@ -58,3 +58,57 @@
 
 - Event ordering is flexible; typical flow: `log` -> `asset`/`ui_event`/`state_patch` (any mix/any order) -> `done`.
 - Protocol-level completion requires `done` with `ok` plus process exit code 0; non-zero exit codes indicate protocol failure regardless of events.
+
+---
+
+## Player Interaction Entities
+
+### PlanJson
+- **Fields:**
+  - `requestId` (string, required): Unique identifier for plan execution.
+  - `narrative` (string, optional): Narrator text to display to player.
+  - `tools` (array, required): Array of ToolInvocation objects.
+  - `parallel` (boolean, optional, default false): Whether tools can run concurrently.
+- **Validation rules:** `requestId` non-empty string; `tools` non-empty array.
+- **Relationships:** Contains multiple ToolInvocation entities.
+
+### ToolInvocation
+- **Fields:**
+  - `toolId` (string, required): Unique identifier within this plan.
+  - `toolPath` (string, required): Filesystem path to tool executable.
+  - `input` (object, required): JSON object passed via stdin to tool.
+  - `dependencies` (array of string, optional): Array of `toolId` values that must complete first.
+- **Validation rules:** `toolId` and `toolPath` non-empty strings; `input` must be JSON object.
+- **Behavioral rules:** Tool cannot execute until all dependencies complete with `done.ok: true`.
+
+### PlayerPrompt
+- **Fields:**
+  - `text` (string, required): Natural language input from player.
+  - `timestamp` (ISO-8601 string, required): When prompt was submitted.
+  - `sessionId` (string, required): Current game session identifier.
+- **Validation rules:** `text` non-empty string.
+- **Relationships:** Generates one PlanJson via narrator AI service.
+
+---
+
+## UI Component Entities
+
+### Asset (from protocol)
+- Already defined in protocol events section as AssetEvent payload
+- Used by UI Asset Gallery component for rendering
+
+### SessionState
+- **Fields:**
+  - `stateTree` (object, required): Current game state as nested JSON object.
+  - `patches` (array, optional): History of StatePatchEvent applications.
+- **Validation rules:** `stateTree` must be valid JSON object.
+- **Behavioral rules:** Merged incrementally via `state_patch` events; displayed in Narrative State Panel.
+
+### ToolExecutionStatus
+- **Fields:**
+  - `toolId` (string, required): From ToolInvocation.
+  - `status` (enum, required): `pending`, `running`, `completed`, `failed`.
+  - `events` (array, required): Collected protocol events from this tool.
+  - `exitCode` (integer, optional): Process exit code when completed/failed.
+- **Validation rules:** `status` in allowed set.
+- **Behavioral rules:** Displayed in Tool Execution Panel; status updates as events received.

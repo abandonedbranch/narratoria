@@ -1,0 +1,23 @@
+{
+  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  "narrative": "You reach for the torch on the wall and examine the mysterious door ahead.",
+  "tools": [
+    {
+      "toolId": "light1",
+      "toolPath": "./tools/torch-lighter",
+      "input": {
+        "action": "light_torch"
+      },
+      "dependencies": []
+    },
+    {
+      "toolId": "examine1",
+      "toolPath": "./tools/door-examiner",
+      "input": {
+        "target": "mysterious_door"
+      },
+      "dependencies": ["light1"]
+    }
+  ],
+  "parallel": false
+}

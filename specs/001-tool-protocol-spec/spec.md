@@ -5,19 +5,47 @@
 **Scope:** Defines the communication protocol between external tools and the Narratoria application.  
 **Version:** 0.0.1 (protocol envelope property `version`: "0")
 
+## Clarifications
+
+### Session 2026-01-24
+
+- Q: How should the Narrator AI Stub be implemented in the MVP? → A: In-process Dart function/class that returns hard-coded Plan JSON for known prompts
+- Q: What merge semantics should state_patch events use? → A: Deep merge (nested objects merged recursively; arrays replaced)
+- Q: Should independent tools continue when a sibling tool fails? → A: Continue automatically (independent tools proceed unless they also fail)
+- Q: Which ui_event types must the MVP implement? → A: narrative_choice only (display choice buttons/list from payload)
+- Q: Who creates asset files and determines paths? → A: Tools generate and write files independently; provide absolute paths in asset events
+
+---
+
+## Glossary
+
+- **Session State**: The runtime data model containing narrative state accumulated from `state_patch` events (e.g., `{"inventory": {"torch": {"lit": true}}}`)
+- **Narrative State Panel**: UI component displaying session state as expandable tree view with JSON inspector
+- **Tool Execution Panel**: UI component (widget) displaying active tool invocations with logs, progress, and completion status
+- **Tools View**: MainScreen navigation destination containing the Tool Execution Panel widget
+- **Narrator AI Stub**: Simplified in-process implementation that converts player prompts to Plan JSON using hard-coded mappings (not a test mock; intended for MVP functionality before LLM integration)
+- **Plan JSON**: Structured document produced by narrator AI describing which tools to execute, their inputs, dependencies, and execution strategy (parallel/sequential)
+- **Deep Merge**: State patch merge semantics where nested objects are merged recursively, arrays replaced entirely, and null values remove keys
+
 ---
 
 ## 1. Purpose
 
-This specification establishes a minimal, extensible, language-agnostic protocol for external tool processes communicating with the Narratoria runtime. Tools may be authored in any programming language and executed as independent OS processes. The protocol enables:
-- state updates
-- asset generation
-- UI event requests
-- structured errors
-- progress logs
-- streaming incremental output
+This specification establishes:
 
-This protocol ensures backward and forward compatibility between Narratoria and tools.
+1. **Tool Protocol**: A minimal, extensible, language-agnostic protocol for external tool processes communicating with the Narratoria runtime. Tools may be authored in any programming language and executed as independent OS processes. The protocol enables:
+   - state updates
+   - asset generation
+   - UI event requests
+   - structured errors
+   - progress logs
+   - streaming incremental output
+
+2. **Client UI Requirements**: Design patterns and UI components for the Narratoria Flutter client to execute tools and present results to players.
+
+3. **Player Interaction Flow**: The mechanism by which player input (natural language prompts) is converted into executable plans that invoke tools.
+
+This protocol ensures backward and forward compatibility between Narratoria and tools, while maintaining a testable, composable UI architecture.
 
 ---
 
@@ -98,8 +126,12 @@ Narratoria requirements:
 
 Rules:
 - `patch` MUST be a JSON object.
-- Narratoria MUST validate and merge this patch into session state using Narratoria-defined rules.
-- Tools SHOULD only express state changes and MUST NOT assume how they are applied.
+- Narratoria MUST merge this patch into session state using **deep merge** semantics:
+  - Nested objects are merged recursively (keys added/updated, not replaced entirely)
+  - Arrays are replaced entirely (not merged element-by-element)
+  - Null values remove keys from the state tree
+  - Example: existing state `{"a": {"b": 1, "c": 2}}` + patch `{"a": {"c": 3, "d": 4}}` → `{"a": {"b": 1, "c": 3, "d": 4}}`
+- Tools SHOULD only express state changes and MUST NOT assume implementation details beyond deep merge behavior.
 
 ### 4.3 asset Event
 
@@ -124,6 +156,8 @@ Rules:
 - `kind` SHOULD describe a broad category (e.g., "image", "audio", "video", "model").
 - `mediaType` MUST be a valid MIME type string.
 - `path` MUST refer to a file readable by Narratoria.
+- **Tools are responsible for creating and writing asset files** before emitting the asset event. Tools SHOULD use platform-standard temporary directories (e.g., `/tmp` on Unix, `%TEMP%` on Windows) or other writable locations.
+- `path` MUST be an absolute path or a path resolvable by Narratoria's current working directory.
 - `metadata` MAY include arbitrary details (width, height, framerate, camera data, etc.).
 
 Narratoria MUST:
@@ -153,7 +187,11 @@ Rules:
 
 Narratoria MUST:
 - Dispatch supported events to their handlers.
-- Gracefully degrade unsupported events via placeholder messages.
+- For MVP (Spec 001), the `narrative_choice` event MUST be supported:
+  - Payload format: `{"choices": ["string", "string", ...]}`
+  - Display as clickable buttons or list in Story View
+  - Player selection becomes next prompt
+- Gracefully degrade unsupported events via placeholder messages with event name and payload details.
 
 ### 4.5 error Event
 
@@ -245,13 +283,16 @@ Tools MAY ignore any fields they do not recognize.
 
 ## 7. File System Layout (Guidance Only)
 
-Tools MAY write assets to:
-- platform-standard application data directories, or
-- paths supplied by Narratoria at invocation time.
+Tools have full autonomy over asset file creation and storage. Tools MAY write assets to:
+- platform-standard temporary directories (e.g., `/tmp`, `%TEMP%`)
+- application data directories
+- any writable location accessible to the Narratoria process
 
-Tools MUST return correct absolute or relative paths in asset events.
+Tools MUST provide absolute paths (or paths resolvable from Narratoria's working directory) in asset events.
 
-Narratoria MUST NOT enforce a global schema for per-tool storage in Spec 001.
+Narrratoria MUST validate that asset files exist and are readable before registering them. Narratoria MAY copy or move assets to managed storage but MUST NOT require tools to use specific output directories in Spec 001.
+
+Future specifications may define managed asset directories or content streaming mechanisms.
 
 ---
 
@@ -284,12 +325,15 @@ A compliant minimal tool:
 ## 10. Non-Goals for Spec 001
 
 Spec 001 does NOT define:
-- UI rendering specifics
+- UI rendering specifics beyond the requirements in section 12 (widget implementation details remain implementation-specific)
 - Shader or 3D scene protocols
-- Tool discovery or installation
+- Tool discovery or installation mechanisms (tools paths must be known in advance)
+- Narrator AI implementation or LLM integration (Plan JSON generation is external)
 - Authentication or sandboxing
 - Threading, cancellation, or lifecycle semantics within tools
-- Schema of Narratoria internal state
+- Schema of Narratoria internal state (tools use opaque state_patch objects)
+- Network protocols for remote tool execution
+- Tool versioning or capability negotiation
 
 These will be defined in later specifications.
 
@@ -298,3 +342,249 @@ These will be defined in later specifications.
 ## 11. Versioning
 
 The protocol `version` string in the event envelope MUST remain "0" until Spec 002 changes it. Spec 001 establishes baseline compatibility. Future specs MUST commit to backwards compatibility unless a major version change is declared.
+
+---
+
+## 12. Client UI Requirements
+
+### 12.1 Design System
+
+Narratoria MUST use **Material Design 3** for its Flutter UI. This provides:
+- First-class Flutter support with extensive widget library
+- Cross-platform consistency (macOS, Windows, Linux)
+- Excellent testability via `flutter_test`
+- Mature theming and customization
+
+### 12.2 Core UI Components
+
+The Narratoria client MUST implement these components:
+
+#### Tool Execution Panel
+Displays active tool invocations with real-time progress:
+- Tool name and current status
+- Streaming log output (from `log` events)
+- Progress indicators for long-running operations
+- Error display (from `error` events)
+- Completion status (from `done` events)
+
+#### Asset Gallery
+Displays assets generated by tools (from `asset` events):
+- Image preview with metadata
+- Audio player controls
+- Video player controls
+- **Graceful degradation**: Placeholder cards for unsupported `mediaType` values showing asset details
+
+#### Narrative State Panel
+Displays current session state:
+- Expandable tree view of state objects
+- State changes highlighted (from `state_patch` events)
+- JSON inspector for debugging
+
+#### Player Input Field
+Natural language textarea for player prompts:
+- Multiline text input
+- Send button to submit prompt
+- Visual feedback during processing
+
+### 12.3 UI Layout
+
+```
+┌─────────────────────────────────────────────┐
+│  NavigationRail   │   Main Content Area     │
+│                   │                         │
+│  • Narrative      │  ┌──────────────────┐  │
+│  • Tools          │  │  Story View      │  │
+│  • Assets         │  │  (narrative text │  │
+│  • State          │  │   + assets)      │  │
+│                   │  └──────────────────┘  │
+│                   │                         │
+│                   │  ┌──────────────────┐  │
+│                   │  │  Player Input    │  │
+│                   │  │  [text field]    │  │
+│                   │  └──────────────────┘  │
+└─────────────────────────────────────────────┘
+```
+
+### 12.4 Theming
+
+The client MUST implement a dark-themed Material Design 3 scheme suitable for immersive storytelling:
+
+```dart
+ThemeData(
+  useMaterial3: true,
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: Colors.deepPurple,
+    brightness: Brightness.dark,
+  ),
+  typography: Typography.material2021(),
+)
+```
+
+---
+
+## 13. Player Interaction Flow
+
+### 13.1 Overview
+
+Players interact with Narratoria by submitting natural language prompts (e.g., "I light the torch" or "I examine the mysterious door"). The narrator AI converts these prompts into executable plans that invoke tools via the protocol defined in sections 2-11.
+
+### 13.2 Flow Diagram
+
+```
+┌──────────────┐
+│ Player types │
+│   prompt     │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Narrator AI  │ (external LLM/agent service)
+│ analyzes     │
+│   prompt     │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│  Plan JSON   │ {tools: [...], parallel: bool}
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Narratoria   │ executes tools per plan
+│  Runtime     │ collects events via protocol
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ UI updates   │ display results, assets, state
+│   (Material) │
+└──────────────┘
+```
+
+### 13.3 Plan JSON Schema
+
+The narrator AI MUST produce a **Plan JSON** document with this structure:
+
+```json
+{
+  "requestId": "<uuid>",
+  "narrative": "<string, optional narrator response>",
+  "tools": [
+    {
+      "toolId": "<string>",
+      "toolPath": "<filesystem-path-to-executable>",
+      "input": { ...arbitrary JSON... },
+      "dependencies": ["<toolId>", ...]
+    }
+  ],
+  "parallel": <boolean, default false>
+}
+```
+
+**Fields**:
+- `requestId`: Unique identifier for this plan execution
+- `narrative`: Optional narrative text to display before or during tool execution
+- `tools`: Array of tool invocation descriptors
+  - `toolId`: Unique ID for this tool within the plan (for dependency tracking)
+  - `toolPath`: Absolute or relative path to the tool executable
+  - `input`: JSON object passed to the tool via stdin (as described in section 6)
+  - `dependencies`: Array of `toolId` values that must complete before this tool runs
+- `parallel`: If true and dependencies allow, tools run concurrently; if false, tools run sequentially
+
+### 13.4 Plan Execution Rules
+
+Narratoria MUST execute plans according to these rules:
+
+1. **Dependency Resolution**: Tools with `dependencies` MUST NOT start until all listed dependencies complete with `done.ok: true`.
+
+2. **Parallel Execution**: If `parallel: true`, tools with no dependencies (or satisfied dependencies) MAY run concurrently.
+
+3. **Sequential Fallback**: If `parallel: false`, tools MUST run in array order, waiting for each to complete before starting the next.
+
+4. **Failure Handling**: If any tool emits `done.ok: false` or exits with non-zero code:
+   - Dependent tools MUST NOT execute (tools listing the failed tool in their `dependencies` array)
+   - Independent tools (no dependency on the failed tool) MUST continue execution automatically
+   - The plan continues until all executable tools complete or fail
+   - Narratoria MUST surface all errors in the UI with context
+
+5. **Event Aggregation**: Narratoria MUST collect all events from all tools in the plan and merge:
+   - `log` events → displayed in Tool Execution Panel
+   - `state_patch` events → merged into session state
+   - `asset` events → registered and displayed in Asset Gallery
+   - `ui_event` events → dispatched to UI handlers
+   - `error` events → displayed with context
+
+### 13.5 Narrator AI Interface (Non-Normative Guidance)
+
+While tool discovery/installation is a non-goal for Spec 001, the narrator AI service:
+- MAY be a separate process or remote service
+- MUST know available tool paths and their capabilities (out of scope for this spec)
+- SHOULD generate plans that respect tool contracts
+- MUST return Plan JSON in the format specified in section 13.3
+
+Future specifications will define tool discovery and narrator AI integration.
+
+---
+
+## 14. MVP Requirements
+
+To deliver a minimum viable product that demonstrates the protocol and player interaction flow, the Narratoria client MUST implement:
+
+### 14.1 Core Features (MUST)
+
+1. **Player Input**: Text field accepting natural language prompts
+2. **Narrator AI Stub**: In-process Dart service that converts prompts to Plan JSON using hard-coded mappings (e.g., "light torch" → torch-lighter tool invocation). This mock implementation can be replaced with actual LLM integration in future iterations without changing the PlanExecutor interface.
+3. **Tool Invocation**: Execute tools per Plan JSON using process launch and stdin/stdout pipes
+4. **Event Processing**: Parse NDJSON from tool stdout and dispatch to handlers
+5. **UI Event Support**: Implement `narrative_choice` handler (display choice buttons; other events degrade gracefully)
+6. **State Management**: Maintain session state, apply `state_patch` events using deep merge
+6. **Asset Registry**: Store asset metadata from `asset` events
+7. **UI Panels**: 
+   - Story View (narrative text + rendered assets)
+   - Tool Execution Panel (logs, progress)
+   - Asset Gallery (images, audio, video with graceful degradation)
+   - Narrative State Panel (JSON inspector)
+
+### 14.2 Example Tools (SHOULD)
+
+For MVP validation, provide at least two example tools:
+
+1. **torch-lighter**: Receives `{action: "light_torch"}`, emits:
+   - `log` event: "Lighting torch..."
+   - `state_patch` event: `{"inventory": {"torch": {"lit": true}}}`
+   - `asset` event: image of lit torch (PNG file)
+   - `done` event: `{"ok": true, "summary": "Torch lit."}`
+
+2. **door-examiner**: Receives `{target: "mysterious_door"}`, emits:
+   - `log` event: "Examining door..."
+   - `state_patch` event: `{"discovered": {"door_inscription": "Ancient runes"}}`
+   - `ui_event` event: `{"event": "narrative_choice", "payload": {"choices": ["Open", "Leave"]}}`
+   - `done` event: `{"ok": true, "summary": "Door examined."}`
+
+### 14.3 Sample Plan JSON
+
+For prompt "I light the torch and examine the door":
+
+```json
+{
+  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  "narrative": "You reach for the torch on the wall.",
+  "tools": [
+    {
+      "toolId": "light1",
+      "toolPath": "tools/torch-lighter",
+      "input": {"action": "light_torch"},
+      "dependencies": []
+    },
+    {
+      "toolId": "examine1",
+      "toolPath": "tools/door-examiner",
+      "input": {"target": "mysterious_door"},
+      "dependencies": ["light1"]
+    }
+  ],
+  "parallel": false
+}
+```
+
+This demonstrates sequential execution with dependency tracking. Tool specifications are defined in §14.2 above.
