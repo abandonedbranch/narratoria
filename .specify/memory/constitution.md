@@ -34,9 +34,9 @@ All Narratoria client logic—UI, state management, networking, agent orchestrat
 
 ### II. Protocol-Boundary Isolation
 
-Narratoria MUST NOT load untrusted code into its own process. All external tool interactions MUST occur through the defined Tool Protocol (Spec 001). Tools run as independent OS processes, communicate via structured NDJSON on stdout, and receive input via stdin or command-line arguments. The runtime remains stable even as tools evolve independently.
+All external tool interactions MUST occur through the defined Tool Protocol (Spec 001). Tools run as independent OS processes, communicate via structured NDJSON on stdout, and receive input via stdin or command-line arguments. The runtime remains stable even as tools evolve independently.
 
-**Rationale**: Process isolation provides safety, modularity, and long-term evolvability. Protocol boundaries enable tools to be authored in any language (Rust, Go, Python, etc.) without compromising the Dart runtime's integrity.
+**Rationale**: Tool Protocol provides predictability, modularity, and long-term evolvability. Protocol boundaries enable tools to be authored in any language (Rust, Go, Python, etc.) without compromising the Dart runtime's integrity.
 
 ### III. Single-Responsibility Tools
 
