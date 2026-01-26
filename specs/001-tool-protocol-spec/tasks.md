@@ -26,11 +26,11 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create Flutter project structure with Material Design 3
-- [ ] T002 Initialize pubspec.yaml with flutter, flutter_test, integration_test dependencies
-- [ ] T003 [P] Create directories: lib/models/, lib/services/, lib/ui/screens/, lib/ui/widgets/, test/contract/, test/integration/, test/unit/, tools/
-- [ ] T004 [P] Configure Material Design 3 dark theme in lib/ui/theme.dart
-- [ ] T005 [P] Create main.dart entry point with MaterialApp and theme
+- [X] T001 Create Flutter project structure with Material Design 3
+- [X] T002 Initialize pubspec.yaml with flutter, flutter_test, integration_test dependencies
+- [X] T003 [P] Create directories: lib/models/, lib/services/, lib/ui/screens/, lib/ui/widgets/, test/contract/, test/integration/, test/unit/, tools/
+- [X] T004 [P] Configure Material Design 3 dark theme in lib/ui/theme.dart
+- [X] T005 [P] Create main.dart entry point with MaterialApp and theme
 
 ---
 
@@ -40,12 +40,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 Create protocol event models in lib/models/protocol_events.dart (EventEnvelope, LogEvent, StatePatchEvent, AssetEvent, UiEvent, ErrorEvent, DoneEvent)
-- [ ] T007 Create Plan JSON models in lib/models/plan_json.dart (PlanJson, ToolInvocation)
-- [ ] T008 [P] Create Asset model in lib/models/asset.dart
-- [ ] T009 [P] Create SessionState model in lib/models/session_state.dart with deepMerge() utility method (pure function: nested objects merged recursively, arrays replaced, null removes keys)
-- [ ] T010 Contract test for event envelope schema in test/contract/protocol_events_test.dart
-- [ ] T011 Contract test for Plan JSON schema validation in test/contract/plan_json_test.dart
+- [X] T006 Create protocol event models in lib/models/protocol_events.dart (EventEnvelope, LogEvent, StatePatchEvent, AssetEvent, UiEvent, ErrorEvent, DoneEvent)
+- [X] T007 Create Plan JSON models in lib/models/plan_json.dart (PlanJson, ToolInvocation)
+- [X] T008 [P] Create Asset model in lib/models/asset.dart
+- [X] T009 [P] Create SessionState model in lib/models/session_state.dart with deepMerge() utility method (pure function: nested objects merged recursively, arrays replaced, null removes keys)
+- [X] T010 Contract test for event envelope schema in test/contract/protocol_events_test.dart
+- [X] T011 Contract test for Plan JSON schema validation in test/contract/plan_json_test.dart
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -59,14 +59,14 @@
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Implement ToolInvoker service in lib/services/tool_invoker.dart (Process.start, stdin write, stdout NDJSON parsing)
-- [ ] T012a [US1] Add protocol error handling to ToolInvoker (unknown event types per spec §5.2, malformed JSON, missing done event, timeout handling)
-- [ ] T013 [P] [US1] Implement PlanExecutor service in lib/services/plan_executor.dart (dependency resolution, sequential/parallel execution, failure handling)
-- [ ] T014 [US1] Implement ToolExecutionStatus model in lib/models/tool_execution_status.dart (track running tools, events, exit codes)
-- [ ] T015 [US1] Create Tool Execution Panel in lib/ui/widgets/tool_execution_panel.dart (display tool name, status, streaming logs)
-- [ ] T016 [US1] Create basic MainScreen with NavigationRail in lib/ui/screens/main_screen.dart
-- [ ] T017 [US1] Integrate Tool Execution Panel into MainScreen Tools view
-- [ ] T018 [US1] Integration test: Execute hardcoded Plan JSON with torch-lighter in test/integration/plan_executor_test.dart (verify stderr output doesn't corrupt NDJSON parsing)
+- [X] T012 [P] [US1] Implement ToolInvoker service in lib/services/tool_invoker.dart (Process.start, stdin write, stdout NDJSON parsing)
+- [X] T012a [US1] Add protocol error handling to ToolInvoker (unknown event types per spec §5.2, malformed JSON, missing done event, timeout handling)
+- [X] T013 [P] [US1] Implement PlanExecutor service in lib/services/plan_executor.dart (dependency resolution, sequential/parallel execution, failure handling)
+- [X] T014 [US1] Implement ToolExecutionStatus model in lib/models/tool_execution_status.dart (track running tools, events, exit codes)
+- [X] T015 [US1] Create Tool Execution Panel in lib/ui/widgets/tool_execution_panel.dart (display tool name, status, streaming logs)
+- [X] T016 [US1] Create basic MainScreen with NavigationRail in lib/ui/screens/main_screen.dart
+- [X] T017 [US1] Integrate Tool Execution Panel into MainScreen Tools view
+- [X] T018 [US1] Integration test: Execute hardcoded Plan JSON with torch-lighter in test/integration/plan_executor_test.dart (verify stderr output doesn't corrupt NDJSON parsing)
 
 **Checkpoint**: At this point, can execute tools programmatically and see logs
 
@@ -80,13 +80,13 @@
 
 ### Implementation for User Story 2
 
-- [ ] T019 [P] [US2] Implement NarratorAIStub service in lib/services/narrator_ai_stub.dart (hard-coded prompt→Plan JSON mappings)
-- [ ] T020 [P] [US2] Create PlayerPrompt model in lib/models/player_prompt.dart
-- [ ] T021 [US2] Create Player Input Field widget in lib/ui/widgets/player_input_field.dart (multiline text, send button)
-- [ ] T022 [US2] Create Story View widget in lib/ui/widgets/story_view.dart (display narrative text)
-- [ ] T023 [US2] Integrate Player Input Field and Story View into MainScreen Narrative view
-- [ ] T024 [US2] Wire player input → narrator stub → plan executor flow in MainScreen
-- [ ] T025 [US2] Add narrative text display before tool execution
+- [X] T019 [P] [US2] Implement NarratorAIStub service in lib/services/narrator_ai_stub.dart (hard-coded prompt→Plan JSON mappings)
+- [X] T020 [P] [US2] Create PlayerPrompt model in lib/models/player_prompt.dart
+- [X] T021 [US2] Create Player Input Field widget in lib/ui/widgets/player_input_field.dart (multiline text, send button)
+- [X] T022 [US2] Create Story View widget in lib/ui/widgets/story_view.dart (display narrative text)
+- [X] T023 [US2] Integrate Player Input Field and Story View into MainScreen Narrative view
+- [X] T024 [US2] Wire player input → narrator stub → plan executor flow in MainScreen
+- [X] T025 [US2] Add narrative text display before tool execution
 
 **Checkpoint**: At this point, User Stories 1 AND 2 work - player can submit prompts and see tools execute
 
@@ -100,7 +100,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T026 [P] [US3] Implement AssetRegistry service in lib/services/asset_registry.dart (register assets, validate paths)
+- [X] T026 [P] [US3] Implement AssetRegistry service in lib/services/asset_registry.dart (register assets, validate paths)
 - [ ] T027 [US3] Create Asset Gallery widget in lib/ui/widgets/asset_gallery.dart (grid/list of assets)
 - [ ] T028 [P] [US3] Create AssetPreview widget in lib/ui/widgets/asset_preview.dart (image, audio, video, placeholder for unknown)
 - [ ] T029 [US3] Integrate Asset Gallery into MainScreen Assets view
@@ -119,14 +119,14 @@
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] Implement StateManager service in lib/services/state_manager.dart (ChangeNotifier pattern; orchestrate state updates via SessionState.deepMerge(), notify listeners)
-- [ ] T032a [US4] Initialize empty SessionState on app startup in main.dart (wire StateManager to MaterialApp root)
-- [ ] T032b [US4] Add state clear/reset method to StateManager (for new sessions or testing)
+- [X] T032 [US4] Implement StateManager service in lib/services/state_manager.dart (ChangeNotifier pattern; orchestrate state updates via SessionState.deepMerge(), notify listeners)
+- [X] T032a [US4] Initialize empty SessionState on app startup in main.dart (wire StateManager to MaterialApp root)
+- [X] T032b [US4] Add state clear/reset method to StateManager (for new sessions or testing)
 - [ ] T033 [P] [US4] Create Narrative State Panel widget in lib/ui/widgets/narrative_state_panel.dart (expandable tree view, JSON display)
-- [ ] T034 [US4] Integrate Narrative State Panel into MainScreen State view
-- [ ] T035 [US4] Wire state_patch events from PlanExecutor to StateManager
+- [X] T034 [US4] Integrate Narrative State Panel into MainScreen State view
+- [X] T035 [US4] Wire state_patch events from PlanExecutor to StateManager
 - [ ] T036 [US4] Display state tree with highlight on changes
-- [ ] T037 [US4] Unit test: Deep merge semantics in test/unit/session_state_test.dart (verify SessionState.deepMerge(): nested objects merged recursively, arrays replaced, null removes keys per spec §4.2)
+- [X] T037 [US4] Unit test: Deep merge semantics in test/unit/session_state_test.dart (verify SessionState.deepMerge(): nested objects merged recursively, arrays replaced, null removes keys per spec §4.2)
 
 **Checkpoint**: Session state updates are visible and correct
 
@@ -155,11 +155,11 @@
 
 **Purpose**: Create example tools to validate protocol implementation
 
-- [ ] T044 [P] Create torch-lighter tool in tools/torch-lighter/main.dart (emit log, state_patch, asset, done events; depends on T046 for torch_lit.png asset)
-- [ ] T045 [P] Create door-examiner tool in tools/door-examiner/main.dart (emit log, state_patch, ui_event, done events)
+- [X] T044 [P] Create torch-lighter tool in tools/torch-lighter/main.dart (emit log, state_patch, asset, done events; depends on T046 for torch_lit.png asset)
+- [X] T045 [P] Create door-examiner tool in tools/door-examiner/main.dart (emit log, state_patch, ui_event, done events)
 - [ ] T046 [P] Generate 512x512 PNG of lit torch in Material Design icon style at tools/torch-lighter/assets/torch_lit.png
-- [ ] T047 Compile tools to executables: dart compile exe tools/*/main.dart
-- [ ] T048 Update NarratorAIStub with mappings for "light torch" and "examine door" prompts
+- [X] T047 Compile tools to executables: dart compile exe tools/*/main.dart
+- [X] T048 Update NarratorAIStub with mappings for "light torch" and "examine door" prompts
 
 **Checkpoint**: Example tools validate full protocol flow
 
