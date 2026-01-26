@@ -1,0 +1,148 @@
+openapi: 3.1.0
+info:
+  title: Narratoria Tool Protocol (Spec 001)
+  version: 0.0.1
+  description: |
+    Illustrative contract for Spec 001 event shapes. Actual transport is NDJSON
+    over stdout/stdin between Narratoria and external tools. Each NDJSON line
+    MUST be a JSON object conforming to one of the event schemas defined here.
+paths:
+  /tool-events/stream:
+    post:
+      summary: Example stream endpoint for tool emissions
+      description: |
+        This path models the NDJSON stream a tool emits on stdout. Each line
+        SHOULD conform to the `ToolEvent` union schema. In practice, Narratoria
+        launches the tool process directly and reads stdout line-by-line.
+      requestBody:
+        required: true
+        content:
+          application/x-ndjson:
+            schema:
+              $ref: '#/components/schemas/ToolEvent'
+      responses:
+        '200':
+          description: Stream accepted; Narratoria continues consuming events.
+        '400':
+          description: Protocol violation (invalid JSON, missing required fields, unknown type).
+        '500':
+          description: Tool process failure (non-zero exit code).
+components:
+  schemas:
+    EventEnvelope:
+      type: object
+      required: [version, type]
+      properties:
+        version:
+          type: string
+          const: "0"
+        type:
+          type: string
+          enum: [log, state_patch, asset, ui_event, error, done]
+        requestId:
+          type: string
+          description: Opaque identifier provided by Narratoria.
+        timestamp:
+          type: string
+          format: date-time
+          description: Optional ISO-8601 timestamp.
+        additionalProperties: true
+      description: Base envelope required for every event.
+
+    LogEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [level, message]
+          properties:
+            level:
+              type: string
+              enum: [debug, info, warn, error]
+            message:
+              type: string
+            fields:
+              type: object
+              additionalProperties: true
+
+    StatePatchEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [patch]
+          properties:
+            patch:
+              type: object
+              additionalProperties: true
+
+    AssetEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [assetId, kind, mediaType, path]
+          properties:
+            assetId:
+              type: string
+            kind:
+              type: string
+            mediaType:
+              type: string
+            path:
+              type: string
+            metadata:
+              type: object
+              additionalProperties: true
+
+    UiEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [event]
+          properties:
+            event:
+              type: string
+            payload:
+              type: object
+              additionalProperties: true
+
+    ErrorEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [errorCode, errorMessage]
+          properties:
+            errorCode:
+              type: string
+            errorMessage:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+
+    DoneEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [ok]
+          properties:
+            ok:
+              type: boolean
+            summary:
+              type: string
+
+    ToolEvent:
+      oneOf:
+        - $ref: '#/components/schemas/LogEvent'
+        - $ref: '#/components/schemas/StatePatchEvent'
+        - $ref: '#/components/schemas/AssetEvent'
+        - $ref: '#/components/schemas/UiEvent'
+        - $ref: '#/components/schemas/ErrorEvent'
+        - $ref: '#/components/schemas/DoneEvent'
+      discriminator:
+        propertyName: type
+        mapping:
+          log: '#/components/schemas/LogEvent'
+          state_patch: '#/components/schemas/StatePatchEvent'
+          asset: '#/components/schemas/AssetEvent'
+          ui_event: '#/components/schemas/UiEvent'
+          error: '#/components/schemas/ErrorEvent'
+          done: '#/components/schemas/DoneEvent'

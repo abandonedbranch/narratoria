@@ -5,3 +5,32 @@ A work in progress app for an AI-backed narrative driven storyteller and game ma
 ## Dart+Flutter Rich Desktop App with Agent Skills
 
 This branch explores using Dart and Flutter to build a crossplatform rich desktop app that leverages agents with skills and CLI tools to execute workflows for the narrator AI.
+
+## Quick Start
+
+### Development
+
+```bash
+# From project root
+./run-dev.sh
+```
+
+### Building Release
+
+```bash
+# From project root
+./build-macos.sh
+```
+
+### Running Tests
+
+```bash
+cd src
+flutter test
+```
+
+## Documentation
+
+- [BUILD.md](BUILD.md) - Detailed build instructions and tool bundling
+- [specs/001-tool-protocol-spec/](specs/001-tool-protocol-spec/) - Tool protocol specification
+- [.github/copilot-instructions.md](.github/copilot-instructions.md) - Development guidelines
