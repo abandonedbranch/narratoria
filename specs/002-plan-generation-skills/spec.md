@@ -130,12 +130,39 @@ A player's actions have consequences. When the player steals from a merchant in 
 #### Plan Generation (Narrator AI)
 
 - **FR-001**: System MUST include a local small language model (recommended: Gemma 2B, Llama 3.2 3B, Qwen 2.5 3B) for plan generation that runs entirely in-process
-- **FR-002**: Plan generator MUST convert player text input into structured Plan JSON documents following Spec 001 schema
+- **FR-002**: Plan generator MUST convert player text input into structured Plan JSON documents following Spec 001 extended schema
 - **FR-003**: Plan generator MUST select relevant skills and their scripts based on player intent and available skills
 - **FR-004**: Plan generator MUST inject active skills' behavioral prompts into system context when generating plans
 - **FR-005**: Plan generator MUST fall back to simple pattern-based planning if LLM fails or is unavailable
 - **FR-006**: Plan generator MUST complete plan generation within 5 seconds for typical player inputs (under 100 words)
 - **FR-007**: Plan generator MUST NOT make network calls or access external APIs (Constitution Principle II exception for in-process AI)
+- **FR-008**: Plan generator MUST consult `disabledSkills` in execution results and avoid selecting those skills for the next plan
+- **FR-009**: Plan generator MUST avoid creating circular dependencies in the tools array (validated by executor before execution)
+- **FR-010**: Plan generator MUST track generation attempt count and set `metadata.generationAttempt` and `metadata.parentPlanId` in Plan JSON
+
+#### Plan Execution Engine (NEW)
+
+- **FR-011**: Plan executor MUST perform topological sort on `dependencies` array before execution
+- **FR-012**: Plan executor MUST detect circular dependencies and reject plans with cycles before execution; MUST request new plan from generator with error context
+- **FR-013**: Plan executor MUST respect `required` flag: if true and tool fails, abort dependent tools; if false, dependent tools may proceed with null/empty input
+- **FR-014**: Plan executor MUST respect `async` flag: if true, tool may run in parallel with unrelated tasks; if false, tool runs sequentially
+- **FR-015**: Plan executor MUST implement retry logic per `retryPolicy`: up to `maxRetries` attempts with exponential backoff of `backoffMs`
+- **FR-016**: Plan executor MUST track retry count and include in execution trace
+- **FR-017**: Plan executor MUST enforce per-skill timeout (default 30 seconds in Spec 001, configurable)
+- **FR-018**: Plan executor MUST enforce plan-level execution timeout (default 60 seconds, configurable)
+- **FR-019**: Plan executor MUST continue executing non-dependent tasks even when a non-required tool fails
+- **FR-020**: Plan executor MUST generate full execution trace with tool results, including state, output, events, execution time, retry count, and error details
+- **FR-021**: Plan executor MUST return success/failure status, failed tool list, and `canReplan` flag to indicate whether narrator AI should attempt replan
+- **FR-022**: Plan executor MUST handle graceful failure: if plan execution fails after retries, aggregate partial results and present to user without crashing
+
+#### Plan Generation Robustness (NEW)
+
+- **FR-023**: Narrator AI system MUST implement bounded retry loop: max 5 plan generation attempts before escalating to user
+- **FR-024**: Narrator AI system MUST track which skills have failed and disable them in subsequent replans
+- **FR-025**: Narrator AI system MUST provide simple template-based narration if plan generation fails after max attempts (graceful fallback)
+- **FR-026**: Narrator AI system MUST log detailed error context for each failed plan (attempted plan, failed tools, retry counts)
+- **FR-027**: Plan executor MUST report specific failure reason (tool failure, circular dependency, timeout, invalid JSON) to enable accurate replan strategy
+- **FR-028**: System MUST NOT loop infinitely; if planner cannot generate viable plan after 5 attempts, display error to user and allow manual session recovery
 
 #### Skill Discovery
 
@@ -160,52 +187,53 @@ A player's actions have consequences. When the player steals from a merchant in 
 
 #### Skill Script Execution
 
-- **FR-023**: Plan executor MUST invoke skill scripts as independent OS processes per Constitution Principle II
-- **FR-024**: Skill scripts MUST communicate via NDJSON protocol over stdin/stdout following Spec 001
-- **FR-025**: Plan executor MUST pass script input as JSON via stdin (single object per script invocation)
-- **FR-026**: Plan executor MUST parse all NDJSON events emitted by scripts: `log`, `state_patch`, `asset`, `ui_event`, `error`, `done`
-- **FR-027**: Plan executor MUST respect script dependencies declared in Plan JSON and execute scripts in correct order
-- **FR-028**: Plan executor MUST support parallel script execution when `parallel: true` in Plan JSON
-- **FR-029**: Plan executor MUST enforce per-script timeout (default 30 seconds) and terminate unresponsive scripts
-- **FR-030**: Plan executor MUST handle script failures gracefully (exit code != 0 or `done.ok=false`) without crashing application
+- **FR-040**: Plan executor MUST invoke skill scripts as independent OS processes per Constitution Principle II
+- **FR-041**: Skill scripts MUST communicate via NDJSON protocol over stdin/stdout following Spec 001
+- **FR-042**: Plan executor MUST pass script input as JSON via stdin (single object per script invocation)
+- **FR-043**: Plan executor MUST parse all NDJSON events emitted by scripts: `log`, `state_patch`, `asset`, `ui_event`, `error`, `done`
+- **FR-044**: Plan executor MUST respect script dependencies declared in Plan JSON and execute scripts in topological order
+- **FR-045**: Plan executor MUST support both parallel and sequential script execution per Plan JSON `parallel` flag and tool `async` property
+- **FR-046**: Plan executor MUST enforce per-script timeout (default 30 seconds) and terminate unresponsive scripts
+- **FR-047**: Plan executor MUST handle script failures gracefully (exit code != 0 or `done.ok=false`) per `required` flag in Plan JSON
+- **FR-048**: Plan executor MUST collect all events from scripts, including intermediate state_patch events, for full execution trace
 
 #### Core Skills (MVP)
 
-- **FR-031**: System MUST ship with a `storyteller` skill for rich narrative enhancement
+- **FR-049**: System MUST ship with a `storyteller` skill for rich narrative enhancement
   - Behavioral prompt for evocative narration
   - `narrate.dart` script that calls LLM (local or hosted) for detailed prose
   - Configuration: provider (ollama/claude/openai), model, API key, style (terse/vivid/poetic), fallback settings
   
-- **FR-032**: System MUST ship with a `dice-roller` skill for randomness
+- **FR-050**: System MUST ship with a `dice-roller` skill for randomness
   - `roll-dice.dart` script that parses dice formulas (e.g., "1d20+5", "3d6")
   - Emits `ui_event` with roll results for display to player
   - Configuration: show/hide individual die rolls, random source (crypto/pseudo)
   
-- **FR-033**: System MUST ship with a `memory` skill for semantic memory and continuity
+- **FR-051**: System MUST ship with a `memory` skill for semantic memory and continuity
   - `store-memory.dart` script that embeds and stores event summaries in local database
   - `recall-memory.dart` script that performs vector search for relevant context
   - Configuration: storage backend (sqlite/files), embedding model, max context events
   
-- **FR-034**: System MUST ship with a `reputation` skill for tracking player standing
+- **FR-052**: System MUST ship with a `reputation` skill for tracking player standing
   - `update-reputation.dart` script that records reputation changes by faction
   - `query-reputation.dart` script that returns current reputation values
   - Configuration: faction list, reputation scale, decay rate, storage backend
 
 #### Data Management
 
-- **FR-035**: Each skill MUST be allowed to maintain its own data storage in `skills/<skill-name>/data/` directory
-- **FR-036**: Skill data storage MUST persist across application restarts
-- **FR-037**: Skill data MUST remain private to that skill; other skills MUST NOT directly access another skill's data directory
-- **FR-038**: Skills MAY use SQLite, JSON files, or other local storage formats for their data
-- **FR-039**: System MUST create skill data directories on first use if they do not exist
+- **FR-053**: Each skill MUST be allowed to maintain its own data storage in `skills/<skill-name>/data/` directory
+- **FR-054**: Skill data storage MUST persist across application restarts
+- **FR-055**: Skill data MUST remain private to that skill; other skills MUST NOT directly access another skill's data directory
+- **FR-056**: Skills MAY use SQLite, JSON files, or other local storage formats for their data
+- **FR-057**: System MUST create skill data directories on first use if they do not exist
 
 #### Graceful Degradation (Constitution Principle IV)
 
-- **FR-040**: System MUST continue functioning when optional skills are not installed or disabled
-- **FR-041**: System MUST display user-friendly warnings when skills are misconfigured, not crash
-- **FR-042**: Skill scripts that use hosted APIs MUST fall back to local models when network is unavailable
-- **FR-043**: Narrator AI MUST provide simple template-based narration if plan generation fails completely
-- **FR-044**: Plan executor MUST continue executing remaining plan steps when one script fails
+- **FR-058**: System MUST continue functioning when optional skills are not installed or disabled
+- **FR-059**: System MUST display user-friendly warnings when skills are misconfigured, not crash
+- **FR-060**: Skill scripts that use hosted APIs MUST fall back to local models when network is unavailable
+- **FR-061**: Narrator AI MUST provide simple template-based narration if plan generation fails completely
+- **FR-062**: Plan executor MUST continue executing remaining plan steps when one script fails (if independent from failure)
 
 ### Key Entities *(include if feature involves data)*
 

@@ -1,25 +1,32 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.0.0 → 1.1.0
-Bump rationale: Added Agent Skills Standard integration guidance
+Version change: 1.1.0 → 1.2.0
+Bump rationale: Added plan generation robustness sub-principle to Principle IV
 
-Modified principles: None (clarifications only)
+Modified principles: Principle IV (Graceful Degradation) - expanded with robustness requirements
 Added sections:
-  - Skills vs Scripts (Agent Skills Standard) section
-  - Narrator AI clarification in Principle II
-  - Skill-owned data storage guidance
+  - IV.A Plan Generation Robustness (Sub-Principle)
+    - Skill failure isolation
+    - Bounded retry loops (3 per-tool, 3 per-plan-execution, 5 per-plan-generation)
+    - Skill error states
+    - Plan failure semantics
+    - Replan strategy with tracing
+    - Graceful fallback to template narration
+    - Timeout and resource bounds
 Removed sections: None
 
 Templates requiring updates:
-  ⚠ plan-template.md - Should reference skills vs tools distinction
-  ⚠ spec-template.md - Should accommodate skill specifications
+  ⚠ plan-template.md - Should reference plan execution robustness
+  ✅ spec-template.md - No changes needed
   ✅ tasks-template.md - No changes needed
 
 Follow-up TODOs:
-  - Create Spec 002 for plan generation and skill discovery
-  - Implement core skills (storyteller, memory, reputation, dice-roller)
-  - Design skill configuration UI
+  - Update Spec 001 with extended Plan JSON schema (DONE)
+  - Update Spec 002 with execution engine requirements (DONE)
+  - Create data-model.md for Spec 002
+  - Implement replan loop in plan executor
+  - Track skill error states across plan attempts
 -->
 
 # Narratoria Constitution
@@ -51,6 +58,53 @@ Each external tool MUST perform one well-defined task (e.g., generate an image, 
 Unsupported media types, UI events, or tool capabilities MUST degrade gracefully without breaking the user experience. Narratoria MUST display placeholder or degraded UI for unknown asset kinds and MUST log unsupported events without crashing. Users MUST always maintain narrative continuity even when optional capabilities are unavailable.
 
 **Rationale**: Interactive storytelling experiences should never hard-fail due to missing optional content. Graceful degradation preserves immersion and allows the ecosystem to grow without strict version lockstep.
+
+### IV.A Plan Generation Robustness (Sub-Principle)
+
+The narrator AI's plan generation system MUST be resilient to skill failures and environmental constraints:
+
+1. **Skill Failure Isolation**: When a skill script fails, only that skill's availability is affected. The planner MUST NOT modify its fundamental logic or decision-making process.
+
+2. **Bounded Retry Loops**:
+   - **Per-Tool**: MAX 3 retries per skill script invocation before marking skill as ERROR_STATE (configurable per skill via `retryPolicy`)
+   - **Per-Plan-Execution**: MAX 3 attempts to execute a single plan before requesting new plan from generator
+   - **Per-Plan-Generation**: MAX 5 attempts to generate viable plans before escalating to user with graceful fallback
+   
+   Exceeding these limits indicates a systemic problem that demands user intervention, not infinite looping.
+
+3. **Skill Error States**:
+   - `healthy`: Available for planning
+   - `degraded`: Available but may be slow/unreliable (retry anyway)
+   - `temporaryFailure`: Network timeout or transient issue (retry with backoff)
+   - `permanentFailure`: Cannot recover in this session (disable and replan without)
+   
+   Plan generator MUST consult error states before selecting skills.
+
+4. **Plan Failure Semantics**:
+   - When a required skill fails, dependent tools abort execution; plan fails overall
+   - When an optional skill fails, dependent tasks proceed with degraded input; plan may succeed
+   - Partial success is preferable to hard failure; users should see degraded narration rather than crashes
+
+5. **Replan Strategy**:
+   - Plan executor returns full execution trace with failed tool list and specific error reasons
+   - Plan generator disabled failed skills and attempts new plan with remaining capability
+   - Each replan increments `metadata.generationAttempt` and sets `parentPlanId` to previous plan UUID
+   - After 5 planner attempts: cease retrying, display clear error to user, offer session recovery options
+
+6. **Graceful Fallback**:
+   - If planner exhausts 5 attempts: provide simple template-based narration (e.g., "The narrator pauses as the story unfolds...")
+   - Log detailed error context with plan IDs, failed tools, retry counts, and timestamps
+   - Allow user to continue story or restart session
+   - NEVER crash; NEVER show "Internal Error" to player
+   - Exception: protocol violations (invalid JSON, circular dependencies) are logged as bugs for developer review
+
+7. **Timeout and Resource Bounds**:
+   - Per-skill timeout: 30 seconds (configurable)
+   - Per-plan execution timeout: 60 seconds (configurable)
+   - Per-plan generation timeout: 5 seconds (strict, no LLM hangs)
+   - If timeout exceeded: treat as `temporaryFailure`, retry or disable skill as appropriate
+
+**Rationale**: Players' immersion depends on continuous storytelling. Cascading failures (one skill breaks planner, planner crash breaks UI) must not occur. Bounded loops prevent resource exhaustion. Explicit error states let the system make intelligent tradeoffs between perfect execution and acceptable degradation.
 
 ### V. Testability and Composability
 
@@ -160,4 +214,4 @@ This constitution supersedes all other development practices. Amendments require
 
 All PRs and code reviews MUST verify compliance with these principles. Complexity that violates a principle MUST be justified and tracked.
 
-**Version**: 1.1.0 | **Ratified**: 2026-01-24 | **Last Amended**: 2026-01-26
+**Version**: 1.2.0 | **Ratified**: 2026-01-24 | **Last Amended**: 2026-01-27
