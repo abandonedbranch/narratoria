@@ -1,23 +1,25 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 0.0.0 → 1.0.0
-Bump rationale: Initial ratification of project constitution
+Version change: 1.0.0 → 1.1.0
+Bump rationale: Added Agent Skills Standard integration guidance
 
-Modified principles: N/A (first version)
+Modified principles: None (clarifications only)
 Added sections:
-  - Core Principles (5 principles)
-  - Technology Stack section
-  - Development Workflow section
-  - Governance rules
-Removed sections: N/A
+  - Skills vs Scripts (Agent Skills Standard) section
+  - Narrator AI clarification in Principle II
+  - Skill-owned data storage guidance
+Removed sections: None
 
 Templates requiring updates:
-  ✅ plan-template.md - Constitution Check section now has defined gates
-  ✅ spec-template.md - No changes needed (already generic)
-  ✅ tasks-template.md - No changes needed (already generic)
+  ⚠ plan-template.md - Should reference skills vs tools distinction
+  ⚠ spec-template.md - Should accommodate skill specifications
+  ✅ tasks-template.md - No changes needed
 
-Follow-up TODOs: None
+Follow-up TODOs:
+  - Create Spec 002 for plan generation and skill discovery
+  - Implement core skills (storyteller, memory, reputation, dice-roller)
+  - Design skill configuration UI
 -->
 
 # Narratoria Constitution
@@ -56,13 +58,88 @@ The architecture MUST be explicitly testable and composable. All Dart modules MU
 
 **Rationale**: Predictable behavior requires verifiable code. Composability ensures features can be developed, tested, and deployed independently, enabling iterative delivery and reducing regression risk.
 
+## Skills vs Scripts (Agent Skills Standard)
+
+Narratoria follows the [Agent Skills Standard](https://agentskills.io/specification) for organizing narrator capabilities. This approach enables modular, composable storytelling features while maintaining constitutional compliance.
+
+### What is a Skill?
+
+A **skill** is a capability bundle that MAY include:
+
+- **Behavioral prompts** (`prompt.md`): Instructions that guide the narrator AI's behavior (e.g., narrative style, tone, genre conventions)
+- **Scripts** (`scripts/` directory): Executable tools that perform computations, generate content, or manage data
+- **Configuration schema** (`config-schema.json`): Defines user-configurable settings for the skill
+- **User configuration** (`config.json`): User-provided values (API keys, preferences, paths)
+- **Data storage** (`data/` directory): Skill-owned databases, caches, or persistent state
+
+### Constitutional Status of Skills
+
+**✅ IN-PROCESS (Dart runtime)**:
+- Skill metadata (`skill.json`)
+- Behavioral prompts (`prompt.md`)
+- Configuration schemas and values
+- Skill discovery and loading logic
+
+**✅ OUT-OF-PROCESS (Principle II compliance)**:
+- Scripts in `scripts/` directory MUST follow Spec 001 NDJSON protocol
+- Scripts run as independent OS processes
+- Scripts communicate via stdin/stdout only
+- Scripts MAY be written in any language
+
+**✅ PROMPT-ONLY SKILLS (no scripts)**:
+- Skills without scripts are pure behavioral modifications
+- These inject prompt instructions into the narrator AI system context
+- No protocol boundary crossing occurs (fully in-process)
+
+### Narrator AI vs External Tools
+
+**Narrator AI** (in-process, Principle II exception):
+- Small local language model for plan generation (e.g., Gemma 2B, Llama 3.2 3B)
+- Converts player input → Plan JSON
+- Selects relevant skills and scripts for execution
+- Lives entirely within Dart process (no network calls, no hosted APIs)
+
+**Skill Scripts** (out-of-process, Principle II compliant):
+- Rich storytelling generators (MAY use hosted APIs like Claude, GPT-4)
+- Memory systems, reputation tracking, dice rolling
+- Asset generation (images, audio, music)
+- Rules engines for specific game systems (D&D 5e, Pathfinder, etc.)
+
+**Rationale**: The narrator AI performs structured reasoning (plan generation) locally and cheaply. Complex, creative, or network-dependent work happens in skill scripts, which can fail gracefully without crashing the application.
+
+### Skill-Owned Data
+
+Each skill MAY maintain its own data storage in `skills/<skill-name>/data/`. This storage is:
+- **Skill-private**: Other skills MUST NOT directly access another skill's data directory
+- **Persistent**: Survives application restarts
+- **Portable**: Can use SQLite, JSON files, or other local formats
+- **Testable**: Can be mocked or seeded with test data
+
+Examples:
+- `skills/memory/data/memories.db` - Semantic memory embeddings and summaries
+- `skills/reputation/data/reputation.db` - Faction standings and relationship graphs
+- `skills/world-state/data/campaign.db` - NPCs, locations, items, timeline
+- `skills/character-sheet/data/characters/` - Player and NPC character files
+
+### Graceful Degradation with Skills
+
+Per Principle IV, skills MUST degrade gracefully:
+- **Missing skill**: Narrator continues without that capability
+- **Script failure**: Script emits `done.ok=false`, plan executor logs error, narrative continues with fallback
+- **Configuration incomplete**: Skill displays setup prompt in UI but does not crash
+- **Network failures**: Skill scripts that use hosted APIs MUST fall back to local models or simpler behavior
+
+**Example**: The `storyteller` skill configured for Claude API will fall back to local Ollama if network unavailable, and ultimately to simple template-based narration if no LLM is accessible.
+
 ## Technology Stack
 
 | Layer | Technology | Notes |
 |-------|------------|-------|
 | Client Runtime | Dart 3.x + Flutter | Cross-platform (macOS, Windows, Linux) |
-| Tool Protocol | NDJSON over stdin/stdout | See Spec 001 |
-| Tool Languages | Any (Rust, Go, Python, etc.) | Must comply with Spec 001 |
+| Narrator AI | Local LLM (Gemma, Llama 3.2) | In-process plan generation |
+| Skills Framework | Agent Skills Standard | See agentskills.io/specification |
+| Tool Protocol | NDJSON over stdin/stdout | See Spec 001 (scripts use this) |
+| Skill Scripts | Any (Rust, Go, Python, etc.) | Must comply with Spec 001 |
 | State Management | TBD (Provider, Riverpod, Bloc) | Must support unit testing |
 | Testing | `flutter_test`, integration_test | Contract + integration + unit layers |
 
@@ -83,4 +160,4 @@ This constitution supersedes all other development practices. Amendments require
 
 All PRs and code reviews MUST verify compliance with these principles. Complexity that violates a principle MUST be justified and tracked.
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-24 | **Last Amended**: 2026-01-24
+**Version**: 1.1.0 | **Ratified**: 2026-01-24 | **Last Amended**: 2026-01-26
