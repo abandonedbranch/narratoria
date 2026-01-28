@@ -7,6 +7,8 @@
 
 ## Terminology (Authoritative Definitions)
 
+**Note**: These definitions are authoritative for Spec 002 and harmonized with Spec 001 protocol terms. For protocol-level terminology (event types, exit codes, transport model), see Spec 001 §3 Glossary.
+
 To ensure consistency across spec, plan, and tasks, this feature uses the following terms:
 
 - **`disabledSkills` (Set[String])**: Set of skill names that planner MUST NOT select for the current plan attempt (populated by failed skill tracking during replan loop). Used in Plan JSON and executor feedback.

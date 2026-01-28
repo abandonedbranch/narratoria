@@ -513,11 +513,13 @@ The narrator AI MUST produce a **Plan JSON** document with this structure:
 
 ### 13.4 Plan Execution Rules (Extended)
 
-Narratoria MUST execute plans according to these rules:
+The runtime MUST execute plans according to these behavioral requirements. Implementation details (algorithms, data structures) are left to the client; see §13.7 for reference implementation guidance.
 
-1. **Circular Dependency Detection**: Before execution, Narratoria MUST perform topological sort on the tools array. If a cycle is detected (direct or transitive), Narratoria MUST treat this as a plan validation error and request a new plan from the narrator AI.
+1. **Circular Dependency Detection**: Before execution, the runtime MUST detect any circular dependencies among tools (direct or transitive). If detected, the runtime MUST reject the plan and request a new plan from the narrator AI.
+   
+   *Note: Reference implementation uses topological sort (Kahn's algorithm). See Spec 002 data-model.md §3 for algorithm details.*
 
-2. **Topological Execution Order**: Tools MUST execute in dependency-respecting order determined by topological sort of the `dependencies` array.
+2. **Topological Execution Order**: Tools MUST execute in dependency-respecting order. A tool MUST NOT begin execution until all tools listed in its `dependencies` array have completed successfully.
 
 3. **Parallel Execution**: 
    - If `parallel: true` in the plan AND `async: true` for a tool, tools with satisfied dependencies MAY run concurrently
@@ -527,9 +529,12 @@ Narratoria MUST execute plans according to these rules:
 4. **Sequential Fallback**: If `parallel: false`, tools MUST run in topological order, waiting for each to complete before starting the next.
 
 5. **Retry Logic**:
-   - If a tool fails (emits `done.ok: false` or exits non-zero), Narratoria MUST retry up to `retryPolicy.maxRetries` times with exponential backoff
-   - After exhausting retries, mark tool as failed and proceed based on `required` flag
-   - Track retry count in execution trace
+   - If a tool fails (emits `done.ok: false` or exits non-zero), the runtime MUST retry up to `retryPolicy.maxRetries` times
+   - The runtime MUST apply exponential backoff between retries with minimum delay `retryPolicy.backoffMs` milliseconds
+   - After exhausting retries, the runtime MUST mark the tool as failed and proceed according to the tool's `required` flag
+   - The runtime MUST record retry count in the execution trace
+   
+   *Note: Reference backoff formula: delay = backoffMs × 2^(attempt-1). See Spec 002 data-model.md §2 RetryPolicy.calculateBackoff().*
 
 6. **Failure Handling (by `required` flag)**:
    - **If `required: true` and tool fails**:
@@ -585,18 +590,51 @@ After executing a plan, Narratoria MUST return an execution result with full tra
 - Determine if replanning is possible (see §13.7)
 - Debug execution issues
 
-### 13.6 Narrator AI Interface (Extended Guidance, Non-Normative)
+### 13.6 Narrator AI Interface (Extended Requirements)
 
-While tool discovery/installation is a non-goal for Spec 001, the narrator AI service:
-- MAY be a separate process or remote service
-- MUST know available tool paths and their capabilities (out of scope for this spec)
-- SHOULD generate plans that respect tool contracts and avoid circular dependencies
-- MUST return Plan JSON in the format specified in section 13.3
-- SHOULD consult `disabledSkills` in execution results to avoid reusing failed tools
-- SHOULD track generation attempt count in `metadata.generationAttempt`
-- MUST implement bounded replan loop (max 5 attempts before graceful fallback)
+While tool discovery/installation is a non-goal for Spec 001, the narrator AI service integration is normative per Constitution Principle IV.A:
 
-Future specifications will define tool discovery and narrator AI integration.
+**Required Behavior**:
+- The narrator AI MUST return Plan JSON in the format specified in §13.3
+- The narrator AI MUST implement bounded replan loop: maximum 5 plan generation attempts before graceful fallback (Constitution IV.A)
+- The narrator AI MUST consult `disabledSkills` in execution results to avoid selecting failed skills in subsequent plans
+- The narrator AI MUST track generation attempt count in `metadata.generationAttempt`
+- The narrator AI MUST set `metadata.parentPlanId` to the previous plan's UUID when replanning
+- After 5 failed plan generation attempts, the narrator AI MUST provide template-based fallback narration
+
+**Implementation Flexibility**:
+- The narrator AI MAY be a separate process, remote service, or in-process module
+- Tool capability discovery mechanisms are implementation-specific (see Spec 002 for Agent Skills Standard integration)
+- Plan generation strategy (prompt engineering, model selection) is implementation-specific
+
+*Note: For complete replan loop implementation including per-tool and per-plan-execution retry bounds, see Constitution §IV.A and Spec 002 plan.md.*
+
+Future specifications will define tool discovery protocols and capability negotiation.
+
+---
+
+### 13.7 Implementation Guidance
+
+This specification defines the protocol contract and behavioral requirements that any Narratoria-compatible runtime must satisfy. Implementation details (algorithms, data structures, performance optimizations) are left to individual clients.
+
+**Reference Implementation**: For a complete reference implementation in Dart+Flutter, see:
+
+- **Spec 002: Plan Generation and Skill Discovery**
+  - `data-model.md` §3: PlanExecutionContext (dependency graph operations, topological sort, cycle detection)
+  - `data-model.md` §2: RetryPolicy (backoff calculation formula)
+  - `data-model.md` §11: DeepMerge extension (state merge algorithm)
+  - `plan.md`: Architecture diagrams (topological sort flow, replan loop state machine, tool execution lifecycle)
+  - `tasks.md`: Implementation tasks (T013: circular dependency detection, T014: topological execution, T015: replan loop)
+
+**Cross-Language Compatibility**: Other language implementations (Rust, Go, Python) MAY use different algorithms or data structures as long as they satisfy the behavioral requirements defined in §13.4. For example:
+- Cycle detection: DFS-based algorithms are acceptable alternatives to topological sort
+- State merge: Implementations may optimize for specific use cases while preserving deep merge semantics
+- Parallel execution: Thread pools, work-stealing, or actor models are all valid strategies
+
+**Protocol Compliance Testing**: Implementations SHOULD validate against:
+- `contracts/plan-json.schema.json`: Plan JSON structure
+- `contracts/execution-result.schema.json`: Execution result structure
+- `contracts/tool-protocol.openapi.yaml`: Event schema validation
 
 ---
 
