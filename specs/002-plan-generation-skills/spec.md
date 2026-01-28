@@ -5,6 +5,20 @@
 **Status**: Draft  
 **Input**: User description: "Plan generation and skill discovery with Agent Skills Standard integration"
 
+## Terminology (Authoritative Definitions)
+
+To ensure consistency across spec, plan, and tasks, this feature uses the following terms:
+
+- **`disabledSkills` (Set[String])**: Set of skill names that planner MUST NOT select for the current plan attempt (populated by failed skill tracking during replan loop). Used in Plan JSON and executor feedback.
+- **`errorState` (Enum)**: Health status of a skill at runtime: `healthy` (available), `degraded` (slow/unreliable), `temporaryFailure` (transient network issue, retry), `permanentFailure` (unrecoverable, disable). Used in SkillDiscovery and replan decision logic.
+- **Available Skills**: Skills with `errorState != permanentFailure` AND not in `disabledSkills` set. Selectable by narrator AI for plan generation.
+- **Skill Manifest** (`skill.json`): Metadata file per Agent Skills Standard; defines skill identity, version, author, behavioral prompt path, scripts available.
+- **Behavioral Prompt** (`prompt.md`): Markdown file injected into narrator AI system context; guides narrator behavior for this skill (e.g., "Emphasize vivid sensory details").
+- **Graceful Degradation**: System continues functioning and presents narration to user even when optional features fail (e.g., hosted API unavailable → fallback to local model).
+- **Replan Loop**: Bounded retry system (max 5 plan generation attempts) that learns from failures and disables failed skills in subsequent plans.
+
+---
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Basic Interactive Storytelling (Priority: P1)
@@ -166,74 +180,74 @@ A player's actions have consequences. When the player steals from a merchant in 
 
 #### Skill Discovery
 
-- **FR-008**: System MUST scan `skills/` directory at startup and discover all valid skills following Agent Skills Standard
-- **FR-009**: Skill discovery MUST parse `skill.json` manifest files and validate required fields (name, version, description)
-- **FR-010**: Skill discovery MUST load optional `prompt.md` files and make behavioral prompts available to plan generator
-- **FR-011**: Skill discovery MUST identify all executable scripts in `skills/*/scripts/` directories
-- **FR-012**: Skill discovery MUST skip skills with invalid manifests and log warnings without crashing application
-- **FR-013**: System MUST support hot-reloading of skills without application restart (future enhancement; can log "restart required" for MVP)
+- **FR-030**: System MUST scan `skills/` directory at startup and discover all valid skills following Agent Skills Standard
+- **FR-031**: Skill discovery MUST parse `skill.json` manifest files and validate required fields (name, version, description)
+- **FR-032**: Skill discovery MUST load optional `prompt.md` files and make behavioral prompts available to plan generator
+- **FR-033**: Skill discovery MUST identify all executable scripts in `skills/*/scripts/` directories
+- **FR-034**: Skill discovery MUST skip skills with invalid manifests and log warnings without crashing application
+- **FR-035**: System MUST support hot-reloading of skills without application restart (future enhancement; can log "restart required" for MVP)
 
 #### Skill Configuration
 
-- **FR-014**: System MUST provide a Skills Settings UI screen accessible from main application settings
-- **FR-015**: Skills Settings UI MUST display all discovered skills with name, description, and enabled/disabled toggle
-- **FR-016**: Skills Settings UI MUST dynamically generate configuration forms from `config-schema.json` files
-- **FR-017**: Configuration forms MUST support input types: string (text, freeform), number, boolean (toggle), and enum (dropdown)
-- **FR-018**: Configuration forms MUST obscure sensitive fields (API keys, passwords) using password-style text input
-- **FR-019**: System MUST save configuration changes to skill-specific `config.json` files in skill directories
-- **FR-020**: System MUST substitute environment variables in config values using `${VAR_NAME}` syntax
-- **FR-021**: System MUST validate configuration values against schema constraints (required fields, type checking) before saving
-- **FR-022**: System MUST display validation errors inline in configuration forms with actionable error messages
+- **FR-036**: System MUST provide a Skills Settings UI screen accessible from main application settings
+- **FR-037**: Skills Settings UI MUST display all discovered skills with name, description, and enabled/disabled toggle
+- **FR-038**: Skills Settings UI MUST dynamically generate configuration forms from `config-schema.json` files
+- **FR-039**: Configuration forms MUST support input types: string (text, freeform), number, boolean (toggle), and enum (dropdown)
+- **FR-040**: Configuration forms MUST obscure sensitive fields (API keys, passwords) using password-style text input
+- **FR-041**: System MUST save configuration changes to skill-specific `config.json` files in skill directories
+- **FR-042**: System MUST substitute environment variables in config values using `${VAR_NAME}` syntax
+- **FR-043**: System MUST validate configuration values against schema constraints (required fields, type checking) before saving
+- **FR-044**: System MUST display validation errors inline in configuration forms with actionable error messages
 
 #### Skill Script Execution
 
-- **FR-040**: Plan executor MUST invoke skill scripts as independent OS processes per Constitution Principle II
-- **FR-041**: Skill scripts MUST communicate via NDJSON protocol over stdin/stdout following Spec 001
-- **FR-042**: Plan executor MUST pass script input as JSON via stdin (single object per script invocation)
-- **FR-043**: Plan executor MUST parse all NDJSON events emitted by scripts: `log`, `state_patch`, `asset`, `ui_event`, `error`, `done`
-- **FR-044**: Plan executor MUST respect script dependencies declared in Plan JSON and execute scripts in topological order
-- **FR-045**: Plan executor MUST support both parallel and sequential script execution per Plan JSON `parallel` flag and tool `async` property
-- **FR-046**: Plan executor MUST enforce per-script timeout (default 30 seconds) and terminate unresponsive scripts
-- **FR-047**: Plan executor MUST handle script failures gracefully (exit code != 0 or `done.ok=false`) per `required` flag in Plan JSON
-- **FR-048**: Plan executor MUST collect all events from scripts, including intermediate state_patch events, for full execution trace
+- **FR-045**: Plan executor MUST invoke skill scripts as independent OS processes per Constitution Principle II
+- **FR-046**: Skill scripts MUST communicate via NDJSON protocol over stdin/stdout following Spec 001
+- **FR-047**: Plan executor MUST pass script input as JSON via stdin (single object per script invocation)
+- **FR-048**: Plan executor MUST parse all NDJSON events emitted by scripts: `log`, `state_patch`, `asset`, `ui_event`, `error`, `done`
+- **FR-049**: Plan executor MUST respect script dependencies declared in Plan JSON and execute scripts in topological order
+- **FR-050**: Plan executor MUST support both parallel and sequential script execution per Plan JSON `parallel` flag and tool `async` property
+- **FR-051**: Plan executor MUST enforce per-script timeout (default 30 seconds) and terminate unresponsive scripts
+- **FR-052**: Plan executor MUST handle script failures gracefully (exit code != 0 or `done.ok=false`) per `required` flag in Plan JSON
+- **FR-053**: Plan executor MUST collect all events from scripts, including intermediate state_patch events, for full execution trace
 
 #### Core Skills (MVP)
 
-- **FR-049**: System MUST ship with a `storyteller` skill for rich narrative enhancement
+- **FR-054**: System MUST ship with a `storyteller` skill for rich narrative enhancement
   - Behavioral prompt for evocative narration
   - `narrate.dart` script that calls LLM (local or hosted) for detailed prose
   - Configuration: provider (ollama/claude/openai), model, API key, style (terse/vivid/poetic), fallback settings
   
-- **FR-050**: System MUST ship with a `dice-roller` skill for randomness
+- **FR-055**: System MUST ship with a `dice-roller` skill for randomness
   - `roll-dice.dart` script that parses dice formulas (e.g., "1d20+5", "3d6")
   - Emits `ui_event` with roll results for display to player
   - Configuration: show/hide individual die rolls, random source (crypto/pseudo)
   
-- **FR-051**: System MUST ship with a `memory` skill for semantic memory and continuity
+- **FR-056**: System MUST ship with a `memory` skill for semantic memory and continuity
   - `store-memory.dart` script that embeds and stores event summaries in local database
   - `recall-memory.dart` script that performs vector search for relevant context
   - Configuration: storage backend (sqlite/files), embedding model, max context events
   
-- **FR-052**: System MUST ship with a `reputation` skill for tracking player standing
+- **FR-057**: System MUST ship with a `reputation` skill for tracking player standing
   - `update-reputation.dart` script that records reputation changes by faction
   - `query-reputation.dart` script that returns current reputation values
   - Configuration: faction list, reputation scale, decay rate, storage backend
 
 #### Data Management
 
-- **FR-053**: Each skill MUST be allowed to maintain its own data storage in `skills/<skill-name>/data/` directory
-- **FR-054**: Skill data storage MUST persist across application restarts
-- **FR-055**: Skill data MUST remain private to that skill; other skills MUST NOT directly access another skill's data directory
-- **FR-056**: Skills MAY use SQLite, JSON files, or other local storage formats for their data
-- **FR-057**: System MUST create skill data directories on first use if they do not exist
+- **FR-058**: Each skill MUST be allowed to maintain its own data storage in `skills/<skill-name>/data/` directory
+- **FR-059**: Skill data storage MUST persist across application restarts
+- **FR-060**: Skill data MUST remain private to that skill; other skills MUST NOT directly access another skill's data directory
+- **FR-061**: Skills MAY use SQLite, JSON files, or other local storage formats for their data
+- **FR-062**: System MUST create skill data directories on first use if they do not exist
 
 #### Graceful Degradation (Constitution Principle IV)
 
-- **FR-058**: System MUST continue functioning when optional skills are not installed or disabled
-- **FR-059**: System MUST display user-friendly warnings when skills are misconfigured, not crash
-- **FR-060**: Skill scripts that use hosted APIs MUST fall back to local models when network is unavailable
-- **FR-061**: Narrator AI MUST provide simple template-based narration if plan generation fails completely
-- **FR-062**: Plan executor MUST continue executing remaining plan steps when one script fails (if independent from failure)
+- **FR-063**: System MUST continue functioning when optional skills are not installed or disabled
+- **FR-064**: System MUST display user-friendly warnings when skills are misconfigured, not crash
+- **FR-065**: Skill scripts that use hosted APIs MUST fall back to local models when network is unavailable
+- **FR-066**: Narrator AI MUST provide simple template-based narration if plan generation fails completely
+- **FR-067**: Plan executor MUST continue executing remaining plan steps when one script fails (if independent from failure)
 
 ### Key Entities *(include if feature involves data)*
 

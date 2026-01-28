@@ -891,70 +891,83 @@ Comprehensive data structures defined in [data-model.md](data-model.md):
 
 ## Phase 2: Implementation Tasks
 
-**Status**: ⏸ Pending (run `/speckit.tasks` to generate [tasks.md](tasks.md))
+**Status**: ✅ Complete  
+**Output**: [tasks.md](tasks.md) (55 tasks across 10 phases)
 
-### High-Level Implementation Sequence
+### Implementation Phases Overview
 
-1. **Core Infrastructure** (Week 1-2):
-   - Implement `PlanJson` model with extended schema parsing
-   - Implement `SkillDiscovery` service (scan `skills/`, parse manifests)
-   - Implement `ToolInvoker` NDJSON protocol extension (parse all event types)
-   - Implement `SessionState` with deep merge algorithm
+1. **Phase 1: Setup** (Week 0.5)
+   - Update dependencies, configure gitignore, scaffold skill directories
+   - T001–T004
 
-2. **Plan Executor** (Week 2-3):
-   - Implement topological sort (Kahn's algorithm)
-   - Implement circular dependency detection
-   - Implement retry logic with exponential backoff
-   - Implement timeout enforcement
-   - Implement execution trace collection
-   - Implement async/parallel execution support
+2. **Phase 2: Foundational** (Week 1–1.5)
+   - Implement data models (Plan JSON, events, execution status)
+   - Extend ToolInvoker, implement SkillDiscovery, SkillConfig, NarratorAI interface, PlanExecutor skeleton
+   - T005–T013
+   - **Checkpoint**: Foundation ready for user stories
 
-3. **Narrator AI Integration** (Week 3-4):
-   - Integrate Flutter AI Toolkit
-   - Configure Ollama backend connection
-   - Implement plan generator prompt engineering
-   - Implement skill selection logic
-   - Implement behavioral prompt injection
-   - Implement replan loop with bounded retries
+3. **Phase 3: User Story 1 – Basic Interactive Storytelling (P1)** (Week 2–2.5)
+   - Implement topological execution + replan loop
+   - Integrate Flutter AI Toolkit narrator
+   - Build storyteller skill with fallbacks
+   - Wire storytelling screen to narrator + executor
+   - T014–T019
+   - **Checkpoint**: End-to-end narration working with template fallback (MVP baseline)
 
-4. **Skills Settings UI** (Week 4-5):
-   - Implement `SkillsSettingsScreen` with skill list
-   - Implement `SkillConfigForm` dynamic form generation
-   - Implement JSON Schema → Flutter widget mapping
-   - Implement validation and error display
-   - Implement config persistence to JSON files
-   - Implement environment variable substitution
+4. **Phase 4: User Story 2 – Skill Configuration (P2)** (Week 2.5–3)
+   - Implement SkillsSettingsScreen with dynamic forms
+   - Persist configs to JSON with validation
+   - T020–T023
+   - **Checkpoint**: Skills configurable; storyteller can switch providers
 
-5. **Core Skills Development** (Week 5-6):
-   - Implement `storyteller` skill (narration enhancement)
-   - Implement `dice-roller` skill (randomness)
-   - Implement `memory` skill (vector search, SQLite)
-   - Implement `reputation` skill (faction tracking)
-   - Create behavioral prompts for each skill
-   - Create config schemas for each skill
+5. **Phase 5: User Story 3 – Skill Discovery (P2)** (Week 3–3.5)
+   - Validate manifests, load prompts, register scripts
+   - Expose discovered skills to UI
+   - T024–T027
+   - **Checkpoint**: Drop-in skills discoverable after restart
 
-6. **Testing and Polish** (Week 6-7):
-   - Write unit tests (Plan JSON, topological sort, deep merge)
-   - Write integration tests (tool protocol, replan loop)
-   - Write contract tests (NDJSON event validation)
-   - Perform acceptance testing (user story validation)
-   - Fix bugs, optimize performance
-   - Document known limitations
+6. **Phase 6: User Story 4 – Memory and Continuity (P3)** (Week 3.5–4)
+   - Implement memory skill with vector search
+   - Integrate with narrator context
+   - T028–T031
+   - **Checkpoint**: Memory recall <500ms for 1000 events
 
-7. **Documentation and Deployment** (Week 7-8):
-   - Update README with quickstart instructions
-   - Create video demo of interactive storytelling
-   - Publish skill development guide
-   - Package sample skills for distribution
-   - Prepare release notes
-   - Deploy MVP to early testers
+7. **Phase 7: User Story 5 – Reputation Tracking (P3)** (Week 4–4.5)
+   - Implement reputation skill with faction tracking
+   - Integrate decay and query responses
+   - T032–T035
+   - **Checkpoint**: Reputation affects narration
+
+8. **Phase 8: Data Persistence & Resilience** (Week 4.5–5)
+   - Implement skill data directory creation and isolation
+   - Implement fallback narration and graceful continue-on-failure
+   - Surface warnings for misconfigurations
+   - Add fallback tests (hosted API unavailable)
+   - T036–T042
+   - **Checkpoint**: Constitution IV.A robustness verified
+
+9. **Phase 9: Performance & SLO Validation** (Week 5–5.5)
+   - Benchmark plan generation <5s, timeouts, memory/reputation latency, fallback latency
+   - Add contract tests for NDJSON compliance
+   - T043–T048
+   - **Checkpoint**: All performance SLOs met
+
+10. **Phase 10: Verification & Documentation** (Week 5.5–6)
+    - Verify skill discovery, install, persistence on restart
+    - Guard narrator AI against network calls
+    - Document packaging and quickstart
+    - Optimize trace viewer and polish UX
+    - T049–T055
+    - **Checkpoint**: All acceptance criteria met, documentation complete, MVP ready for deployment
 
 ### Critical Path Items
 
-- **Blocker 1**: Narrator AI plan generation must work before executor testing
-- **Blocker 2**: Tool invoker NDJSON parsing must work before skill script development
-- **Blocker 3**: Skill discovery must work before Skills Settings UI
-- **Dependency**: Core skills depend on plan executor completion
+- **Blocker 1**: Phase 2 foundational (T005–T013) must complete before user stories can start
+- **Blocker 2**: Narrator AI plan generation (T016) must work before replan loop (T015) can be tested
+- **Blocker 3**: Tool invoker NDJSON parsing (T009) must work before first skill scripts (T018) execute
+- **Blocker 4**: Skill discovery (T010) must work before SkillsSettingsScreen (T020) and dynamic forms (T021)
+- **Blocker 5**: Phase 3 (US1) must complete before Phase 8 graceful degradation can be tested end-to-end
+- **Blocker 6**: Phase 8 data persistence must be in place before Phase 10 verification tests run
 
 ---
 
@@ -1053,16 +1066,23 @@ Run `/speckit.tasks` to generate detailed task breakdown with:
 
 ## Next Steps
 
-1. **Review this plan** with team/stakeholders for approval
-2. **Run `/speckit.tasks`** to generate detailed task breakdown ([tasks.md](tasks.md))
-3. **Assign tasks** to developers based on expertise
-4. **Set up development environment** (follow [quickstart.md](quickstart.md))
-5. **Begin Phase 2A** (core infrastructure, week 1-2)
-6. **Weekly standups** to track progress against plan
-7. **Mid-phase review** (after Phase 2A) to adjust estimates
+1. **Review this plan and [tasks.md](tasks.md)** with team/stakeholders for approval
+2. **Assign tasks** to developers based on expertise (recommend 1–2 developers for 7–8 week timeline)
+3. **Set up development environment** (follow [quickstart.md](quickstart.md))
+4. **Begin Phase 1** (setup, 0.5 week)
+5. **Launch Phase 2** (foundational infrastructure, 1–1.5 weeks), gates Phase 3+
+6. **Execute Phases 3–7** in sequence or parallel where possible (user stories, 3.5 weeks)
+7. **Run Phase 8** (resilience) after user stories to ensure robustness (1 week)
+8. **Run Phase 9** (perf validation) in parallel with Phase 8 and after corresponding features complete (1 week)
+9. **Run Phase 10** (verification and polish) at end (1 week)
+10. **Weekly standups** to track progress against plan
+11. **Mid-phase reviews** (after Phase 2, after Phase 5, after Phase 8) to validate estimates and adjust
+
+**Total Effort**: 55 tasks across 10 phases, ~7–8 weeks for 1 developer (can compress to 4–5 weeks with 2 developers and parallel execution)
 
 **Current Branch**: `002-plan-generation-skills`  
 **Implementation Plan Path**: `/Users/djlawhead/Developer/forkedagain/projects/narratoria/specs/002-plan-generation-skills/plan.md`  
+**Tasks Path**: `/Users/djlawhead/Developer/forkedagain/projects/narratoria/specs/002-plan-generation-skills/tasks.md`  
 **Status**: ✅ Ready for implementation
 
 ---

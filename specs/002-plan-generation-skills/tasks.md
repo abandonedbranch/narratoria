@@ -6,7 +6,7 @@
 ## Phase 1: Setup (Shared Infrastructure)
 
 - [ ] T001 Update dependencies (flutter_ai_toolkit, sqlite3/sqflite, json_schema, path_provider, uuid) in [src/pubspec.yaml](src/pubspec.yaml)
-- [ ] T002 [P] Add gitignore entries for skill configs and data in [src/.gitignore](src/.gitignore)
+- [ ] T002 [P] Add gitignore entries for skill configs and data in [.gitignore](.gitignore) (root repo gitignore, not src/)
 - [ ] T003 [P] Scaffold skills directory structure (storyteller, memory, reputation, dice-roller) under [skills/](skills/)
 - [ ] T004 [P] Create developer samples directory for mock scripts in [test/contract/](test/contract/) for protocol tests
 
@@ -100,21 +100,48 @@
 
 ---
 
-## Phase 8: Polish & Cross-Cutting Concerns
+## Phase 8: Data Persistence and Resilience
 
-- [ ] T036 [P] Document skill packaging and install steps in [src/README.md](src/README.md)
-- [ ] T037 [P] Optimize execution trace logging and viewer UX in [src/lib/ui/widgets/execution_trace_viewer.dart](src/lib/ui/widgets/execution_trace_viewer.dart)
-- [ ] T038 [P] Validate quickstart steps end-to-end using dice-roller sample in [specs/002-plan-generation-skills/quickstart.md](specs/002-plan-generation-skills/quickstart.md)
-- [ ] T039 Harden timeout/backoff defaults and configuration surfacing in [src/lib/services/plan_executor.dart](src/lib/services/plan_executor.dart)
-- [ ] T040 Performance benchmark memory and reputation queries and tune defaults in [skills/memory/](skills/memory/) and [skills/reputation/](skills/reputation/)
+- [ ] T036 [P] Implement skill data directory creation on first use in [src/lib/services/skill_discovery.dart](src/lib/services/skill_discovery.dart) (FR-062)
+- [ ] T037 [P] Enforce skill data isolation: skills cannot access other skills' data/ directories, verified via unit test in [test/unit/](test/unit/)
+- [ ] T038 [P] Verify skill data persistence: create test skill that writes to data/, restart app, confirm data still present in [test/integration/](test/integration/) (FR-059)
+- [ ] T039 Implement fallback narration template in [src/lib/services/narrator_ai.dart](src/lib/services/narrator_ai.dart) for when plan generation fails (FR-066)
+- [ ] T040 [P] Implement graceful continue-on-failure for non-required tools in plan executor in [src/lib/services/plan_executor.dart](src/lib/services/plan_executor.dart) (FR-067)
+- [ ] T041 [P] Surface user-friendly warnings for misconfigured skills in [src/lib/ui/screens/skills_settings_screen.dart](src/lib/ui/screens/skills_settings_screen.dart) (FR-064)
+- [ ] T042 Add integration test for API failure fallback (hosted provider -> local model) in [test/integration/](test/integration/) (FR-065)
+
+---
+
+## Phase 9: Performance & SLO Validation
+
+- [ ] T043 [P] Benchmark plan generation latency (<5s for typical input) and add automated test gate in [test/integration/](test/integration/) (FR-006, SC-001)
+- [ ] T044 [P] Benchmark per-tool timeout enforcement (30s default) and plan-level timeout (60s default) in executor in [test/integration/](test/integration/) (FR-017/FR-018)
+- [ ] T045 Benchmark memory skill vector search (<500ms for 1000 events) and add perf test in [test/integration/](test/integration/) (SC-007)
+- [ ] T046 Benchmark reputation skill queries (<100ms) and add perf test in [test/integration/](test/integration/) (SC-008)
+- [ ] T047 Benchmark storyteller fallback latency (<10s when API unavailable) in [test/integration/](test/integration/) (SC-009)
+- [ ] T048 [P] Add contract test for NDJSON protocol compliance (all events well-formed, exactly one done) in [test/contract/](test/contract/) (FR-048)
+
+---
+
+## Phase 10: Verification & Documentation
+
+- [ ] T049 [P] Integration test: skill discovery loads all valid skills on startup without errors (SC-004)
+- [ ] T049 [P] Integration test: drop-in skill install (add skill to skills/ and restart) is discoverable and usable (SC-010)
+- [ ] T050 [P] Integration test: skill configuration persists across restart (SC-011)
+- [ ] T051 [P] Guard narrator AI to disallow network calls via unit/integration test in [test/unit/](test/unit/) and [test/integration/](test/integration/) (FR-007, C4)
+- [ ] T052 [P] Document skill packaging and install steps in [src/README.md](src/README.md)
+- [ ] T053 [P] Optimize execution trace logging and viewer UX in [src/lib/ui/widgets/execution_trace_viewer.dart](src/lib/ui/widgets/execution_trace_viewer.dart)
+- [ ] T054 [P] Validate quickstart steps end-to-end using dice-roller sample in [specs/002-plan-generation-skills/quickstart.md](specs/002-plan-generation-skills/quickstart.md)
+- [ ] T055 Harden timeout/backoff defaults and configuration surfacing in [src/lib/services/plan_executor.dart](src/lib/services/plan_executor.dart)
 
 ---
 
 ## Dependencies & Execution Order
 
-- Setup (Phase 1) → Foundational (Phase 2) → User Stories in priority order (US1 P1 → US2/US3 P2 → US4/US5 P3) → Polish (Phase 8).
+- Setup (Phase 1) → Foundational (Phase 2) → User Stories in priority order (US1 P1 → US2/US3 P2 → US4/US5 P3) → Resilience (Phase 8) → Performance (Phase 9) → Verification (Phase 10).
 - US1 is a prerequisite for validating end-to-end narration; US2 and US3 can start after Foundational but assume narrator/executor scaffolding exists.
 - US4 (memory) and US5 (reputation) depend on narrator prompt/context wiring from US1 and discovery/config from US2/US3.
+- Phase 8 (resilience) depends on user stories; Phase 9 (perf) depends on Phase 8; Phase 10 (verification) depends on Phase 9.
 
 ## Parallel Execution Examples
 
@@ -124,10 +151,16 @@
 - **US3**: T024 and T026 in parallel; T025 after T024; T027 after T024/T026.
 - **US4**: T029 and T030 in parallel after T028; T031 after T029/T030.
 - **US5**: T033 and T034 in parallel after T032; T035 after T033/T034.
+- **Phase 8**: T036–T038 (data) in parallel; T039–T042 (graceful degradation) in parallel after T014 completes.
+- **Phase 9**: T043–T048 (perf benchmarks) can run in parallel after respective features complete (e.g., T043 after US1 narrator/executor, T045 after US4, T046 after US5).
+- **Phase 10**: T049–T051 (verification) depend on corresponding features; T052–T055 (docs/polish) can run in parallel at end.
 
 ## Implementation Strategy
 
-- MVP first: Complete Phases 1–4 (through US1), demo storytelling with fallback.
-- Incremental: Add US2 and US3 to unlock configurable and discoverable skills.
-- Extend: Add US4/US5 for continuity and consequence depth.
-- Polish: Run performance passes, documentation, and quickstart validation before release.
+- MVP first: Complete Phases 1–4 (through US1), demo storytelling with fallback (approx. 2–3 weeks).
+- Resilience: Add Phase 8 (data persistence + graceful degradation) to ensure robustness and Constitution IV.A compliance.
+- Incremental: Add US2 and US3 (Phase 4–5) to unlock configurable and discoverable skills.
+- Extend: Add US4/US5 (Phase 6–7) for continuity and consequence depth.
+- Performance: Run Phase 9 benchmarks and perf validation throughout (can run in parallel with feature work).
+- Polish: Run Phase 10 verification, documentation, and quickstart validation before release.
+- Total estimated duration: 7–8 weeks for full implementation (can be compressed with 2 developers).
