@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Execution Result Schema",
+  "description": "Schema for plan execution results returned by Narratoria runtime. Used for replan feedback loop and debugging.",
+  "type": "object",
+  "required": ["planId", "success", "narrative", "executionTime", "toolResults", "failedTools", "generationMetadata", "canReplan"],
+  "properties": {
+    "planId": {
+      "type": "string",
+      "description": "UUID of the executed plan (matches plan.requestId)",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "success": {
+      "type": "boolean",
+      "description": "Whether the plan succeeded overall (all required tools completed)"
+    },
+    "narrative": {
+      "type": "string",
+      "description": "Final narrative text to display to player"
+    },
+    "executionTime": {
+      "type": "integer",
+      "description": "Total execution time in milliseconds",
+      "minimum": 0
+    },
+    "toolResults": {
+      "type": "array",
+      "description": "Results for each tool in the plan",
+      "items": {
+        "type": "object",
+        "required": ["toolId", "ok", "state", "executionTime", "retryCount"],
+        "properties": {
+          "toolId": {
+            "type": "string",
+            "description": "Matches tool ID from plan"
+          },
+          "ok": {
+            "type": "boolean",
+            "description": "Logical success from done.ok event"
+          },
+          "state": {
+            "type": "string",
+            "description": "Final execution state",
+            "enum": ["completed", "failed", "skipped", "timeout"]
+          },
+          "output": {
+            "type": "object",
+            "description": "Aggregated state patches from this tool"
+          },
+          "executionTime": {
+            "type": "integer",
+            "description": "Tool execution time in milliseconds",
+            "minimum": 0
+          },
+          "retryCount": {
+            "type": "integer",
+            "description": "Number of retries attempted",
+            "minimum": 0
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if ok=false"
+          },
+          "events": {
+            "type": "array",
+            "description": "All protocol events from this tool",
+            "items": {
+              "type": "object",
+              "required": ["version", "type"],
+              "properties": {
+                "version": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": ["log", "state_patch", "asset", "ui_event", "error", "done"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "failedTools": {
+      "type": "array",
+      "description": "Array of toolIds that failed",
+      "items": {
+        "type": "string"
+      }
+    },
+    "generationMetadata": {
+      "type": "object",
+      "description": "Metadata from the executed plan",
+      "properties": {
+        "generationAttempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "parentPlanId": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      }
+    },
+    "canReplan": {
+      "type": "boolean",
+      "description": "Whether replanning is viable (true if failures were recoverable)"
+    },
+    "failureReason": {
+      "type": "string",
+      "description": "Why the plan failed (if applicable)",
+      "enum": ["circular_dependency", "tool_failure", "timeout", "protocol_violation"]
+    }
+  },
+  "additionalProperties": false
+}

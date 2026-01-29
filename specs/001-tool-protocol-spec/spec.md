@@ -461,7 +461,7 @@ Players interact with Narratoria by submitting natural language prompts (e.g., "
 └──────────────┘
 ```
 
-### 13.3 Plan JSON Schema
+### 13.3 Plan JSON Schema (Extended)
 
 The narrator AI MUST produce a **Plan JSON** document with this structure:
 
@@ -474,10 +474,21 @@ The narrator AI MUST produce a **Plan JSON** document with this structure:
       "toolId": "<string>",
       "toolPath": "<filesystem-path-to-executable>",
       "input": { ...arbitrary JSON... },
-      "dependencies": ["<toolId>", ...]
+      "dependencies": ["<toolId>", ...],
+      "required": <boolean, default true>,
+      "async": <boolean, default false>,
+      "retryPolicy": {
+        "maxRetries": <integer, default 3>,
+        "backoffMs": <integer, default 100>
+      }
     }
   ],
-  "parallel": <boolean, default false>
+  "parallel": <boolean, default false>,
+  "disabledSkills": ["<skillName>", ...],
+  "metadata": {
+    "generationAttempt": <integer>,
+    "parentPlanId": "<uuid, or null>"
+  }
 }
 ```
 
@@ -489,40 +500,141 @@ The narrator AI MUST produce a **Plan JSON** document with this structure:
   - `toolPath`: Absolute or relative path to the tool executable
   - `input`: JSON object passed to the tool via stdin (as described in section 6)
   - `dependencies`: Array of `toolId` values that must complete before this tool runs
+  - `required`: (NEW) If true, tool failure aborts dependent tools and plan execution fails; if false, tool failure is non-blocking and dependent tools may still execute
+  - `async`: (NEW) If true, tool may run in parallel with unrelated tools and siblings (respecting `dependencies`); if false, tool runs sequentially
+  - `retryPolicy`: (NEW) Configures retry behavior for this specific tool
+    - `maxRetries`: Maximum retry attempts before marking tool as failed (default 3)
+    - `backoffMs`: Milliseconds between retries with exponential backoff
 - `parallel`: If true and dependencies allow, tools run concurrently; if false, tools run sequentially
+- `disabledSkills`: (NEW) Array of skill names that failed in previous execution attempts (plan generator MUST NOT select these skills)
+- `metadata`: (NEW) Plan metadata for debugging and replan tracking
+  - `generationAttempt`: Which attempt this plan represents (1, 2, 3...)
+  - `parentPlanId`: If this is a replan, the UUID of the previous plan that failed
 
-### 13.4 Plan Execution Rules
+### 13.4 Plan Execution Rules (Extended)
 
-Narratoria MUST execute plans according to these rules:
+The runtime MUST execute plans according to these behavioral requirements. Implementation details (algorithms, data structures) are left to the client; see §13.7 for reference implementation guidance.
 
-1. **Dependency Resolution**: Tools with `dependencies` MUST NOT start until all listed dependencies complete with `done.ok: true`.
+1. **Circular Dependency Detection**: Before execution, the runtime MUST detect any circular dependencies among tools (direct or transitive). If detected, the runtime MUST reject the plan and request a new plan from the narrator AI.
+   
+   *Note: Reference implementation uses topological sort (Kahn's algorithm). See Spec 002 data-model.md §3 for algorithm details.*
 
-2. **Parallel Execution**: If `parallel: true`, tools with no dependencies (or satisfied dependencies) MAY run concurrently.
+2. **Topological Execution Order**: Tools MUST execute in dependency-respecting order. A tool MUST NOT begin execution until all tools listed in its `dependencies` array have completed successfully.
 
-3. **Sequential Fallback**: If `parallel: false`, tools MUST run in array order, waiting for each to complete before starting the next.
+3. **Parallel Execution**: 
+   - If `parallel: true` in the plan AND `async: true` for a tool, tools with satisfied dependencies MAY run concurrently
+   - Concurrent execution MUST NOT exceed the number of available CPU cores (implementation-specific limit)
+   - Tools with no dependencies MAY run in parallel if both plan and tool have `parallel`/`async: true`
 
-4. **Failure Handling**: If any tool emits `done.ok: false` or exits with non-zero code:
-   - Dependent tools MUST NOT execute (tools listing the failed tool in their `dependencies` array)
-   - Independent tools (no dependency on the failed tool) MUST continue execution automatically
-   - The plan continues until all executable tools complete or fail
-   - Narratoria MUST surface all errors in the UI with context
+4. **Sequential Fallback**: If `parallel: false`, tools MUST run in topological order, waiting for each to complete before starting the next.
 
-5. **Event Aggregation**: Narratoria MUST collect all events from all tools in the plan and merge:
+5. **Retry Logic**:
+   - If a tool fails (emits `done.ok: false` or exits non-zero), the runtime MUST retry up to `retryPolicy.maxRetries` times
+   - The runtime MUST apply exponential backoff between retries with minimum delay `retryPolicy.backoffMs` milliseconds
+   - After exhausting retries, the runtime MUST mark the tool as failed and proceed according to the tool's `required` flag
+   - The runtime MUST record retry count in the execution trace
+   
+   *Note: Reference backoff formula: delay = backoffMs × 2^(attempt-1). See Spec 002 data-model.md §2 RetryPolicy.calculateBackoff().*
+
+6. **Failure Handling (by `required` flag)**:
+   - **If `required: true` and tool fails**:
+     - Dependent tools (listing failed tool in `dependencies`) MUST NOT execute
+     - Plan execution stops; all remaining non-blocking tasks MAY continue
+     - Tool failure counts against plan execution attempt limit (max 3 attempts)
+   - **If `required: false` and tool fails**:
+     - Dependent tools MAY execute (they receive null/empty for failed tool inputs)
+     - Plan continues executing remaining tasks
+     - Tool failure is logged but does not abort plan
+   - Independent tools (no dependency on failed tool) continue execution automatically in all cases
+
+7. **Event Aggregation**: Narratoria MUST collect all events from all tools in the plan and merge:
    - `log` events → displayed in Tool Execution Panel
    - `state_patch` events → merged into session state
    - `asset` events → registered and displayed in Asset Gallery
    - `ui_event` events → dispatched to UI handlers
    - `error` events → displayed with context
 
-### 13.5 Narrator AI Interface (Non-Normative Guidance)
+8. **Execution Trace**: Narratoria MUST maintain a full execution trace with results for each tool (see §13.6)
 
-While tool discovery/installation is a non-goal for Spec 001, the narrator AI service:
-- MAY be a separate process or remote service
-- MUST know available tool paths and their capabilities (out of scope for this spec)
-- SHOULD generate plans that respect tool contracts
-- MUST return Plan JSON in the format specified in section 13.3
+### 13.5 Plan Executor Output (NEW)
 
-Future specifications will define tool discovery and narrator AI integration.
+After executing a plan, Narratoria MUST return an execution result with full trace:
+
+```json
+{
+  "planId": "<uuid, matches plan.requestId>",
+  "success": <boolean>,
+  "narrative": "<final narrative string>",
+  "executionTime": <milliseconds>,
+  "toolResults": [
+    {
+      "toolId": "<string>",
+      "ok": <boolean>,
+      "state": "completed" | "failed" | "skipped" | "timeout",
+      "output": { ...aggregated state_patch events... },
+      "executionTime": <milliseconds>,
+      "retryCount": <integer>,
+      "error": "<string, if ok=false>",
+      "events": [ ...all events from this tool... ]
+    }
+  ],
+  "failedTools": ["<toolId>", ...],
+  "generationAttempt": <integer>,
+  "canReplan": <boolean>
+}
+```
+
+**Purpose**: This trace allows the narrator AI to:
+- Understand which tools failed and why
+- Disable failed skills for the next plan via `disabledSkills` field
+- Determine if replanning is possible (see §13.7)
+- Debug execution issues
+
+### 13.6 Narrator AI Interface (Extended Requirements)
+
+While tool discovery/installation is a non-goal for Spec 001, the narrator AI service integration is normative per Constitution Principle IV.A:
+
+**Required Behavior**:
+- The narrator AI MUST return Plan JSON in the format specified in §13.3
+- The narrator AI MUST implement bounded replan loop: maximum 5 plan generation attempts before graceful fallback (Constitution IV.A)
+- The narrator AI MUST consult `disabledSkills` in execution results to avoid selecting failed skills in subsequent plans
+- The narrator AI MUST track generation attempt count in `metadata.generationAttempt`
+- The narrator AI MUST set `metadata.parentPlanId` to the previous plan's UUID when replanning
+- After 5 failed plan generation attempts, the narrator AI MUST provide template-based fallback narration
+
+**Implementation Flexibility**:
+- The narrator AI MAY be a separate process, remote service, or in-process module
+- Tool capability discovery mechanisms are implementation-specific (see Spec 002 for Agent Skills Standard integration)
+- Plan generation strategy (prompt engineering, model selection) is implementation-specific
+
+*Note: For complete replan loop implementation including per-tool and per-plan-execution retry bounds, see Constitution §IV.A and Spec 002 plan.md.*
+
+Future specifications will define tool discovery protocols and capability negotiation.
+
+---
+
+### 13.7 Implementation Guidance
+
+This specification defines the protocol contract and behavioral requirements that any Narratoria-compatible runtime must satisfy. Implementation details (algorithms, data structures, performance optimizations) are left to individual clients.
+
+**Reference Implementation**: For a complete reference implementation in Dart+Flutter, see:
+
+- **Spec 002: Plan Generation and Skill Discovery**
+  - `data-model.md` §3: PlanExecutionContext (dependency graph operations, topological sort, cycle detection)
+  - `data-model.md` §2: RetryPolicy (backoff calculation formula)
+  - `data-model.md` §11: DeepMerge extension (state merge algorithm)
+  - `plan.md`: Architecture diagrams (topological sort flow, replan loop state machine, tool execution lifecycle)
+  - `tasks.md`: Implementation tasks (T013: circular dependency detection, T014: topological execution, T015: replan loop)
+
+**Cross-Language Compatibility**: Other language implementations (Rust, Go, Python) MAY use different algorithms or data structures as long as they satisfy the behavioral requirements defined in §13.4. For example:
+- Cycle detection: DFS-based algorithms are acceptable alternatives to topological sort
+- State merge: Implementations may optimize for specific use cases while preserving deep merge semantics
+- Parallel execution: Thread pools, work-stealing, or actor models are all valid strategies
+
+**Protocol Compliance Testing**: Implementations SHOULD validate against:
+- `contracts/plan-json.schema.json`: Plan JSON structure
+- `contracts/execution-result.schema.json`: Execution result structure
+- `contracts/tool-protocol.openapi.yaml`: Event schema validation
 
 ---
 
@@ -561,9 +673,9 @@ For MVP validation, provide at least two example tools:
    - `ui_event` event: `{"event": "narrative_choice", "payload": {"choices": ["Open", "Leave"]}}`
    - `done` event: `{"ok": true, "summary": "Door examined."}`
 
-### 14.3 Sample Plan JSON
+### 14.3 Sample Plan JSON (Extended)
 
-For prompt "I light the torch and examine the door":
+For prompt "I light the torch and examine the door" (first attempt):
 
 ```json
 {
@@ -574,17 +686,53 @@ For prompt "I light the torch and examine the door":
       "toolId": "light1",
       "toolPath": "tools/torch-lighter",
       "input": {"action": "light_torch"},
-      "dependencies": []
+      "dependencies": [],
+      "required": true,
+      "async": false,
+      "retryPolicy": {"maxRetries": 3, "backoffMs": 100}
     },
     {
       "toolId": "examine1",
       "toolPath": "tools/door-examiner",
       "input": {"target": "mysterious_door"},
-      "dependencies": ["light1"]
+      "dependencies": ["light1"],
+      "required": true,
+      "async": false,
+      "retryPolicy": {"maxRetries": 3, "backoffMs": 100}
     }
   ],
-  "parallel": false
+  "parallel": false,
+  "disabledSkills": [],
+  "metadata": {
+    "generationAttempt": 1,
+    "parentPlanId": null
+  }
 }
 ```
 
-This demonstrates sequential execution with dependency tracking. Tool specifications are defined in §14.2 above.
+If torch-lighter fails after 3 retries, execution trace shows failure. Narrator AI generates Plan 2:
+
+```json
+{
+  "requestId": "550e8400-e29b-41d4-a716-446655440001",
+  "narrative": "The torch is beyond reach. You examine the mysterious door instead.",
+  "tools": [
+    {
+      "toolId": "examine2",
+      "toolPath": "tools/door-examiner",
+      "input": {"target": "mysterious_door"},
+      "dependencies": [],
+      "required": true,
+      "async": false
+    }
+  ],
+  "parallel": false,
+  "disabledSkills": ["torch-lighter"],
+  "metadata": {
+    "generationAttempt": 2,
+    "parentPlanId": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+This demonstrates sequential execution with dependency tracking, retry policies, and replan logic. Tool specifications are defined in §14.2 above.
