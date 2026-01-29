@@ -126,7 +126,7 @@
 ## Phase 10: Verification & Documentation
 
 - [ ] T049 [P] Integration test: skill discovery loads all valid skills on startup without errors (SC-004)
-- [ ] T049 [P] Integration test: drop-in skill install (add skill to skills/ and restart) is discoverable and usable (SC-010)
+- [ ] T056 [P] Integration test: drop-in skill install (add skill to skills/ and restart) is discoverable and usable (SC-010)
 - [ ] T050 [P] Integration test: skill configuration persists across restart (SC-011)
 - [ ] T051 [P] Guard narrator AI to disallow network calls via unit/integration test in [test/unit/](test/unit/) and [test/integration/](test/integration/) (FR-007, C4)
 - [ ] T052 [P] Document skill packaging and install steps in [src/README.md](src/README.md)
