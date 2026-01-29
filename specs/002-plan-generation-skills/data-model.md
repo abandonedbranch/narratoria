@@ -135,7 +135,7 @@ class RetryPolicy {
   /// Calculates backoff delay per Spec 001 reference formula.
   /// Formula: backoffMs × 2^(attemptNumber-1)
   Duration calculateBackoff(int attemptNumber) {
-    // exponential: backoffMs * (2 ^ attemptNumber)
+    // exponential: backoffMs * (2 ^ (attemptNumber - 1))
   }
 }
 
