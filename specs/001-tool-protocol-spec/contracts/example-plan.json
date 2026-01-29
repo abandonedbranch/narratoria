@@ -8,7 +8,13 @@
       "input": {
         "action": "light_torch"
       },
-      "dependencies": []
+      "dependencies": [],
+      "required": true,
+      "async": false,
+      "retryPolicy": {
+        "maxRetries": 3,
+        "backoffMs": 100
+      }
     },
     {
       "toolId": "examine1",
@@ -16,8 +22,19 @@
       "input": {
         "target": "mysterious_door"
       },
-      "dependencies": ["light1"]
+      "dependencies": ["light1"],
+      "required": true,
+      "async": false,
+      "retryPolicy": {
+        "maxRetries": 3,
+        "backoffMs": 100
+      }
     }
   ],
-  "parallel": false
+  "parallel": false,
+  "disabledSkills": [],
+  "metadata": {
+    "generationAttempt": 1,
+    "parentPlanId": null
+  }
 }
