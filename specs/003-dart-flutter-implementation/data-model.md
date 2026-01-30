@@ -241,7 +241,7 @@ class ToolResult {
 }
 
 /// Full execution result for a plan.
-/// Implements Spec 002 Execution Result schema ExecutionResult schema.
+/// Implements Spec 002 Execution Result schema.
 /// Used for replan feedback loop and debugging.
 class ExecutionResult {
   final String planId;                              // Matches plan.requestId
