@@ -115,8 +115,8 @@ To deliver a minimum viable product that demonstrates the protocol and player in
 4. **Event Processing**: Parse NDJSON from tool stdout and dispatch to handlers
 5. **UI Event Support**: Implement `narrative_choice` handler (display choice buttons; other events degrade gracefully)
 6. **State Management**: Maintain session state, apply `state_patch` events using deep merge
-6. **Asset Registry**: Store asset metadata from `asset` events
-7. **UI Panels**:
+7. **Asset Registry**: Store asset metadata from `asset` events
+8. **UI Panels**:
    - Story View (narrative text + rendered assets)
    - Tool Execution Panel (logs, progress)
    - Asset Gallery (images, audio, video with graceful degradation)
@@ -212,12 +212,14 @@ This demonstrates sequential execution with dependency tracking, retry policies,
 
 For the complete Dart+Flutter reference implementation, see:
 
-- **Spec 002: Plan Generation and Skill Discovery**
-  - `data-model.md` §3: PlanExecutionContext (dependency graph operations, topological sort, cycle detection)
-  - `data-model.md` §2: RetryPolicy (backoff calculation formula)
-  - `data-model.md` §11: DeepMerge extension (state merge algorithm)
-  - `plan.md`: Architecture diagrams (topological sort flow, replan loop state machine, tool execution lifecycle)
-  - `tasks.md`: Implementation tasks (T013: circular dependency detection, T014: topological execution, T015: replan loop)
+- **Spec 002: Plan Generation and Skill Discovery** (language-agnostic algorithms)
+  - `data-model.md` §4: Plan Execution Algorithm (topological sort, cycle detection)
+  - `data-model.md` §2: Plan JSON Structure (includes RetryPolicy with backoff formula)
+  - `data-model.md` §6: Deep Merge Algorithm (state merge semantics)
+  - `data-model.md` §5: Replan Loop State Machine
+- **This Specification (Spec 003)**
+  - `data-model.md`: Dart class implementations
+  - `tasks.md`: Implementation tasks
 
 ### 4.2 Dart Class Implementations
 

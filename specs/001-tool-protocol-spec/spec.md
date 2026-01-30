@@ -24,7 +24,7 @@
 - **Tool Execution Panel**: UI component (widget) displaying active tool invocations with logs, progress, and completion status
 - **Tools View**: MainScreen navigation destination containing the Tool Execution Panel widget
 - **Narrator AI Stub**: Simplified in-process implementation that converts player prompts to Plan JSON using hard-coded mappings (not a test mock; intended for MVP functionality before LLM integration)
-- **Plan JSON**: Structured document produced by narrator AI describing which tools to execute, their inputs, dependencies, and execution strategy (parallel/sequential)
+- **Plan JSON**: Structured document produced by narrator AI describing which tools to execute, their inputs, dependencies, and execution strategy (parallel/sequential). See [Spec 002 contracts/plan-json.schema.json](../002-plan-generation-skills/contracts/plan-json.schema.json) for the authoritative schema.
 - **Deep Merge**: State patch merge semantics where nested objects are merged recursively, arrays replaced entirely, and null values remove keys
 
 ---

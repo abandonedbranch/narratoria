@@ -18,6 +18,7 @@ To ensure consistency across spec, plan, and tasks, this feature uses the follow
 - **Behavioral Prompt** (`prompt.md`): Markdown file injected into narrator AI system context; guides narrator behavior for this skill (e.g., "Emphasize vivid sensory details").
 - **Graceful Degradation**: System continues functioning and presents narration to user even when optional features fail (e.g., hosted API unavailable → fallback to local model).
 - **Replan Loop**: Bounded retry system (max 5 plan generation attempts) that learns from failures and disables failed skills in subsequent plans.
+- **Narrator AI Stub**: Simplified in-process implementation that converts player prompts to Plan JSON using hard-coded mappings (not a test mock; intended for MVP functionality before LLM integration). See Spec 003 for Dart implementation.
 
 ---
 
@@ -146,7 +147,7 @@ A player's actions have consequences. When the player steals from a merchant in 
 #### Plan Generation (Narrator AI)
 
 - **FR-001**: System MUST include a local small language model (recommended: Gemma 2B, Llama 3.2 3B, Qwen 2.5 3B) for plan generation that runs entirely in-process
-- **FR-002**: Plan generator MUST convert player text input into structured Plan JSON documents following Spec 001 extended schema
+- **FR-002**: Plan generator MUST convert player text input into structured Plan JSON documents following the schema defined in `contracts/plan-json.schema.json`
 - **FR-003**: Plan generator MUST select relevant skills and their scripts based on player intent and available skills
 - **FR-004**: Plan generator MUST inject active skills' behavioral prompts into system context when generating plans
 - **FR-005**: Plan generator MUST fall back to simple pattern-based planning if LLM fails or is unavailable
