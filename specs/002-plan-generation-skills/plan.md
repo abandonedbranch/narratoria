@@ -174,42 +174,42 @@ src/
 
 ## Architecture Diagrams and State Machines
 
-### Protocol Compliance (Spec 001 §13.4)
+### Protocol Compliance (Spec 002 Plan Execution Semantics)
 
-All execution flows implement behavioral requirements from Spec 001 Tool Protocol:
+All execution flows implement behavioral requirements from Spec 002 Plan Execution Semantics:
 
-✅ **Circular Dependency Detection** (Spec 001 §13.4.1)
+✅ **Circular Dependency Detection** (Plan Execution Rules §1)
    - Implemented via Kahn's topological sort in PlanExecutionContext
    - Detected during plan validation, before any tool execution
    - See diagram §3 below for algorithm visualization
 
-✅ **Topological Execution Order** (Spec 001 §13.4.2)
+✅ **Topological Execution Order** (Plan Execution Rules §2)
    - Tools execute in dependency-respecting order
    - Parallel execution respects `async` flag and dependencies
    - See state machine §4 below for per-tool lifecycle
 
-✅ **Retry Logic** (Spec 001 §13.4.5)
+✅ **Retry Logic** (Plan Execution Rules §5)
    - Per-tool retries: up to `retryPolicy.maxRetries` (default 3)
    - Exponential backoff: backoffMs × 2^(attempt-1)
    - Retry count recorded in execution trace
    - See diagram §4 for retry state machine
 
-✅ **Failure Handling** (Spec 001 §13.4.6)
+✅ **Failure Handling** (Plan Execution Rules §6)
    - required=true: dependent tools aborted
    - required=false: dependent tools continue with null input
    - See state machine §2 for replan escalation path
 
-✅ **Independent Tool Continuation** (Spec 001 §13.4.7)
+✅ **Independent Tool Continuation** (Plan Execution Rules §6)
    - Tools without dependency on failed tool continue automatically
    - Partial success preferred over hard failure
 
-✅ **Replan Loop Bounded Retries** (Constitution IV.A, Spec 001 §13.6)
+✅ **Replan Loop Bounded Retries** (Constitution IV.A, Narrator AI Interface)
    - Per-tool: MAX 3 retries (configurable via retryPolicy)
    - Per-plan-execution: MAX 3 attempts
    - Per-plan-generation: MAX 5 attempts before template fallback
    - See state machine §2 for complete bounded retry system
 
-**Cross-Reference**: For protocol requirements (language-agnostic), see Spec 001 §13.4. This implementation provides Dart+Flutter-specific algorithms that satisfy those requirements.
+**Cross-Reference**: For plan execution requirements (language-agnostic), see [spec.md](spec.md) Plan Execution Semantics section. This implementation provides Dart+Flutter-specific algorithms that satisfy those requirements.
 
 ---
 

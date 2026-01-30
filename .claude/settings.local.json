@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git mv:*)",
+      "Bash(git add:*)",
+      "Bash(.specify/scripts/bash:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)"
+    ]
+  }
+}

@@ -18,6 +18,7 @@ To ensure consistency across spec, plan, and tasks, this feature uses the follow
 - **Behavioral Prompt** (`prompt.md`): Markdown file injected into narrator AI system context; guides narrator behavior for this skill (e.g., "Emphasize vivid sensory details").
 - **Graceful Degradation**: System continues functioning and presents narration to user even when optional features fail (e.g., hosted API unavailable → fallback to local model).
 - **Replan Loop**: Bounded retry system (max 5 plan generation attempts) that learns from failures and disables failed skills in subsequent plans.
+- **Narrator AI Stub**: Simplified in-process implementation that converts player prompts to Plan JSON using hard-coded mappings (not a test mock; intended for MVP functionality before LLM integration). See Spec 003 for Dart implementation.
 
 ---
 
@@ -146,7 +147,7 @@ A player's actions have consequences. When the player steals from a merchant in 
 #### Plan Generation (Narrator AI)
 
 - **FR-001**: System MUST include a local small language model (recommended: Gemma 2B, Llama 3.2 3B, Qwen 2.5 3B) for plan generation that runs entirely in-process
-- **FR-002**: Plan generator MUST convert player text input into structured Plan JSON documents following Spec 001 extended schema
+- **FR-002**: Plan generator MUST convert player text input into structured Plan JSON documents following the schema defined in `contracts/plan-json.schema.json`
 - **FR-003**: Plan generator MUST select relevant skills and their scripts based on player intent and available skills
 - **FR-004**: Plan generator MUST inject active skills' behavioral prompts into system context when generating plans
 - **FR-005**: Plan generator MUST fall back to simple pattern-based planning if LLM fails or is unavailable
@@ -295,3 +296,186 @@ A player's actions have consequences. When the player steals from a merchant in 
 - **SC-010**: Users can install new skills by placing skill directories in `skills/` folder and restarting, with no code changes required
 - **SC-011**: Configuration changes persist across application restarts and are correctly loaded by skills on next invocation
 - **SC-012**: Plan executor handles script failures without crashing: logs error, marks step as failed, continues with remaining plan steps
+
+---
+
+## Plan Execution Semantics
+
+> Defines the behavioral contracts for plan execution. Implementations must satisfy these requirements.
+> For Dart/Flutter reference implementation, see [Spec 003](../003-dart-flutter-implementation/spec.md).
+
+### Player Interaction Flow
+
+Players interact with Narratoria by submitting natural language prompts (e.g., "I light the torch" or "I examine the mysterious door"). The narrator AI converts these prompts into executable plans that invoke tools via the protocol defined in Spec 001.
+
+```
+┌──────────────┐
+│ Player types │
+│   prompt     │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Narrator AI  │ (external LLM/agent service)
+│ analyzes     │
+│   prompt     │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│  Plan JSON   │ {tools: [...], parallel: bool}
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Narratoria   │ executes tools per plan
+│  Runtime     │ collects events via protocol
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ UI updates   │ display results, assets, state
+│              │
+└──────────────┘
+```
+
+### Plan JSON Schema
+
+The narrator AI MUST produce a **Plan JSON** document with this structure:
+
+```json
+{
+  "requestId": "<uuid>",
+  "narrative": "<string, optional narrator response>",
+  "tools": [
+    {
+      "toolId": "<string>",
+      "toolPath": "<filesystem-path-to-executable>",
+      "input": { ...arbitrary JSON... },
+      "dependencies": ["<toolId>", ...],
+      "required": <boolean, default true>,
+      "async": <boolean, default false>,
+      "retryPolicy": {
+        "maxRetries": <integer, default 3>,
+        "backoffMs": <integer, default 100>
+      }
+    }
+  ],
+  "parallel": <boolean, default false>,
+  "disabledSkills": ["<skillName>", ...],
+  "metadata": {
+    "generationAttempt": <integer>,
+    "parentPlanId": "<uuid, or null>"
+  }
+}
+```
+
+**Fields**:
+- `requestId`: Unique identifier for this plan execution
+- `narrative`: Optional narrative text to display before or during tool execution
+- `tools`: Array of tool invocation descriptors
+  - `toolId`: Unique ID for this tool within the plan (for dependency tracking)
+  - `toolPath`: Absolute or relative path to the tool executable
+  - `input`: JSON object passed to the tool via stdin (as described in Spec 001 §6)
+  - `dependencies`: Array of `toolId` values that must complete before this tool runs
+  - `required`: If true, tool failure aborts dependent tools and plan execution fails; if false, tool failure is non-blocking and dependent tools may still execute
+  - `async`: If true, tool may run in parallel with unrelated tools and siblings (respecting `dependencies`); if false, tool runs sequentially
+  - `retryPolicy`: Configures retry behavior for this specific tool
+    - `maxRetries`: Maximum retry attempts before marking tool as failed (default 3)
+    - `backoffMs`: Milliseconds between retries with exponential backoff
+- `parallel`: If true and dependencies allow, tools run concurrently; if false, tools run sequentially
+- `disabledSkills`: Array of skill names that failed in previous execution attempts (plan generator MUST NOT select these skills)
+- `metadata`: Plan metadata for debugging and replan tracking
+  - `generationAttempt`: Which attempt this plan represents (1, 2, 3...)
+  - `parentPlanId`: If this is a replan, the UUID of the previous plan that failed
+
+### Plan Execution Rules
+
+The runtime MUST execute plans according to these behavioral requirements:
+
+1. **Circular Dependency Detection**: Before execution, the runtime MUST detect any circular dependencies among tools (direct or transitive). If detected, the runtime MUST reject the plan and request a new plan from the narrator AI.
+
+2. **Topological Execution Order**: Tools MUST execute in dependency-respecting order. A tool MUST NOT begin execution until all tools listed in its `dependencies` array have completed successfully.
+
+3. **Parallel Execution**:
+   - If `parallel: true` in the plan AND `async: true` for a tool, tools with satisfied dependencies MAY run concurrently
+   - Concurrent execution MUST NOT exceed the number of available CPU cores (implementation-specific limit)
+   - Tools with no dependencies MAY run in parallel if both plan and tool have `parallel`/`async: true`
+
+4. **Sequential Fallback**: If `parallel: false`, tools MUST run in topological order, waiting for each to complete before starting the next.
+
+5. **Retry Logic**:
+   - If a tool fails (emits `done.ok: false` or exits non-zero), the runtime MUST retry up to `retryPolicy.maxRetries` times
+   - The runtime MUST apply exponential backoff between retries with minimum delay `retryPolicy.backoffMs` milliseconds
+   - After exhausting retries, the runtime MUST mark the tool as failed and proceed according to the tool's `required` flag
+   - The runtime MUST record retry count in the execution trace
+   - Backoff formula: `delay = backoffMs × 2^(attempt-1)`
+
+6. **Failure Handling (by `required` flag)**:
+   - **If `required: true` and tool fails**:
+     - Dependent tools (listing failed tool in `dependencies`) MUST NOT execute
+     - Plan execution stops; all remaining non-blocking tasks MAY continue
+     - Tool failure counts against plan execution attempt limit (max 3 attempts)
+   - **If `required: false` and tool fails**:
+     - Dependent tools MAY execute (they receive null/empty for failed tool inputs)
+     - Plan continues executing remaining tasks
+     - Tool failure is logged but does not abort plan
+   - Independent tools (no dependency on failed tool) continue execution automatically in all cases
+
+7. **Event Aggregation**: Narratoria MUST collect all events from all tools in the plan and merge:
+   - `log` events → displayed in Tool Execution Panel
+   - `state_patch` events → merged into session state
+   - `asset` events → registered and displayed in Asset Gallery
+   - `ui_event` events → dispatched to UI handlers
+   - `error` events → displayed with context
+
+8. **Execution Trace**: Narratoria MUST maintain a full execution trace with results for each tool
+
+### Plan Executor Output
+
+After executing a plan, Narratoria MUST return an execution result with full trace. See `contracts/execution-result.schema.json` for the authoritative schema.
+
+**Purpose**: This trace allows the narrator AI to:
+- Understand which tools failed and why
+- Disable failed skills for the next plan via `disabledSkills` field
+- Determine if replanning is possible
+- Debug execution issues
+
+### Narrator AI Interface
+
+Per Constitution Principle IV.A, the narrator AI MUST implement:
+
+**Required Behavior**:
+- The narrator AI MUST return Plan JSON in the format specified above
+- The narrator AI MUST implement bounded replan loop: maximum 5 plan generation attempts before graceful fallback
+- The narrator AI MUST consult `disabledSkills` in execution results to avoid selecting failed skills in subsequent plans
+- The narrator AI MUST track generation attempt count in `metadata.generationAttempt`
+- The narrator AI MUST set `metadata.parentPlanId` to the previous plan's UUID when replanning
+- After 5 failed plan generation attempts, the narrator AI MUST provide template-based fallback narration
+
+**Implementation Flexibility**:
+- The narrator AI MAY be a separate process, remote service, or in-process module
+- Tool capability discovery mechanisms are implementation-specific
+- Plan generation strategy (prompt engineering, model selection) is implementation-specific
+
+---
+
+## Related Specifications
+
+| Specification | Relationship |
+|---------------|--------------|
+| [001: Tool Protocol](../001-tool-protocol-spec/spec.md) | Defines event types, transport model, NDJSON protocol |
+| [003: Dart/Flutter Implementation](../003-dart-flutter-implementation/spec.md) | Dart+Flutter reference implementation including algorithms and data models |
+
+---
+
+## Contracts
+
+This specification defines the following machine-readable contracts in `contracts/`:
+
+- **plan-json.schema.json**: JSON Schema for Plan JSON documents
+- **execution-result.schema.json**: JSON Schema for plan execution results
+- **skill-manifest.schema.json**: JSON Schema for skill.json manifests
+- **config-schema-meta.schema.json**: Meta-schema for skill config-schema.json files
+- **example-plan.json**: Example Plan JSON (first attempt)
+- **example-plan-replan.json**: Example Plan JSON (replan after failure)
