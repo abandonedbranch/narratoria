@@ -218,7 +218,7 @@ enum ToolExecutionState {
 
 ## 4. Tool Execution Results
 
-Executor collects results per Spec 002 Execution Result schema ExecutionResult schema.
+Executor collects results per Spec 002 Execution Result schema.
 
 ```dart
 /// Result for a single tool invocation.
