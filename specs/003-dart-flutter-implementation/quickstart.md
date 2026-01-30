@@ -1,12 +1,14 @@
-# Quickstart: Plan Generation and Skill Discovery
+# Quickstart: Dart/Flutter Implementation
 
-Get Narratoria's plan generation and skill system running in under 10 minutes.
+> Part of [Spec 003: Dart/Flutter Implementation](spec.md)
+
+Get Narratoria's Dart/Flutter reference implementation running in under 10 minutes.
 
 ## Prerequisites
 
-- Dart 3.x + Flutter SDK (latest stable)
-- Ollama installed locally (for LLM backend)
-- macOS, Windows, or Linux desktop
+- **Dart 3.x + Flutter SDK** (latest stable)
+- **Ollama** installed locally (for LLM backend)
+- **Desktop platform**: macOS, Windows, or Linux
 
 ## Step 1: Install Ollama and Pull Model
 
@@ -220,8 +222,15 @@ In the Narratoria UI:
 
 ## Reference Documentation
 
+### This Specification (003)
 - Full spec: [spec.md](spec.md)
-- Data model: [data-model.md](data-model.md)
-- Implementation plan: [plan.md](plan.md)
-- Tool protocol: [../001-tool-protocol-spec/spec.md](../001-tool-protocol-spec/spec.md)
+- Data model (Dart classes): [data-model.md](data-model.md)
+- Implementation tasks: [tasks.md](tasks.md)
+
+### Parent Specifications
+- Tool Protocol (events, NDJSON): [001-tool-protocol-spec/spec.md](../001-tool-protocol-spec/spec.md)
+- Plan Generation & Skills (architecture): [002-plan-generation-skills/spec.md](../002-plan-generation-skills/spec.md)
+- JSON Schemas: [002-plan-generation-skills/contracts/](../002-plan-generation-skills/contracts/)
+
+### External
 - Agent Skills Standard: https://agentskills.io/specification
