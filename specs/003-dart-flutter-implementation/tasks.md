@@ -185,7 +185,7 @@
 
 ## Phase S1: Skills Setup
 
-- [ ] S-001 Update dependencies (flutter_ai_toolkit, sqlite3/sqflite, json_schema, path_provider, uuid) in [src/pubspec.yaml](src/pubspec.yaml)
+- [ ] S-001 Update dependencies (flutter_ai_toolkit, sqlite3/sqflite, json_schema, path_provider, uuid) in [pubspec.yaml](pubspec.yaml)
 - [ ] S-002 [P] Add gitignore entries for skill configs and data in [.gitignore](.gitignore) (root repo gitignore, not src/)
 - [ ] S-003 [P] Scaffold skills directory structure (storyteller, memory, reputation, dice-roller) under [skills/](skills/)
 - [ ] S-004 [P] Create developer samples directory for mock scripts in [test/contract/](test/contract/) for protocol tests
@@ -194,15 +194,15 @@
 
 ## Phase S2: Skills Foundational (Blocking Prerequisites)
 
-- [ ] S-005 Define PlanJson extended schema model in [src/lib/models/plan_json.dart](src/lib/models/plan_json.dart)
-- [ ] S-006 [P] Define protocol event types (log, state_patch, asset, ui_event, error, done) in [src/lib/models/protocol_events.dart](src/lib/models/protocol_events.dart)
-- [ ] S-007 [P] Implement SessionState with deep merge algorithm in [src/lib/models/session_state.dart](src/lib/models/session_state.dart)
-- [ ] S-008 [P] Implement execution result and trace types in [src/lib/models/tool_execution_status.dart](src/lib/models/tool_execution_status.dart)
-- [ ] S-009 [P] Extend ToolInvoker to parse NDJSON events and enforce single done event in [src/lib/services/tool_invoker.dart](src/lib/services/tool_invoker.dart)
-- [ ] S-010 Implement SkillDiscovery service (scan skills/, parse manifests, collect prompts/scripts) in [src/lib/services/skill_discovery.dart](src/lib/services/skill_discovery.dart)
-- [ ] S-011 Implement SkillConfig loader (schema validation, env substitution) in [src/lib/services/skill_config.dart](src/lib/services/skill_config.dart)
-- [ ] S-012 Implement NarratorAI interface (LLM abstraction + prompt assembly hooks) in [src/lib/services/narrator_ai.dart](src/lib/services/narrator_ai.dart)
-- [ ] S-013 Implement PlanExecutor skeleton (dependency graph, in-degree calc, cycle detection) in [src/lib/services/plan_executor.dart](src/lib/services/plan_executor.dart)
+- [ ] S-005 Define PlanJson extended schema model in [lib/models/plan_json.dart](lib/models/plan_json.dart)
+- [ ] S-006 [P] Define protocol event types (log, state_patch, asset, ui_event, error, done) in [lib/models/protocol_events.dart](lib/models/protocol_events.dart)
+- [ ] S-007 [P] Implement SessionState with deep merge algorithm in [lib/models/session_state.dart](lib/models/session_state.dart)
+- [ ] S-008 [P] Implement execution result and trace types in [lib/models/tool_execution_status.dart](lib/models/tool_execution_status.dart)
+- [ ] S-009 [P] Extend ToolInvoker to parse NDJSON events and enforce single done event in [lib/services/tool_invoker.dart](lib/services/tool_invoker.dart)
+- [ ] S-010 Implement SkillDiscovery service (scan skills/, parse manifests, collect prompts/scripts) in [lib/services/skill_discovery.dart](lib/services/skill_discovery.dart)
+- [ ] S-011 Implement SkillConfig loader (schema validation, env substitution) in [lib/services/skill_config.dart](lib/services/skill_config.dart)
+- [ ] S-012 Implement NarratorAI interface (LLM abstraction + prompt assembly hooks) in [lib/services/narrator_ai.dart](lib/services/narrator_ai.dart)
+- [ ] S-013 Implement PlanExecutor skeleton (dependency graph, in-degree calc, cycle detection) in [lib/services/plan_executor.dart](lib/services/plan_executor.dart)
 
 **Checkpoint**: Foundation ready—user stories can proceed in parallel.
 
@@ -213,12 +213,12 @@
 **Goal**: Player enters an action; narrator AI generates Plan JSON; executor runs tools; narration returned with graceful fallbacks.
 **Independent Test**: Launch app, type "I roll to pick the lock", observe plan with dice-roller, narration returned; if LLM unavailable, template narration appears.
 
-- [ ] S-014 [US1] Implement topological execution with retries/timeouts and execution trace in [src/lib/services/plan_executor.dart](src/lib/services/plan_executor.dart)
-- [ ] S-015 [P] [US1] Implement replan loop controller (3 plan executions, 5 generations) returning disabledSkills and canReplan in [src/lib/services/plan_executor.dart](src/lib/services/plan_executor.dart)
-- [ ] S-016 [P] [US1] Implement narrator plan generation (Flutter AI Toolkit + Ollama) with behavioral prompt injection in [src/lib/services/narrator_ai.dart](src/lib/services/narrator_ai.dart)
-- [ ] S-017 [P] [US1] Wire storytelling screen to narrator + executor pipeline in [src/lib/ui/screens/storytelling_screen.dart](src/lib/ui/screens/storytelling_screen.dart)
+- [ ] S-014 [US1] Implement topological execution with retries/timeouts and execution trace in [lib/services/plan_executor.dart](lib/services/plan_executor.dart)
+- [ ] S-015 [P] [US1] Implement replan loop controller (3 plan executions, 5 generations) returning disabledSkills and canReplan in [lib/services/plan_executor.dart](lib/services/plan_executor.dart)
+- [ ] S-016 [P] [US1] Implement narrator plan generation (Flutter AI Toolkit + Ollama) with behavioral prompt injection in [lib/services/narrator_ai.dart](lib/services/narrator_ai.dart)
+- [ ] S-017 [P] [US1] Wire storytelling screen to narrator + executor pipeline in [lib/ui/screens/storytelling_screen.dart](lib/ui/screens/storytelling_screen.dart)
 - [ ] S-018 [P] [US1] Build storyteller skill (prompt.md, config-schema.json, skill.json, narrate.dart with fallbacks) in [skills/storyteller/](skills/storyteller/)
-- [ ] S-019 [US1] Add execution trace viewer widget for debugging in [src/lib/ui/widgets/execution_trace_viewer.dart](src/lib/ui/widgets/execution_trace_viewer.dart)
+- [ ] S-019 [US1] Add execution trace viewer widget for debugging in [lib/ui/widgets/execution_trace_viewer.dart](lib/ui/widgets/execution_trace_viewer.dart)
 
 **Checkpoint**: P1 storytelling end-to-end works with template fallback.
 
@@ -229,10 +229,10 @@
 **Goal**: Configure storyteller (and other skills) via UI forms generated from JSON Schema, persisting to config.json with validation.
 **Independent Test**: Open Skills settings, edit storyteller provider/model/apiKey, save, reload app, plan generation uses new config.
 
-- [ ] S-020 [US2] Implement SkillsSettingsScreen listing discovered skills with enable/disable toggle in [src/lib/ui/screens/skills_settings_screen.dart](src/lib/ui/screens/skills_settings_screen.dart)
-- [ ] S-021 [P] [US2] Implement dynamic SkillConfigForm (string/number/boolean/enum/password) in [src/lib/ui/widgets/skill_config_form.dart](src/lib/ui/widgets/skill_config_form.dart)
-- [ ] S-022 [P] [US2] Persist validated configs to skills/<skill>/config.json with env substitution in [src/lib/services/skill_config.dart](src/lib/services/skill_config.dart)
-- [ ] S-023 [US2] Surface validation and error messages inline in [src/lib/ui/widgets/skill_config_form.dart](src/lib/ui/widgets/skill_config_form.dart)
+- [ ] S-020 [US2] Implement SkillsSettingsScreen listing discovered skills with enable/disable toggle in [lib/ui/screens/skills_settings_screen.dart](lib/ui/screens/skills_settings_screen.dart)
+- [ ] S-021 [P] [US2] Implement dynamic SkillConfigForm (string/number/boolean/enum/password) in [lib/ui/widgets/skill_config_form.dart](lib/ui/widgets/skill_config_form.dart)
+- [ ] S-022 [P] [US2] Persist validated configs to skills/<skill>/config.json with env substitution in [lib/services/skill_config.dart](lib/services/skill_config.dart)
+- [ ] S-023 [US2] Surface validation and error messages inline in [lib/ui/widgets/skill_config_form.dart](lib/ui/widgets/skill_config_form.dart)
 
 **Checkpoint**: Skill configuration editable and persisted; storyteller can switch providers.
 
@@ -243,10 +243,10 @@
 **Goal**: Drop-in skills discovered at startup; prompts loaded; scripts registered for plan generation and execution.
 **Independent Test**: Add a new skill directory with valid skill.json and script; restart app; skill appears in settings and is selectable by narrator.
 
-- [ ] S-024 [US3] Validate skill.json against schema and skip invalid skills with warnings in [src/lib/services/skill_discovery.dart](src/lib/services/skill_discovery.dart)
-- [ ] S-025 [P] [US3] Load prompt.md and inject into narrator system context in [src/lib/services/narrator_ai.dart](src/lib/services/narrator_ai.dart)
-- [ ] S-026 [P] [US3] Register scripts with tool registry including executable checks in [src/lib/services/skill_discovery.dart](src/lib/services/skill_discovery.dart)
-- [ ] S-027 [US3] Expose discovered skills to SkillsSettingsScreen with metadata in [src/lib/ui/screens/skills_settings_screen.dart](src/lib/ui/screens/skills_settings_screen.dart)
+- [ ] S-024 [US3] Validate skill.json against schema and skip invalid skills with warnings in [lib/services/skill_discovery.dart](lib/services/skill_discovery.dart)
+- [ ] S-025 [P] [US3] Load prompt.md and inject into narrator system context in [lib/services/narrator_ai.dart](lib/services/narrator_ai.dart)
+- [ ] S-026 [P] [US3] Register scripts with tool registry including executable checks in [lib/services/skill_discovery.dart](lib/services/skill_discovery.dart)
+- [ ] S-027 [US3] Expose discovered skills to SkillsSettingsScreen with metadata in [lib/ui/screens/skills_settings_screen.dart](lib/ui/screens/skills_settings_screen.dart)
 
 **Checkpoint**: New skills discoverable and usable after restart.
 
@@ -260,7 +260,7 @@
 - [ ] S-028 [US4] Implement memory skill manifest, prompt, and config schema in [skills/memory/](skills/memory/)
 - [ ] S-029 [P] [US4] Implement store-memory.dart (embedding + SQLite insert) in [skills/memory/scripts/store-memory.dart](skills/memory/scripts/store-memory.dart)
 - [ ] S-030 [P] [US4] Implement recall-memory.dart (vector search + top-K return) in [skills/memory/scripts/recall-memory.dart](skills/memory/scripts/recall-memory.dart)
-- [ ] S-031 [US4] Add memory skill wiring to narrator prompt context and plan generation in [src/lib/services/narrator_ai.dart](src/lib/services/narrator_ai.dart)
+- [ ] S-031 [US4] Add memory skill wiring to narrator prompt context and plan generation in [lib/services/narrator_ai.dart](lib/services/narrator_ai.dart)
 
 **Checkpoint**: Memory recall integrated; performance goal met.
 
@@ -274,7 +274,7 @@
 - [ ] S-032 [US5] Implement reputation skill manifest and config schema in [skills/reputation/](skills/reputation/)
 - [ ] S-033 [P] [US5] Implement update-reputation.dart (delta + log) in [skills/reputation/scripts/update-reputation.dart](skills/reputation/scripts/update-reputation.dart)
 - [ ] S-034 [P] [US5] Implement query-reputation.dart with decay handling in [skills/reputation/scripts/query-reputation.dart](skills/reputation/scripts/query-reputation.dart)
-- [ ] S-035 [US5] Integrate reputation context into narrator prompts and plan selection in [src/lib/services/narrator_ai.dart](src/lib/services/narrator_ai.dart)
+- [ ] S-035 [US5] Integrate reputation context into narrator prompts and plan selection in [lib/services/narrator_ai.dart](lib/services/narrator_ai.dart)
 
 **Checkpoint**: Reputation affects narration tone and outcomes.
 
@@ -282,12 +282,12 @@
 
 ## Phase S8: Data Persistence and Resilience
 
-- [ ] S-036 [P] Implement skill data directory creation on first use in [src/lib/services/skill_discovery.dart](src/lib/services/skill_discovery.dart) (FR-062)
+- [ ] S-036 [P] Implement skill data directory creation on first use in [lib/services/skill_discovery.dart](lib/services/skill_discovery.dart) (FR-062)
 - [ ] S-037 [P] Enforce skill data isolation: skills cannot access other skills' data/ directories, verified via unit test in [test/unit/](test/unit/)
 - [ ] S-038 [P] Verify skill data persistence: create test skill that writes to data/, restart app, confirm data still present in [test/integration/](test/integration/) (FR-059)
-- [ ] S-039 Implement fallback narration template in [src/lib/services/narrator_ai.dart](src/lib/services/narrator_ai.dart) for when plan generation fails (FR-066)
-- [ ] S-040 [P] Implement graceful continue-on-failure for non-required tools in plan executor in [src/lib/services/plan_executor.dart](src/lib/services/plan_executor.dart) (FR-067)
-- [ ] S-041 [P] Surface user-friendly warnings for misconfigured skills in [src/lib/ui/screens/skills_settings_screen.dart](src/lib/ui/screens/skills_settings_screen.dart) (FR-064)
+- [ ] S-039 Implement fallback narration template in [lib/services/narrator_ai.dart](lib/services/narrator_ai.dart) for when plan generation fails (FR-066)
+- [ ] S-040 [P] Implement graceful continue-on-failure for non-required tools in plan executor in [lib/services/plan_executor.dart](lib/services/plan_executor.dart) (FR-067)
+- [ ] S-041 [P] Surface user-friendly warnings for misconfigured skills in [lib/ui/screens/skills_settings_screen.dart](lib/ui/screens/skills_settings_screen.dart) (FR-064)
 - [ ] S-042 Add integration test for API failure fallback (hosted provider -> local model) in [test/integration/](test/integration/) (FR-065)
 
 ---
@@ -309,10 +309,10 @@
 - [ ] S-050 [P] Integration test: drop-in skill install (add skill to skills/ and restart) is discoverable and usable (SC-010)
 - [ ] S-051 [P] Integration test: skill configuration persists across restart (SC-011)
 - [ ] S-052 [P] Guard narrator AI to disallow network calls via unit/integration test in [test/unit/](test/unit/) and [test/integration/](test/integration/) (FR-007, C4)
-- [ ] S-053 [P] Document skill packaging and install steps in [src/README.md](src/README.md)
-- [ ] S-054 [P] Optimize execution trace logging and viewer UX in [src/lib/ui/widgets/execution_trace_viewer.dart](src/lib/ui/widgets/execution_trace_viewer.dart)
+- [ ] S-053 [P] Document skill packaging and install steps in [README.md](README.md)
+- [ ] S-054 [P] Optimize execution trace logging and viewer UX in [lib/ui/widgets/execution_trace_viewer.dart](lib/ui/widgets/execution_trace_viewer.dart)
 - [ ] S-055 [P] Validate quickstart steps end-to-end using dice-roller sample in quickstart.md
-- [ ] S-056 Harden timeout/backoff defaults and configuration surfacing in [src/lib/services/plan_executor.dart](src/lib/services/plan_executor.dart)
+- [ ] S-056 Harden timeout/backoff defaults and configuration surfacing in [lib/services/plan_executor.dart](lib/services/plan_executor.dart)
 
 ---
 
