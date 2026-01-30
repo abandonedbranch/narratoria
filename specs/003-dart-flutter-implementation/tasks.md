@@ -194,9 +194,9 @@
 
 ## Phase S2: Skills Foundational (Blocking Prerequisites)
 
-- [ ] S-005 Define PlanJson extended schema model in [lib/models/plan_json.dart](lib/models/plan_json.dart)
-- [ ] S-006 [P] Define protocol event types (log, state_patch, asset, ui_event, error, done) in [lib/models/protocol_events.dart](lib/models/protocol_events.dart)
-- [ ] S-007 [P] Implement SessionState with deep merge algorithm in [lib/models/session_state.dart](lib/models/session_state.dart)
+- [ ] S-005 Extend the PlanJson model from **P-007** with skills-specific schema fields (story, memory, reputation) in [lib/models/plan_json.dart](lib/models/plan_json.dart)
+- [ ] S-006 [P] Build on protocol event types from **P-006** to add skills/plan-level event wrappers (log, state_patch, asset, ui_event, error, done) in [lib/models/protocol_events.dart](lib/models/protocol_events.dart)
+- [ ] S-007 [P] Enhance SessionState from **P-009** with a skills-aware deep merge algorithm (for plan steps, memories, reputation) in [lib/models/session_state.dart](lib/models/session_state.dart)
 - [ ] S-008 [P] Implement execution result and trace types in [lib/models/tool_execution_status.dart](lib/models/tool_execution_status.dart)
 - [ ] S-009 [P] Extend ToolInvoker to parse NDJSON events and enforce single done event in [lib/services/tool_invoker.dart](lib/services/tool_invoker.dart)
 - [ ] S-010 Implement SkillDiscovery service (scan skills/, parse manifests, collect prompts/scripts) in [lib/services/skill_discovery.dart](lib/services/skill_discovery.dart)
