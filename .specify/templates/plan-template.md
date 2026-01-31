@@ -31,13 +31,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-| Principle | Status | Notes |
-|-----------|--------|-------|
-| I. Dart+Flutter First | ☐ Pass / ☐ N/A | All client logic in idiomatic Dart? |
-| II. Protocol-Boundary Isolation | ☐ Pass / ☐ N/A | External tools via Spec 001 only? |
-| III. Single-Responsibility Tools | ☐ Pass / ☐ N/A | Each tool has one well-defined task? |
-| IV. Graceful Degradation | ☐ Pass / ☐ N/A | Unsupported content degrades safely? |
-| V. Testability and Composability | ☐ Pass / ☐ N/A | Unit/integration/acceptance tests possible? |
+[Gates determined based on constitution file]
 
 ## Project Structure
 
