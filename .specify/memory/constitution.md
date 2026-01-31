@@ -190,11 +190,11 @@ Per Principle IV, skills MUST degrade gracefully:
 | Layer | Technology | Notes |
 |-------|------------|-------|
 | Client Runtime | Dart 3.x + Flutter | Cross-platform (macOS, Windows, Linux) |
-| Narrator AI | Local LLM (Gemma, Llama 3.2) | In-process plan generation |
+| Narrator AI | Local LLM (Gemma 2B, Llama 3.2 3B, Qwen 2.5 3B) | In-process plan generation |
 | Skills Framework | Agent Skills Standard | See agentskills.io/specification |
 | Tool Protocol | NDJSON over stdin/stdout | See Spec 001 (scripts use this) |
 | Skill Scripts | Any (Rust, Go, Python, etc.) | Must comply with Spec 001 |
-| State Management | TBD (Provider, Riverpod, Bloc) | Must support unit testing |
+| State Management | Provider | ChangeNotifier pattern for state management |
 | Testing | `flutter_test`, integration_test | Contract + integration + unit layers |
 
 ## Development Workflow

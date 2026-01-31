@@ -1,10 +1,10 @@
 # Data Model: Dart Class Implementations
 
-> **Spec**: 003-dart-flutter-implementation
+> **Spec**: 005-dart-implementation
 > **Status**: Draft
 > **Purpose**: Dart class definitions for Narratoria runtime
 
-This document provides Dart class implementations for the algorithms and schemas defined in [Spec 002 data-model.md](../002-plan-generation-skills/data-model.md).
+This document provides Dart class implementations for the algorithms and schemas defined in [Spec 002 data-model.md](../002-plan-execution/data-model.md).
 
 ---
 
@@ -1085,7 +1085,7 @@ class MaxReplanAttemptsException extends NarratoriaException {
 
 ## Related Documents
 
-- [Spec 002 Algorithms](../002-plan-generation-skills/data-model.md)
-- [Plan JSON Schema](../002-plan-generation-skills/contracts/plan-json.schema.json)
-- [Execution Result Schema](../002-plan-generation-skills/contracts/execution-result.schema.json)
-- [Skill Manifest Schema](../002-plan-generation-skills/contracts/skill-manifest.schema.json)
+- [Spec 002 Algorithms](../002-plan-execution/data-model.md)
+- [Plan JSON Schema](../002-plan-execution/contracts/plan-json.schema.json)
+- [Execution Result Schema](../002-plan-execution/contracts/execution-result.schema.json)
+- [Skill Manifest Schema](../003-skills-framework/contracts/skill-manifest.schema.json)

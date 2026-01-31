@@ -21,7 +21,7 @@ flutter analyze
 
 ## Architecture
 
-This project follows a **specification-first, three-spec architecture**:
+This project follows a **specification-first, five-spec architecture**:
 
 ### Specification Hierarchy (`specs/`)
 
@@ -30,17 +30,27 @@ This project follows a **specification-first, three-spec architecture**:
    - Tools run as independent OS processes with stdin/stdout pipes
    - OpenAPI contract: `specs/001-tool-protocol-spec/contracts/tool-protocol.openapi.yaml`
 
-2. **002-plan-generation-skills**: Plan generation and skill execution
+2. **002-plan-execution**: Plan JSON schema and execution semantics
    - JSON schema for executable plans
-   - Agent Skills Standard (`skill.json`, `config-schema.json`, `prompt.md`)
    - Plan executor with topological sort, parallel execution, retry logic
    - Replan loop (max 5 attempts) with skill error tracking
-   - Contracts: `specs/002-plan-generation-skills/contracts/`
+   - Contracts: `specs/002-plan-execution/contracts/`
 
-3. **003-dart-flutter-implementation**: Flutter UI and runtime
+3. **003-skills-framework**: Skill discovery and configuration
+   - Agent Skills Standard (`skill.json`, `config-schema.json`, `prompt.md`)
+   - Skill error states: `healthy`, `degraded`, `temporaryFailure`, `permanentFailure`
+   - Contracts: `specs/003-skills-framework/contracts/`
+
+4. **004-narratoria-skills**: Individual skill specifications
+   - Core skills: storyteller, dice-roller, memory, reputation
+   - Advanced skills: player-choices, character-portraits, npc-perception
+   - User stories and acceptance scenarios for each skill
+
+5. **005-dart-implementation**: Flutter UI and runtime
    - Material Design 3 (dark theme)
    - Provider pattern for state management
    - SQLite via sqflite for persistence
+   - Dart class implementations
 
 ### Core Architectural Patterns
 
@@ -71,7 +81,7 @@ See `.specify/memory/constitution.md` for full governance document.
 
 ## Key Directories
 
-- `specs/` - Three-spec architecture with contracts, plans, and checklists
+- `specs/` - Five-spec architecture with contracts, plans, and checklists
 - `.claude/commands/` - Speckit command files for AI workflow
 - `.specify/memory/` - Project constitution
 - `.specify/templates/` - Templates for specs, plans, tasks, checklists
@@ -94,6 +104,7 @@ Use speckit commands for specification-driven development:
 ## Contract Locations
 
 - Tool Protocol: `specs/001-tool-protocol-spec/contracts/tool-protocol.openapi.yaml`
-- Plan JSON Schema: `specs/002-plan-generation-skills/contracts/plan-json.schema.json`
-- Execution Result: `specs/002-plan-generation-skills/contracts/execution-result.schema.json`
-- Skill Manifest: `specs/002-plan-generation-skills/contracts/skill-manifest.schema.json`
+- Plan JSON Schema: `specs/002-plan-execution/contracts/plan-json.schema.json`
+- Execution Result: `specs/002-plan-execution/contracts/execution-result.schema.json`
+- Skill Manifest: `specs/003-skills-framework/contracts/skill-manifest.schema.json`
+- Config Schema Meta: `specs/003-skills-framework/contracts/config-schema-meta.schema.json`

@@ -1,10 +1,10 @@
-# Data Model: Plan Generation Algorithms
+# Data Model: Plan Execution Algorithms
 
-> **Spec**: 002-plan-generation-skills
+> **Spec**: 002-plan-execution
 > **Status**: Draft
 > **Purpose**: Language-agnostic algorithm specifications for plan execution
 
-This document defines the behavioral algorithms that implementations MUST follow. For Dart-specific class implementations, see [Spec 003 data-model.md](../003-dart-flutter-implementation/data-model.md).
+This document defines the behavioral algorithms that implementations MUST follow. For Dart-specific class implementations, see [Spec 005 data-model.md](../005-dart-implementation/data-model.md).
 
 ---
 
@@ -401,5 +401,5 @@ function executeWithTimeout(tool, timeoutMs):
 
 - [Plan JSON Schema](contracts/plan-json.schema.json)
 - [Execution Result Schema](contracts/execution-result.schema.json)
-- [Skill Manifest Schema](contracts/skill-manifest.schema.json)
-- [Spec 003 Dart Classes](../003-dart-flutter-implementation/data-model.md)
+- [Skill Manifest Schema](../003-skills-framework/contracts/skill-manifest.schema.json)
+- [Spec 005 Dart Classes](../005-dart-implementation/data-model.md)
