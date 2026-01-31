@@ -3,7 +3,7 @@
 **Status**: Draft
 **Version**: 0.1.0
 **Created**: 2026-01-26
-**Parent Specs**: [003-skills-framework](../003-skills-framework/spec.md)
+**Parent Specs**: [002-plan-execution](../002-plan-execution/spec.md), [003-skills-framework](../003-skills-framework/spec.md)
 
 ## RFC 2119 Keywords
 
@@ -285,9 +285,9 @@ A player who previously helped the town blacksmith returns to request a favor. T
 
 ## 8. Graceful Degradation (Skill-Specific)
 
-- **FR-118**: If portrait generation fails, system MUST display placeholder and continue narrative
-- **FR-119**: If perception skill unavailable, choice skill MUST generate options without perception filtering
-- **FR-120**: If choice skill fails, narrator MUST fall back to freeform text input (always available)
+- **FR-119**: If portrait generation fails, system MUST display placeholder and continue narrative
+- **FR-120**: If perception skill unavailable, choice skill MUST generate options without perception filtering
+- **FR-121**: If choice skill fails, narrator MUST fall back to freeform text input (always available)
 
 ---
 

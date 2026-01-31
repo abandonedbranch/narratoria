@@ -11,7 +11,8 @@
       "Bash(.specify/scripts/bash/create-new-feature.sh:*)",
       "Bash(git commit:*)",
       "Bash(gh pr view:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(grep:*)"
     ]
   }
 }

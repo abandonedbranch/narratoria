@@ -29,11 +29,22 @@ This specification defines the plan execution system for Narratoria, including:
 
 **Note**: These definitions are authoritative for plan execution. For protocol-level terminology, see [Spec 001](../001-tool-protocol-spec/spec.md). For skill-related terminology, see [Spec 003](../003-skills-framework/spec.md).
 
+### Skill vs Tool Distinction
+
+Per the [Agent Skills Standard](https://agentskills.io/what-are-skills):
+- **Skill**: A capability bundle that the Narrator AI can invoke. Skills contain behavioral prompts, optional scripts, configuration, and data storage. The Narrator AI selects and orchestrates skills.
+- **Skill Script**: An optional executable component within a skill that performs actions (e.g., `roll-dice.dart`, `narrate.dart`). Scripts communicate via the NDJSON protocol defined in Spec 001.
+- **Tool**: At the protocol level (Spec 001), "tool" refers generically to any external process. In Plan JSON, the `tools` array contains **skill script invocations**—references to specific scripts within skills.
+
+### Plan Execution Terms
+
 - **`disabledSkills` (Set[String])**: Set of skill names that planner MUST NOT select for the current plan attempt (populated by failed skill tracking during replan loop). Used in Plan JSON and executor feedback.
 - **Replan Loop**: Bounded retry system (max 5 plan generation attempts) that learns from failures and disables failed skills in subsequent plans.
-- **Plan JSON**: Structured document produced by narrator AI describing which tools to execute, their inputs, dependencies, and execution strategy.
-- **Execution Trace**: Complete record of tool execution including results, events, timing, and errors.
-- **Narrator AI Stub**: Simplified in-process implementation that converts player prompts to Plan JSON using hard-coded mappings (not a test mock; intended for MVP functionality before LLM integration). See [Spec 005](../005-dart-implementation/spec.md) for Dart implementation.
+- **Plan JSON**: Structured document produced by Narrator AI describing which skill scripts to invoke, their inputs, dependencies, and execution strategy.
+- **Skill Invocation**: An entry in the Plan JSON `tools` array that references a specific skill script to execute.
+- **Execution Trace**: Complete record of skill script execution including results, events, timing, and errors.
+- **Narrator AI**: The plan generation component that converts player input into Plan JSON by selecting appropriate skills and their scripts. May be implemented as local LLM, hosted API, or stub.
+- **Narrator AI Stub**: Simplified in-process implementation that converts player prompts to Plan JSON using hard-coded mappings (for MVP before LLM integration). See [Spec 005](../005-dart-implementation/spec.md) for Dart implementation.
 
 ---
 
@@ -61,7 +72,7 @@ A player launches Narratoria for the first time and types a simple action like "
 
 - **FR-001**: System MUST include a local small language model (recommended: Gemma 2B, Llama 3.2 3B, Qwen 2.5 3B) for plan generation that runs entirely in-process
 - **FR-002**: Plan generator MUST convert player text input into structured Plan JSON documents following the schema defined in `contracts/plan-json.schema.json`
-- **FR-003**: Plan generator MUST select relevant skills and their scripts based on player intent and available skills
+- **FR-003**: Plan generator MUST select relevant skills based on player intent, then determine which skill scripts (if any) to invoke
 - **FR-004**: Plan generator MUST inject active skills' behavioral prompts into system context when generating plans
 - **FR-005**: Plan generator MUST fall back to simple pattern-based planning if LLM fails or is unavailable
 - **FR-006**: Plan generator MUST complete plan generation within 5 seconds for typical player inputs (under 100 words)
@@ -135,7 +146,7 @@ Players interact with Narratoria by submitting natural language prompts (e.g., "
 
 ### 5.2 Plan JSON Schema
 
-The narrator AI MUST produce a **Plan JSON** document with this structure:
+The Narrator AI MUST produce a **Plan JSON** document with this structure. Note that the `tools` array contains **skill script invocations**—the field name is `tools` for protocol compatibility, but each entry references a script within a skill:
 
 ```json
 {
@@ -166,16 +177,16 @@ The narrator AI MUST produce a **Plan JSON** document with this structure:
 
 **Fields**:
 - `requestId`: Unique identifier for this plan execution
-- `narrative`: Optional narrative text to display before or during tool execution
-- `tools`: Array of tool invocation descriptors
-  - `toolId`: Unique ID for this tool within the plan (for dependency tracking)
-  - `toolPath`: Absolute or relative path to the tool executable
-  - `input`: JSON object passed to the tool via stdin (as described in Spec 001 §6)
-  - `dependencies`: Array of `toolId` values that must complete before this tool runs
-  - `required`: If true, tool failure aborts dependent tools; if false, failure is non-blocking
-  - `async`: If true, tool may run in parallel with unrelated tools (respecting `dependencies`)
-  - `retryPolicy`: Configures retry behavior for this specific tool
-- `parallel`: If true and dependencies allow, tools run concurrently
+- `narrative`: Optional narrative text to display before or during script execution
+- `tools`: Array of skill script invocation descriptors (field named `tools` for protocol compatibility)
+  - `toolId`: Unique ID for this invocation within the plan (for dependency tracking)
+  - `toolPath`: Path to the skill script executable (e.g., `skills/dice-roller/roll-dice.dart`)
+  - `input`: JSON object passed to the script via stdin (as described in Spec 001 §6)
+  - `dependencies`: Array of `toolId` values that must complete before this script runs
+  - `required`: If true, script failure aborts dependent scripts; if false, failure is non-blocking
+  - `async`: If true, script may run in parallel with unrelated scripts (respecting `dependencies`)
+  - `retryPolicy`: Configures retry behavior for this specific script invocation
+- `parallel`: If true and dependencies allow, scripts run concurrently
 - `disabledSkills`: Skills that failed in previous attempts (planner MUST NOT select)
 - `metadata`: Plan metadata for debugging and replan tracking
 

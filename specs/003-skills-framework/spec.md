@@ -127,7 +127,9 @@ A player wants to add a new skill (e.g., a rules engine for D&D 5e) to their Nar
 - **FR-115**: Skill scripts that use hosted APIs MUST fall back to local models when network is unavailable
 - **FR-116**: Narrator AI MUST provide simple template-based narration if plan generation fails completely
 - **FR-117**: Plan executor MUST continue executing remaining plan steps when one script fails (if independent from failure)
-- **FR-121**: All skills MUST log failures and continue functioning for remaining capabilities
+- **FR-118**: All skills MUST log failures and continue functioning for remaining capabilities
+
+> **Note on FR numbering**: FR-119 through FR-121 are reserved for skill-specific graceful degradation requirements in [Spec 004](../004-narratoria-skills/spec.md).
 
 ---
 
