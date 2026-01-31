@@ -1,40 +1,7 @@
-# Narratoria: A Computer-driven role-playing game narrator!
+# Narratoria
 
-## File conventions
+A work in progress app for an AI-backed narrative driven storyteller and game master.
 
-RULE: If a paragraph was created by a large language model, there's a little robot appended to it 🤖
-RULE: Human written content is to be preserved and only checked for grammatical errors. It will have a 🧑‍💻 developer appended to it.
+## Dart+Flutter Rich Desktop App with Agent Skills
 
-## 🧑‍💻 About
-
-Narratoria is a project to experiment with a couple of interesting uses for "AI."
-
-1. Create a piece of non-trivial software using specifications alone, treating the code as a byproduct of the specs, with minimal interaction by a human coder; and,
-2. Build a piece of software that will allow a user to engage in a text-based role-playing adventure (simular to the text adventures of the DOS era) with a nondeterministic nature.
-
-The very first piece of software I wrote when I was a little kid was a text-adventure game. It was first drafted in assembly (ouch), then ported to QBASIC. Part of me always wondered, what if the underlying machine was smart enough to respond with outcomes of the player's decisions without me explicitly coding decision trees.
-
-Well, here we are. With this neat thing everyone keeps calling AI (which it isn't), I can actually build that idea! However I'm busy. Very busy. Stupidly busy. So I don't have to type to write, test, and verify every single piece of code. That's the idea with a agent-first spec driven development workspace. Whether that's a great idea or a dumb one I'll leave for future me to figure out. (Hi future me.)
-
-## Project structure
-
-This repo is intentionally spec-driven: the specs are the authoritative definition of the system, and the code is the implementation output. 🤖
-
-Specs are created either by hand (a human hand), and refined using a coding agent such that the spec can be better understood by a large language model. Fundemental idea is that given the specs, this entire system should be able to be regenerated with a capable large language model. 🧑‍💻
-
-### Root files 🤖
-
-- `README`: Human-facing overview and context.
-- `CONTRIB`: Non-negotiable coding standards and implementation practices.
-- `LICENSE`: Project license.
-- `TODO`: Tracker for spec drift, functionality gaps, and technical debt; update before finishing work when items remain.
-
-### `specs/`
-
-- `specs/001-streaming-pipeline/spec.md`: Streaming narration pipeline (source → transforms → sink)
-- `specs/002-llm-story-transforms/spec.md`: LLM-backed story transforms (rewrite → summary → character + inventory tracking)
-- `specs/003-pipeline-log-ui/spec.md`: Realtime pipeline telemetry log UI (live input + idle/send execution)
-
-### `src/` 🤖
-
-- `src/Pipeline/`: Streaming pipeline API surface (typed chunks, runner, and reference transforms/sinks).
+This branch explores using Dart and Flutter to build a crossplatform rich desktop app that leverages agents with skills and CLI tools to execute workflows for the narrator AI.

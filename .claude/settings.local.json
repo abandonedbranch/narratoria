@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git mv:*)",
+      "Bash(git add:*)",
+      "Bash(.specify/scripts/bash:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(git fetch:*)",
+      "Bash(ls:*)",
+      "Bash(.specify/scripts/bash/create-new-feature.sh:*)",
+      "Bash(git commit:*)",
+      "Bash(gh pr view:*)"
+    ]
+  }
+}

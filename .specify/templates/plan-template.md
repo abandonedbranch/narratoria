@@ -3,7 +3,7 @@
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Note**: This template is filled in by the `/speckit.plan` command. See `.github/agents/speckit.plan.agent.md` for the execution workflow.
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
 ## Summary
 
@@ -31,11 +31,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- Specs are authoritative; no silent drift (update spec or record in `TODO`).
-- Interfaces are tiny; composition over inheritance.
-- Prefer immutability; isolate IO/time/random behind interfaces.
-- Async/cancellation is explicit; no fire-and-forget.
-- Tests are deterministic; UI changes include Playwright E2E coverage.
+[Gates determined based on constitution file]
 
 ## Project Structure
 

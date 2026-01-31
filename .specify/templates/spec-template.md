@@ -5,28 +5,7 @@
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"
 
-
-## Scope *(mandatory)*
-
-### In Scope
-
-- [Bullet list of behaviors/capabilities that ARE included]
-
-### Out of Scope
-
-- [Bullet list of behaviors/capabilities that are explicitly NOT included]
-
-### Assumptions
-
-- [Assumption that must hold true; if unknown, mark as NEEDS CLARIFICATION]
-
-### Open Questions *(mandatory)*
-
-- [NEEDS CLARIFICATION: unanswered requirement/question]
-
 ## User Scenarios & Testing *(mandatory)*
-
-**Constitution note**: If the feature changes UI components, acceptance scenarios MUST be coverable via Playwright for .NET E2E tests in addition to any applicable unit tests.
 
 <!--
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
@@ -96,23 +75,6 @@
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
 
-
-## Interface Contract *(mandatory)*
-
-List the externally observable surface area this feature introduces or changes. Avoid implementation details.
-
-### New/Changed Public APIs
-
-- [API/endpoint/command/query name] — [brief contract summary]
-
-### Events / Messages *(if applicable)*
-
-- [Event/message name] — [producer -> consumer(s)] — [intent]
-
-### Data Contracts *(if applicable)*
-
-- [DTO/record name] — [fields at a high level; omit types if unknown]
-
 ## Requirements *(mandatory)*
 
 <!--
@@ -121,11 +83,6 @@ List the externally observable surface area this feature introduces or changes. 
 -->
 
 ### Functional Requirements
-
-### Error Handling *(mandatory)*
-
-- **EH-001**: System MUST [expected failure] and respond with [observable behavior]
-- **EH-002**: System MUST log [what] at [level] including [context fields]
 
 - **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
 - **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]  
@@ -138,26 +95,10 @@ List the externally observable surface area this feature introduces or changes. 
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
-
-### State & Data *(mandatory if feature involves data)*
-
-- **Persistence**: [What is stored/updated; where conceptually]
-- **Invariants**: [Rules that must always hold true]
-- **Migration/Compatibility**: [Any required migrations, backfills, versioning, or backward-compat expectations]
-
 ### Key Entities *(include if feature involves data)*
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
-
-
-## Test Matrix *(mandatory)*
-
-Map each requirement to the minimum required test coverage. If UI behavior changes, include Playwright E2E coverage.
-
-| Requirement ID | Unit Tests | Integration Tests | E2E (Playwright) | Notes |
-|---|---|---|---|---|
-| FR-001 | [Y/N] | [Y/N] | [Y/N] | [What must be proven] |
 
 ## Success Criteria *(mandatory)*
 
