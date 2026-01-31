@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://narratoria.dev/schemas/config-schema-meta.schema.json",
+  "title": "Skill Configuration Schema Meta-Schema",
+  "description": "Meta-schema for validating skill config-schema.json files",
+  "type": "object",
+  "required": ["$schema", "type", "properties"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title for the configuration"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of what this configuration controls"
+    },
+    "type": {
+      "type": "string",
+      "const": "object"
+    },
+    "required": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of required configuration fields"
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/ConfigField"
+      }
+    }
+  },
+  "$defs": {
+    "ConfigField": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "integer", "boolean", "array"],
+          "description": "JSON Schema type"
+        },
+        "title": {
+          "type": "string",
+          "description": "Label displayed in configuration UI"
+        },
+        "description": {
+          "type": "string",
+          "description": "Help text displayed in configuration UI"
+        },
+        "default": {
+          "description": "Default value if not configured"
+        },
+        "enum": {
+          "type": "array",
+          "description": "Allowed values (renders as dropdown)"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["password", "uri", "email", "textarea"],
+          "description": "UI rendering hint"
+        },
+        "minimum": {
+          "type": "number",
+          "description": "Minimum value for numbers"
+        },
+        "maximum": {
+          "type": "number",
+          "description": "Maximum value for numbers"
+        },
+        "minLength": {
+          "type": "integer",
+          "description": "Minimum string length"
+        },
+        "maxLength": {
+          "type": "integer",
+          "description": "Maximum string length"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regex pattern for validation"
+        },
+        "x-env-var": {
+          "type": "string",
+          "description": "Environment variable name for ${VAR_NAME} substitution"
+        },
+        "x-sensitive": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, value is masked in UI (for API keys, passwords)"
+        },
+        "x-category": {
+          "type": "string",
+          "description": "UI grouping category"
+        }
+      }
+    }
+  }
+}
