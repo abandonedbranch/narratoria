@@ -19,6 +19,12 @@ To ensure consistency across spec, plan, and tasks, this feature uses the follow
 - **Graceful Degradation**: System continues functioning and presents narration to user even when optional features fail (e.g., hosted API unavailable → fallback to local model).
 - **Replan Loop**: Bounded retry system (max 5 plan generation attempts) that learns from failures and disables failed skills in subsequent plans.
 - **Narrator AI Stub**: Simplified in-process implementation that converts player prompts to Plan JSON using hard-coded mappings (not a test mock; intended for MVP functionality before LLM integration). See Spec 003 for Dart implementation.
+- **Player Choice Skill**: Skill that generates contextual multiple-choice options for player turns based on player profile, reputation, and narrative history.
+- **Character Portrait Skill**: Skill that generates and manages visual portraits for characters (player and NPC) based on narrative descriptions.
+- **NPC Perception Skill**: Skill that calculates how individual NPCs perceive the player, affecting dice modifiers, available options, and narrative tone.
+- **Persona Profile**: Player's character data including stats, traits, background, and preferences that influence available choices.
+- **Perception Score**: Numerical value (-100 to +100) representing an NPC's opinion of the player, distinct from faction reputation.
+- **Portrait Cache**: Persistent storage of generated character images for reuse within a story session.
 
 ---
 
@@ -108,6 +114,57 @@ A player's actions have consequences. When the player steals from a merchant in 
 
 ---
 
+### User Story 6 - Contextual Player Choices (Priority: P2)
+
+A player reaches a decision point in the narrative. Instead of typing freeform text, they are presented with 3-5 contextual multiple-choice options that reflect their character's abilities, past choices, and current reputation. A rogue character with high stealth sees "Pick the lock quietly" while a warrior with low charisma doesn't see "Persuade the guard" as an option.
+
+**Why this priority**: This enhances the game master experience by providing intelligent, contextual suggestions. While players can always type freeform input, contextual choices reduce decision paralysis and improve immersion.
+
+**Independent Test**: Can be fully tested by creating a player profile with specific stats, triggering a decision point, and verifying that displayed options match the character's capabilities and past choices. Delivers value as an intelligent game master feature.
+
+**Acceptance Scenarios**:
+
+1. **Given** player character has high Stealth stat (>15), **When** narrator reaches a locked door scenario, **Then** player choices include stealth-related options like "Pick the lock" or "Find another way around"
+2. **Given** player previously betrayed the Thieves Guild, **When** player encounters a guild member, **Then** choices do NOT include "Ask for guild assistance" and MAY include "Attempt to make amends"
+3. **Given** player has low Charisma stat (<8), **When** social encounter requires persuasion, **Then** persuasion-based choices are either hidden or marked as "unlikely to succeed"
+4. **Given** decision point requires immediate action, **When** choice skill is invoked, **Then** 3-5 contextual options are generated and displayed within 3 seconds
+
+---
+
+### User Story 7 - Character Portrait Generation (Priority: P3)
+
+During narrative play, the narrator describes a new character - perhaps a scarred dwarven blacksmith or an ethereal elven sage. The character portrait skill generates a visual image based on the narrative description and stores it. When this character appears again later in the story, their portrait is retrieved and displayed, creating visual continuity.
+
+**Why this priority**: Visual elements significantly enhance immersion. While not essential for core storytelling, character portraits help players remember NPCs and create emotional connections with the story world.
+
+**Independent Test**: Can be tested by having the narrator describe a character, verifying an image is generated, then referencing that character again and verifying the same portrait is displayed. Delivers value as visual storytelling enhancement.
+
+**Acceptance Scenarios**:
+
+1. **Given** narrator describes a new character with physical details, **When** portrait skill is invoked, **Then** an image is generated matching the description and displayed in the narrative
+2. **Given** character portrait was previously generated, **When** same character appears in narrative, **Then** stored portrait is retrieved and displayed (no regeneration)
+3. **Given** player character has a description in their persona profile, **When** player views their character sheet, **Then** player portrait is displayed
+4. **Given** image generation service is unavailable, **When** portrait skill is invoked, **Then** system displays placeholder silhouette and logs warning (graceful degradation)
+
+---
+
+### User Story 8 - NPC Perception and Reactions (Priority: P3)
+
+A player who previously helped the town blacksmith returns to request a favor. The NPC perception skill calculates that the blacksmith has a positive perception (+45) of the player based on past interactions. This positive perception grants a +2 bonus to any persuasion rolls and unlocks dialogue options like "Remember when I helped you?" that wouldn't be available with neutral or negative perception.
+
+**Why this priority**: Individual NPC relationships create a living world distinct from faction reputation. A player might have poor reputation with the Merchants Guild overall but excellent standing with one specific merchant they've helped multiple times.
+
+**Independent Test**: Can be tested by performing actions that affect a specific NPC's perception, then interacting with that NPC and verifying that dice modifiers and available choices reflect the perception score. Delivers value for relationship-based gameplay.
+
+**Acceptance Scenarios**:
+
+1. **Given** player previously helped NPC "Aldric the Blacksmith", **When** perception skill calculates NPC's view of player, **Then** Aldric has positive perception score reflecting past aid
+2. **Given** NPC has positive perception (>30) of player, **When** dice-roller skill calculates social roll, **Then** roll receives positive modifier (+1 to +3 based on perception level)
+3. **Given** NPC has negative perception (<-30) of player, **When** choice skill generates options, **Then** friendly cooperation options are hidden or marked as very difficult
+4. **Given** player action affects NPC (help/harm/insult/compliment), **When** action completes, **Then** NPC perception score is updated and persisted
+
+---
+
 ### Edge Cases
 
 - What happens when a skill's script fails to execute (file not found, permission denied, crashes)?
@@ -139,6 +196,27 @@ A player's actions have consequences. When the player steals from a merchant in 
   
 - How does system handle skills that require data migration across versions?
   - Skill's responsibility; skill checks data schema version and migrates at load time or first use
+
+- What happens when player has no persona profile defined?
+  - Choice skill uses default "average adventurer" profile; all options available but not optimized
+
+- How does system handle conflicting signals (high stat but low reputation)?
+  - Options appear but are marked with difficulty indicators; player can still attempt unlikely actions
+
+- What happens when portrait generation times out or fails?
+  - Placeholder silhouette displayed; retry attempted in background; narrative continues uninterrupted
+
+- How does NPC perception decay over time?
+  - Configurable decay rate (default: 10% per in-game week); strong impressions (+/-50) decay slower
+
+- What happens when player tries action not in the generated choices?
+  - Freeform input always accepted; narrator evaluates against same criteria used for choice generation
+
+- How are NPC perceptions seeded for NPCs the player has never met?
+  - Initial perception based on: faction reputation (50%), player's visible traits/equipment (30%), random variance (20%)
+
+- What happens when the same character description varies between mentions?
+  - Portrait skill uses semantic similarity to match existing portraits; significant changes trigger regeneration with warning
 
 ## Requirements *(mandatory)*
 
@@ -236,21 +314,90 @@ A player's actions have consequences. When the player steals from a merchant in 
   - `query-reputation.dart` script that returns current reputation values
   - Configuration: faction list, reputation scale, decay rate, storage backend
 
+#### Advanced Skills (Post-MVP)
+
+- **FR-068**: System MUST ship with a `player-choices` skill for generating contextual multiple-choice options
+  - `generate-choices.dart` script that analyzes context and produces 3-5 choices
+  - `evaluate-choice.dart` script that determines outcome modifiers for selected choice
+  - Configuration: minimum/maximum options, difficulty threshold visibility, consequence hint verbosity
+
+- **FR-069**: Choice skill MUST consider player persona profile (stats, traits, background) when generating options
+- **FR-070**: Choice skill MUST consider player's past choices and narrative history when filtering options
+- **FR-071**: Choice skill MUST consider faction reputation (from `reputation` skill) when determining available options
+- **FR-072**: Choice skill MUST consider individual NPC perception (from `npc-perception` skill) when applicable
+- **FR-073**: Choice skill MUST mark options with difficulty indicators when player stats suggest low success probability
+- **FR-074**: Choice skill MUST complete option generation within 3 seconds for typical scenarios
+- **FR-075**: Choice skill MUST emit `ui_event` with event type `narrative_choice` containing generated options
+- **FR-076**: Choice skill MUST allow freeform player input as alternative to selecting generated options
+- **FR-077**: Choice skill MUST include brief consequence hints for each option (without spoiling outcomes)
+
+- **FR-078**: System MUST ship with a `character-portraits` skill for generating and managing character images
+  - `generate-portrait.dart` script that creates character images from descriptions
+  - `lookup-portrait.dart` script that retrieves cached portraits by character identifier
+  - `update-portrait.dart` script that regenerates portrait for existing character
+  - Configuration: image generation provider (local/hosted), style preset, resolution, timeout, storage location
+
+- **FR-079**: Portrait skill MUST generate images based on narrative character descriptions
+- **FR-080**: Portrait skill MUST store generated portraits in persistent cache with character identifier
+- **FR-081**: Portrait skill MUST retrieve cached portraits when same character reappears (semantic matching)
+- **FR-082**: Portrait skill MUST support player character portrait generation from persona profile
+- **FR-083**: Portrait skill MUST emit `asset` events containing generated portrait image data
+- **FR-084**: Portrait skill MUST gracefully degrade to placeholder silhouette when generation fails
+- **FR-085**: Portrait skill MUST complete image generation within 15 seconds (configurable timeout)
+- **FR-086**: Portrait skill MUST support regeneration when character description significantly changes
+
+- **FR-087**: System MUST ship with an `npc-perception` skill for tracking individual NPC opinions of the player
+  - `update-perception.dart` script that records perception changes
+  - `query-perception.dart` script that returns current perception value and modifiers
+  - `initialize-perception.dart` script that seeds perception for new NPCs
+  - Configuration: decay rate, faction influence weight, modifier scale, storage backend
+
+- **FR-088**: Perception skill MUST maintain perception scores (-100 to +100) per NPC identifier
+- **FR-089**: Perception skill MUST initialize new NPC perception based on faction reputation and visible player traits
+- **FR-090**: Perception skill MUST update perception scores based on player actions affecting that NPC
+- **FR-091**: Perception skill MUST calculate dice roll modifiers based on perception level
+  - Positive perception (>30): +1 to +3 bonus
+  - Neutral perception (-30 to +30): no modifier
+  - Negative perception (<-30): -1 to -3 penalty
+- **FR-092**: Perception skill MUST provide perception data to choice skill for option filtering
+- **FR-093**: Perception skill MUST support perception decay over in-game time (configurable rate)
+- **FR-094**: Perception skill MUST distinguish between perception (individual NPC) and reputation (faction)
+- **FR-095**: Perception skill MUST persist perception data across sessions
+- **FR-096**: Perception skill MUST complete perception queries within 100ms
+
+#### Skill Integration (Advanced Skills)
+
+- **FR-097**: Player choice skill MUST query NPC perception skill when generating options for NPC interactions
+- **FR-098**: Player choice skill MUST query reputation skill for faction-based option filtering
+- **FR-099**: NPC perception skill MUST consult reputation skill when initializing perception for new NPCs
+- **FR-100**: Portrait skill MUST associate portraits with NPC identifiers used by perception skill
+- **FR-101**: All skills MUST communicate via Plan JSON tool invocations (no direct skill-to-skill calls)
+- **FR-102**: Narrator AI MUST orchestrate skill interactions through multi-step plans when needed
+
 #### Data Management
 
-- **FR-058**: Each skill MUST be allowed to maintain its own data storage in `skills/<skill-name>/data/` directory
-- **FR-059**: Skill data storage MUST persist across application restarts
-- **FR-060**: Skill data MUST remain private to that skill; other skills MUST NOT directly access another skill's data directory
-- **FR-061**: Skills MAY use SQLite, JSON files, or other local storage formats for their data
-- **FR-062**: System MUST create skill data directories on first use if they do not exist
+- **FR-103**: Each skill MUST be allowed to maintain its own data storage in `skills/<skill-name>/data/` directory
+- **FR-104**: Skill data storage MUST persist across application restarts
+- **FR-105**: Skill data MUST remain private to that skill; other skills MUST NOT directly access another skill's data directory
+- **FR-106**: Skills MAY use SQLite, JSON files, or other local storage formats for their data
+- **FR-107**: System MUST create skill data directories on first use if they do not exist
+- **FR-108**: Player choice skill MUST access player persona profile from session state
+- **FR-109**: Portrait skill MUST store images in `skills/character-portraits/data/` directory
+- **FR-110**: Portrait skill MUST maintain character-to-portrait mapping in local database
+- **FR-111**: NPC perception skill MUST store perception data in `skills/npc-perception/data/` directory
+- **FR-112**: Skills MUST support data export for story archival purposes
 
 #### Graceful Degradation (Constitution Principle IV)
 
-- **FR-063**: System MUST continue functioning when optional skills are not installed or disabled
-- **FR-064**: System MUST display user-friendly warnings when skills are misconfigured, not crash
-- **FR-065**: Skill scripts that use hosted APIs MUST fall back to local models when network is unavailable
-- **FR-066**: Narrator AI MUST provide simple template-based narration if plan generation fails completely
-- **FR-067**: Plan executor MUST continue executing remaining plan steps when one script fails (if independent from failure)
+- **FR-113**: System MUST continue functioning when optional skills are not installed or disabled
+- **FR-114**: System MUST display user-friendly warnings when skills are misconfigured, not crash
+- **FR-115**: Skill scripts that use hosted APIs MUST fall back to local models when network is unavailable
+- **FR-116**: Narrator AI MUST provide simple template-based narration if plan generation fails completely
+- **FR-117**: Plan executor MUST continue executing remaining plan steps when one script fails (if independent from failure)
+- **FR-118**: If portrait generation fails, system MUST display placeholder and continue narrative
+- **FR-119**: If perception skill unavailable, choice skill MUST generate options without perception filtering
+- **FR-120**: If choice skill fails, narrator MUST fall back to freeform text input (always available)
+- **FR-121**: All skills MUST log failures and continue functioning for remaining capabilities
 
 ### Key Entities *(include if feature involves data)*
 
@@ -280,6 +427,26 @@ A player's actions have consequences. When the player steals from a merchant in 
   - Attributes: skill name, prompt text
   - Usage: Injected into plan generator system context
 
+- **Persona Profile**: Player character definition used for choice generation
+  - Attributes: stats (strength, dexterity, charisma, etc.), traits, background, equipment, notable past choices
+  - Relationships: Referenced by choice skill, portrait skill (player portrait)
+
+- **Player Choice**: Generated option for player decision point
+  - Attributes: choice ID, display text, difficulty indicator, consequence hint, required conditions
+  - Relationships: Generated by choice skill, selected by player, evaluated for outcome modifiers
+
+- **Character Portrait**: Generated or cached image for a character
+  - Attributes: character ID, image data (or path), description hash, generation timestamp, style preset
+  - Relationships: Associated with NPC identifier or player profile
+
+- **NPC Perception Record**: Individual NPC's opinion of the player
+  - Attributes: NPC identifier, perception score (-100 to +100), last interaction timestamp, interaction history summary
+  - Relationships: Influences choice generation, dice roll modifiers; seeded from faction reputation
+
+- **Perception Event**: Record of action that modified perception
+  - Attributes: NPC identifier, action type, perception delta, timestamp, narrative context
+  - Relationships: Accumulated to calculate current perception score
+
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
@@ -296,6 +463,19 @@ A player's actions have consequences. When the player steals from a merchant in 
 - **SC-010**: Users can install new skills by placing skill directories in `skills/` folder and restarting, with no code changes required
 - **SC-011**: Configuration changes persist across application restarts and are correctly loaded by skills on next invocation
 - **SC-012**: Plan executor handles script failures without crashing: logs error, marks step as failed, continues with remaining plan steps
+
+#### Advanced Skills Success Criteria
+
+- **SC-013**: Choice skill generates 3-5 contextual options within 3 seconds for 95% of decision points
+- **SC-014**: Generated choices correctly reflect player stats (options hidden/shown based on capabilities) in 90% of scenarios validated by acceptance tests
+- **SC-015**: Portrait skill generates character images within 15 seconds for 90% of requests when using local generation
+- **SC-016**: Portrait skill correctly retrieves cached portraits (semantic match) in 95% of character reappearances
+- **SC-017**: NPC perception skill initializes perception for new NPCs within 100ms, informed by faction reputation
+- **SC-018**: Dice roll modifiers correctly reflect perception scores (positive perception = bonus, negative = penalty) in 100% of applicable rolls
+- **SC-019**: All skill data persists correctly across application restarts with 100% data integrity
+- **SC-020**: Players can complete a 30-minute play session using all skills without application crashes
+- **SC-021**: Choice generation respects both faction reputation AND individual NPC perception when both are applicable
+- **SC-022**: Portrait cache correctly associates images with character identifiers across multiple sessions
 
 ---
 
