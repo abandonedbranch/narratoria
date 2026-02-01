@@ -46,11 +46,11 @@ This specification defines the individual skills that ship with Narratoria:
 
 ## 3. User Scenarios
 
-### User Story 4 - Memory and Continuity (Priority: P3)
+### User Story 4 - Memory and Continuity (Priority: P2)
 
 A player engages in a long storytelling session over multiple days. The memory skill tracks significant events, character interactions, and world changes. When the player returns and types "What happened last time?", the narrator uses the memory skill to recall key events without sending the entire conversation history to the LLM.
 
-**Why this priority**: Memory enables long-form storytelling and campaigns. While not essential for MVP, it significantly enhances the user experience for extended play sessions.
+**Why this priority**: Memory is foundational for meaningful narrative experiences. Without continuity, each session feels disconnected and players cannot build long-term story arcs. The persistence layer (Spec 006) enables this capability.
 
 **Acceptance Scenarios**:
 

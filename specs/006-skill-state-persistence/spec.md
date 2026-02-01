@@ -22,6 +22,9 @@ This specification defines the persistent data storage layer that enables skills
 - NPC Perception - Maintains individual NPC relationship data
 - Character Portraits - Caches generated character images
 
+**Architectural Note (Constitution Compliance):**
+The persistence layer is **shared infrastructure**, not skill-owned data directories. Like the Narrator AI (which is an in-process Dart service exempt from Principle II's out-of-process requirement), the persistence layer runs within the Dart runtime and provides a common query interface for all skills. This differs from the `skills/<skill-name>/data/` pattern described in the constitution, which applies to skill-private caches and working files. The shared persistence layer enables cross-skill context augmentation (e.g., Memory skill stores events that inform Reputation and NPC Perception skills) without violating the "no direct skill-to-skill calls" rule—skills communicate through the persistence layer's query interface, not by accessing each other's private directories.
+
 **Scope excludes:**
 - Individual skill implementations (see [Spec 004](../004-narratoria-skills/spec.md))
 - Skill discovery and configuration (see [Spec 003](../003-skills-framework/spec.md))
@@ -128,24 +131,24 @@ The narrator describes a character portrait and the system generates an image. L
 
 ### Functional Requirements
 
-- **FR-113**: System MUST provide a persistence layer accessible to skills via query interface defined in this spec
-- **FR-114**: System MUST store memory events with the following minimum attributes: event summary, timestamp, story session ID, embedding vector, narrative context tags
-- **FR-115**: System MUST support semantic similarity search: given a query, return memories ranked by embedding similarity above configured threshold
-- **FR-116**: System MUST support exact-match filtering: query by timestamp range, story session, playthrough ID, or character identifier
-- **FR-117**: Memory skill MUST be able to store new memory events with generated embeddings into the persistence layer
-- **FR-118**: Memory skill MUST be able to query persisted memories and return ranked results (by recency and semantic relevance)
-- **FR-119**: Reputation skill MUST query persisted faction data and retrieve current standing for any faction
-- **FR-120**: Reputation skill MUST record reputation changes (delta, timestamp, faction ID) and persist them atomically
-- **FR-121**: NPC Perception skill MUST retrieve perception history for any NPC identifier
-- **FR-122**: NPC Perception skill MUST persist perception changes and calculate current perception from accumulated history
-- **FR-123**: Character Portraits skill MUST store generated portraits with character identifier and retrieve by character ID or semantic description match
-- **FR-124**: System MUST provide a context augmentation interface: given a skill execution context, return relevant persisted data to inject into that skill's input
-- **FR-125**: System MUST support scoped queries: memories/data filtered by current playthrough, session, location, or custom tags
-- **FR-126**: System MUST persist all skill data across application restarts with zero data loss
-- **FR-127**: System MUST support configurable data retention policies (time-based, count-based, storage-based)
-- **FR-128**: System MUST apply decay to time-sensitive data (reputation, perception) at configured rates
-- **FR-129**: System MUST provide query performance monitoring: track query latency, result count, search scope for debugging
-- **FR-130**: System MUST handle concurrent read access from multiple skills without blocking or data corruption
+- **FR-131**: System MUST provide a persistence layer accessible to skills via query interface defined in this spec
+- **FR-132**: System MUST store memory events with the following minimum attributes: event summary, timestamp, story session ID, embedding vector, narrative context tags
+- **FR-133**: System MUST support semantic similarity search: given a query, return memories ranked by embedding similarity above configured threshold
+- **FR-134**: System MUST support exact-match filtering: query by timestamp range, story session, playthrough ID, or character identifier
+- **FR-135**: Memory skill MUST be able to store new memory events with generated embeddings into the persistence layer
+- **FR-136**: Memory skill MUST be able to query persisted memories and return ranked results (by recency and semantic relevance)
+- **FR-137**: Reputation skill MUST query persisted faction data and retrieve current standing for any faction
+- **FR-138**: Reputation skill MUST record reputation changes (delta, timestamp, faction ID) and persist them atomically
+- **FR-139**: NPC Perception skill MUST retrieve perception history for any NPC identifier
+- **FR-140**: NPC Perception skill MUST persist perception changes and calculate current perception from accumulated history
+- **FR-141**: Character Portraits skill MUST store generated portraits with character identifier and retrieve by character ID or semantic description match
+- **FR-142**: System MUST provide a context augmentation interface: given a skill execution context, return relevant persisted data to inject into that skill's input
+- **FR-143**: System MUST support scoped queries: memories/data filtered by current playthrough, session, location, or custom tags
+- **FR-144**: System MUST persist all skill data across application restarts with zero data loss
+- **FR-145**: System MUST support configurable data retention policies (time-based, count-based, storage-based)
+- **FR-146**: System MUST apply decay to time-sensitive data (reputation, perception) at configured rates
+- **FR-147**: System MUST provide query performance monitoring: track query latency, result count, search scope for debugging
+- **FR-148**: System MUST handle concurrent read access from multiple skills without blocking or data corruption
 
 ### Key Entities
 
