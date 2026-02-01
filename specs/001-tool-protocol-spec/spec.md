@@ -3,7 +3,12 @@
 **Status:** Draft
 **Audience:** Narratoria Core Runtime, Tool Developers
 **Scope:** Defines the communication protocol between external tools and the Narratoria application.
-**Version:** 0.0.1 (protocol envelope property `version`: "0")
+**Version:** 0.0.1 (document version)
+**Protocol Version:** "0" (value of `version` field in event envelopes; incremented only on breaking protocol changes)
+
+## Terminology
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## Clarifications
 
@@ -20,12 +25,10 @@
 ## Glossary
 
 - **Session State**: The runtime data model containing narrative state accumulated from `state_patch` events (e.g., `{"inventory": {"torch": {"lit": true}}}`)
-- **Narrative State Panel**: UI component displaying session state as expandable tree view with JSON inspector
-- **Tool Execution Panel**: UI component (widget) displaying active tool invocations with logs, progress, and completion status
-- **Tools View**: MainScreen navigation destination containing the Tool Execution Panel widget
-- **Narrator AI Stub**: Simplified in-process implementation that converts player prompts to Plan JSON using hard-coded mappings (not a test mock; intended for MVP functionality before LLM integration)
-- **Plan JSON**: Structured document produced by narrator AI describing which tools to execute, their inputs, dependencies, and execution strategy (parallel/sequential). See [Spec 002 contracts/plan-json.schema.json](../002-plan-generation-skills/contracts/plan-json.schema.json) for the authoritative schema.
+- **Plan JSON**: Structured document produced by narrator AI describing which tools to execute, their inputs, dependencies, and execution strategy (parallel/sequential). See [Spec 002](../002-plan-execution/spec.md) for plan execution semantics and schema.
 - **Deep Merge**: State patch merge semantics where nested objects are merged recursively, arrays replaced entirely, and null values remove keys
+
+> **Note:** For UI component definitions (Narrative State Panel, Tool Execution Panel, Tools View), see [Spec 005](../005-dart-implementation/spec.md). For Narrator AI Stub implementation, see [Spec 002](../002-plan-execution/spec.md).
 
 ---
 
@@ -45,7 +48,7 @@ This specification establishes:
 
 This protocol ensures backward and forward compatibility between Narratoria and tools, while maintaining a testable, composable UI architecture.
 
-> **Note:** For UI implementation requirements (Material Design 3, Flutter widgets), see [Spec 003: Dart/Flutter Implementation](../003-dart-flutter-implementation/spec.md).
+> **Note:** For UI implementation requirements (Material Design 3, Flutter widgets), see [Spec 005: Dart Implementation](../005-dart-implementation/spec.md).
 
 ---
 
@@ -312,7 +315,7 @@ Narratoria MUST:
 
 ## 9. Minimum Viable Tool Example
 
-A compliant minimal tool:
+A compliant minimal tool emits NDJSON events to stdout:
 
 ```
 {"version":"0","type":"log","level":"info","message":"Starting"}
@@ -320,12 +323,14 @@ A compliant minimal tool:
 {"version":"0","type":"done","ok":true,"summary":"Torch lit."}
 ```
 
+For skill implementation examples and the Agent Skills Standard, see [Spec 003](../003-skills-framework/spec.md).
+
 ---
 
 ## 10. Non-Goals for Spec 001
 
 Spec 001 does NOT define:
-- UI rendering specifics (see [Spec 003](../003-dart-flutter-implementation/spec.md) for Material Design 3 Flutter implementation)
+- UI rendering specifics (see [Spec 005](../005-dart-implementation/spec.md) for Material Design 3 Flutter implementation)
 - Shader or 3D scene protocols
 - Tool discovery or installation mechanisms (tools paths must be known in advance)
 - Narrator AI implementation or LLM integration (Plan JSON generation is external)
@@ -349,8 +354,10 @@ The protocol `version` string in the event envelope MUST remain "0" until Spec 0
 
 | Specification | Relationship |
 |---------------|--------------|
-| [002: Plan Generation Skills](../002-plan-generation-skills/spec.md) | Defines plan execution semantics, Plan JSON schema, execution result schema |
-| [003: Dart/Flutter Implementation](../003-dart-flutter-implementation/spec.md) | Dart+Flutter reference implementation including UI requirements, MVP features |
+| [002: Plan Execution](../002-plan-execution/spec.md) | Defines Plan JSON schema, execution semantics, replan loop |
+| [003: Skills Framework](../003-skills-framework/spec.md) | Defines skill discovery, configuration, and Agent Skills Standard |
+| [004: Narratoria Skills](../004-narratoria-skills/spec.md) | Defines individual skill specifications (storyteller, dice-roller, etc.) |
+| [005: Dart Implementation](../005-dart-implementation/spec.md) | Dart+Flutter reference implementation including UI requirements |
 
 ---
 
@@ -360,4 +367,4 @@ This specification defines the following machine-readable contracts in `contract
 
 - **tool-protocol.openapi.yaml**: OpenAPI 3.1.0 schema for all protocol event types
 
-For Plan JSON and execution result schemas, see [Spec 002 contracts](../002-plan-generation-skills/contracts/).
+For Plan JSON and execution result schemas, see [Spec 002 contracts](../002-plan-execution/contracts/). For skill manifest schemas, see [Spec 003 contracts](../003-skills-framework/contracts/).
