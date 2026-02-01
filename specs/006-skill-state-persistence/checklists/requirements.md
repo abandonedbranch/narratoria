@@ -2,6 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-01-31
+**Updated**: 2026-01-31 (post-analysis remediation)
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -15,6 +16,7 @@
 - Spec avoids mentioning specific technologies (ObjectBox, LangChain) in requirements
 - Focus is on persistence contracts and interfaces that skills require
 - Assumptions section clearly documents design constraints
+- **Added**: Architectural note clarifying shared infrastructure vs skill-private data
 
 ## Requirement Completeness
 
@@ -29,11 +31,31 @@
 
 **Specific Validations:**
 
-1. **Testability**: Each FR is testable (e.g., FR-113 can be verified by checking interface exists; FR-114 can be verified by storing and retrieving events)
+1. **Testability**: Each FR is testable (e.g., FR-131 can be verified by checking interface exists; FR-132 can be verified by storing and retrieving events)
 2. **Measurability**: Success criteria include specific metrics (500ms, 200ms, 1000+ events, 99% accuracy, 90% match rate)
 3. **Technology Agnosticism**: Success criteria use "persistence layer" not "ObjectBox"; "embedding model" not "LangChain"
 4. **Scope**: Clear boundaries - persistence infrastructure only, not skill implementations or UI
 5. **Dependencies**: All parent specs clearly listed; relationships documented
+
+## Cross-Spec Consistency
+
+- [x] FR numbers do not collide with other specs (FR-131 to FR-148)
+- [x] Priority alignment with dependent specs (Memory skill elevated to P2 in 004)
+- [x] Constitution compliance documented (shared infrastructure clarification)
+- [x] Terminology consistent with spec 004 (NPC Perception Record, etc.)
+
+## Analysis Remediation Log
+
+| Finding ID | Severity | Status | Resolution |
+|------------|----------|--------|------------|
+| I1 | CRITICAL | ✅ Fixed | Renumbered FRs from FR-113-130 to FR-131-148 |
+| I2 | HIGH | ✅ Fixed | Elevated Memory skill to P2 in spec 004 |
+| C1 | MEDIUM | ✅ Fixed | Added architectural note on shared infrastructure |
+| U1 | MEDIUM | Deferred | Embedding model details for planning phase |
+| U2 | MEDIUM | Deferred | Query Vector term review for planning phase |
+| C2 | LOW | ✅ Fixed | Covered by architectural note |
+| T1 | LOW | Noted | 006 is authoritative source for persistence entities |
+| R1 | LOW | Deferred | Update 005 parent specs during planning |
 
 ## Feature Readiness
 
@@ -42,21 +64,14 @@
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
 
-**Mapping of Scenarios to Requirements:**
-
-- User Story 1 (Cross-session continuity) → FR-114 to FR-118 (Memory storage/retrieval)
-- User Story 2 (Context augmentation) → FR-119 to FR-124 (Skill query interfaces)
-- User Story 3 (Semantic search) → FR-115, FR-118 (Search capabilities)
-- User Story 4 (Portrait caching) → FR-123 (Portrait storage/retrieval)
-
 ## Overall Assessment
 
 ✅ **READY FOR PLANNING**
 
-This specification is complete, well-scoped, and ready for the planning phase. All requirements are testable, success criteria are measurable, and the spec clearly defines the contract that implementation must satisfy.
+All critical and high-severity issues resolved. Spec 006 is complete, well-scoped, and consistent with related specs.
 
 **Next Steps:**
 - `/speckit.plan` to generate implementation plan
 - `/speckit.tasks` to generate task list
-- Proceed with dependency analysis and architecture design
+- Update spec 005 to reference 006 as parent spec
 
