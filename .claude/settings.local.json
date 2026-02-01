@@ -12,7 +12,10 @@
       "Bash(git commit:*)",
       "Bash(gh pr view:*)",
       "Bash(git push:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git checkout:*)",
+      "Bash(.specify/scripts/bash/check-prerequisites.sh:*)",
+      "Bash(bash:*)"
     ]
   }
 }
