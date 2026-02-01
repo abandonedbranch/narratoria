@@ -28,6 +28,7 @@ This specification defines the individual skills that ship with Narratoria:
 - Skills framework and discovery (see [Spec 003](../003-skills-framework/spec.md))
 - Plan execution semantics (see [Spec 002](../002-plan-execution/spec.md))
 - Dart/Flutter implementation (see [Spec 005](../005-dart-implementation/spec.md))
+- Skill state persistence (see [Spec 006](../006-skill-state-persistence/spec.md))
 
 ---
 
@@ -158,7 +159,7 @@ A player who previously helped the town blacksmith returns to request a favor. T
 - `recall-memory.dart` script that performs vector search for relevant context
 
 **Configuration**:
-- `storageBackend`: sqlite | files
+- `storageBackend`: objectbox | files
 - `embeddingModel`: Model for generating embeddings
 - `maxContextEvents`: Maximum events to retrieve per query
 
@@ -174,7 +175,7 @@ A player who previously helped the town blacksmith returns to request a favor. T
 - `factionList`: Array of faction names
 - `reputationScale`: min/max values
 - `decayRate`: Reputation decay per in-game time unit
-- `storageBackend`: sqlite | files
+- `storageBackend`: objectbox | files
 
 ---
 
@@ -244,7 +245,7 @@ A player who previously helped the town blacksmith returns to request a favor. T
 - `decayRate`: Perception decay per in-game time unit
 - `factionInfluenceWeight`: How much faction reputation affects initial perception (0-1)
 - `modifierScale`: Dice roll modifier per perception tier
-- `storageBackend`: sqlite | files
+- `storageBackend`: objectbox | files
 
 **Requirements**:
 - **FR-088**: Perception skill MUST maintain perception scores (-100 to +100) per NPC identifier
@@ -388,3 +389,4 @@ Record of action that modified perception.
 | [002: Plan Execution](../002-plan-execution/spec.md) | Orchestrates skill execution via plans |
 | [003: Skills Framework](../003-skills-framework/spec.md) | Defines discovery, configuration, and execution |
 | [005: Dart Implementation](../005-dart-implementation/spec.md) | Dart+Flutter reference implementation |
+| [006: Skill State Persistence](../006-skill-state-persistence/spec.md) | ObjectBox-based in-process data storage for skills |
