@@ -1,0 +1,258 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://narratoria.dev/schemas/campaign/asset-metadata.schema.json",
+  "title": "Campaign Asset Metadata",
+  "description": "Metadata structure for all assets ingested into ObjectBox from campaign directories",
+  "type": "object",
+  "required": ["path", "type", "keywords", "generated", "checksum", "created_at", "data"],
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Original filesystem path relative to campaign root",
+      "pattern": "^[^/].*$",
+      "examples": ["art/characters/npc_wizard.png", "lore/history/ancient_war.md"]
+    },
+    "type": {
+      "type": "string",
+      "enum": ["image", "audio", "prose", "structured"],
+      "description": "Asset type classification"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "description": "Keywords for semantic search (auto-extracted or from .keywords.txt sidecar)",
+      "examples": [["wizard", "archmage", "merlin"]]
+    },
+    "generated": {
+      "type": "boolean",
+      "description": "True if AI-generated, false if human-authored"
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash for duplicate detection",
+      "examples": ["sha256:abc123def456..."]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO8601 timestamp of ingestion"
+    },
+    "modified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO8601 timestamp of last modification"
+    },
+    "data": {
+      "oneOf": [
+        { "type": "string", "description": "Text content for prose/structured assets" },
+        { "type": "string", "contentEncoding": "base64", "description": "Binary content for image/audio assets" }
+      ],
+      "description": "Asset content (text or base64-encoded binary)"
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Provenance metadata for generated content (required when generated=true)",
+      "required": ["source_model", "generated_at", "seed_data", "version"],
+      "properties": {
+        "source_model": {
+          "type": "string",
+          "description": "LLM model used for generation",
+          "examples": ["ollama/gemma:2b", "ollama/qwen2.5:3b"]
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO8601 timestamp of generation"
+        },
+        "seed_data": {
+          "type": "string",
+          "description": "Original sparse data that triggered generation",
+          "examples": ["I am bread"]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Campaign format version (semver)",
+          "examples": ["1.0.0"]
+        }
+      }
+    },
+    "image_metadata": {
+      "type": "object",
+      "description": "Type-specific metadata for image assets",
+      "required": ["format", "width", "height"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["png", "jpeg", "webp"],
+          "description": "Image format"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Image width in pixels"
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Image height in pixels"
+        },
+        "alt_text": {
+          "type": "string",
+          "description": "Accessibility description"
+        }
+      }
+    },
+    "audio_metadata": {
+      "type": "object",
+      "description": "Type-specific metadata for audio assets",
+      "required": ["format", "duration_seconds"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["mp3", "ogg", "wav", "flac"],
+          "description": "Audio format"
+        },
+        "duration_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Audio duration in seconds"
+        },
+        "bitrate": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Audio bitrate in kbps"
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Whether audio should loop (for ambient music)"
+        }
+      }
+    },
+    "prose_metadata": {
+      "type": "object",
+      "description": "Type-specific metadata for prose (Markdown) assets",
+      "required": ["word_count", "language"],
+      "properties": {
+        "word_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Word count for the prose content"
+        },
+        "language": {
+          "type": "string",
+          "pattern": "^[a-z]{2}$",
+          "description": "ISO 639-1 language code",
+          "examples": ["en", "es", "fr"]
+        },
+        "chunks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Text chunks for RAG retrieval"
+        }
+      }
+    },
+    "structured_metadata": {
+      "type": "object",
+      "description": "Type-specific metadata for structured (JSON) assets",
+      "required": ["schema_type", "schema_version"],
+      "properties": {
+        "schema_type": {
+          "type": "string",
+          "description": "Schema type identifier",
+          "examples": ["npc_profile", "plot_beat", "manifest"]
+        },
+        "schema_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Schema version (semver)",
+          "examples": ["1.0.0"]
+        },
+        "entity_id": {
+          "type": "string",
+          "description": "Extracted entity identifier (e.g., NPC name)",
+          "examples": ["wizard_merlin", "baker_breadsworth"]
+        }
+      }
+    },
+    "relationships": {
+      "type": "object",
+      "description": "Relationship metadata linking this asset to others",
+      "properties": {
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Paths to assets this asset references",
+          "examples": [["characters/npcs/wizard/profile.json"]]
+        },
+        "referenced_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Paths to assets that reference this asset",
+          "examples": [["plot/beats.json", "lore/magic_system.md"]]
+        },
+        "entity_links": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Semantic entity links",
+          "examples": [["wizard", "npc_merlin", "protagonist"]]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "generated": { "const": true } }
+      },
+      "then": {
+        "required": ["provenance"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "image" } }
+      },
+      "then": {
+        "required": ["image_metadata"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "audio" } }
+      },
+      "then": {
+        "required": ["audio_metadata"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "prose" } }
+      },
+      "then": {
+        "required": ["prose_metadata"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "structured" } }
+      },
+      "then": {
+        "required": ["structured_metadata"]
+      }
+    }
+  ]
+}
