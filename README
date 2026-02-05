@@ -1,7 +1,0 @@
-# Narratoria
-
-A work in progress app for an AI-backed narrative driven storyteller and game master.
-
-## Dart+Flutter Rich Desktop App with Agent Skills
-
-This branch explores using Dart and Flutter to build a crossplatform rich desktop app that leverages agents with skills and CLI tools to execute workflows for the narrator AI.
