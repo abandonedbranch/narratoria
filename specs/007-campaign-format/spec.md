@@ -180,8 +180,8 @@ A story author includes character portraits, scene backgrounds, ambient music, a
 
 #### Lore System
 
-- **FR-022**: All files in `lore/` MUST be indexed for semantic search (RAG retrieval).
-- **FR-023**: Lore files SHOULD be chunked into retrievable segments for context-window efficiency.
+- **FR-022**: All files in `lore/` MUST be indexed for semantic search (RAG retrieval). Lore files MUST be chunked by paragraph (split on `\n\n`) with a maximum of 512 tokens per chunk. If a single paragraph exceeds 512 tokens, it MUST be split on sentence boundaries (`.`, `!`, `?`).
+- **FR-023**: Each lore chunk MUST be stored with metadata including: original file path, chunk index, paragraph ID, token count, and chunk method ("paragraph").
 - **FR-024**: System MUST support nested directories within `lore/` for organizational flexibility.
 
 #### Creative Assets
@@ -268,7 +268,15 @@ For `type: "prose"` (Markdown files):
   "prose_metadata": {
     "word_count": "integer",
     "language": "string (ISO 639-1)",    // e.g., "en"
-    "chunks": ["string"]                 // Text chunks for RAG retrieval
+    "chunks": ["string"],                // Text chunks for RAG retrieval
+    "chunk_method": "paragraph",         // Chunking strategy used
+    "chunk_metadata": [                  // Per-chunk metadata
+      {
+        "chunk_id": "integer",
+        "paragraph_id": "integer",
+        "token_count": "integer"
+      }
+    ]
   }
 }
 ```

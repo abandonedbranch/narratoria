@@ -133,8 +133,9 @@ The narrator describes a character portrait and the system generates an image. L
 
 - **FR-131**: System MUST provide a persistence layer accessible to skills via query interface defined in this spec
 - **FR-132**: System MUST store memory events with the following minimum attributes: event summary, timestamp, story session ID, embedding vector, narrative context tags
-- **FR-133**: System MUST support semantic similarity search: given a query, return memories ranked by embedding similarity above configured threshold
-- **FR-134**: System MUST support exact-match filtering: query by timestamp range, story session, playthrough ID, or character identifier
+- **FR-132a**: System MUST store lore chunks with metadata: original file path, chunk index, paragraph ID, token count, chunk content, and embedding vector
+- **FR-133**: System MUST support semantic similarity search: given a query, return memories or lore chunks ranked by embedding similarity above configured threshold
+- **FR-134**: System MUST support exact-match filtering: query by timestamp range, story session, playthrough ID, character identifier, or source file path (for lore chunks)
 - **FR-135**: Memory skill MUST be able to store new memory events with generated embeddings into the persistence layer
 - **FR-136**: Memory skill MUST be able to query persisted memories and return ranked results (by recency and semantic relevance)
 - **FR-137**: Reputation skill MUST query persisted faction data and retrieve current standing for any faction
@@ -211,4 +212,6 @@ The narrator describes a character portrait and the system generates an image. L
 5. **Playthrough Isolation**: Each playthrough has its own data scope. Cross-playthrough queries are not supported in this version (possible future enhancement).
 
 6. **Decay Semantics**: Time-based decay applies only to perception and reputation data. Memory events do not decay; they remain accessible indefinitely (archival system handles long-term storage).
+
+7. **Lore Chunking**: Campaign lore files are chunked by paragraph (split on `\n\n`) with max 512 tokens per chunk. Each chunk is stored with metadata: original file path, chunk index, paragraph ID, and token count. This enables efficient semantic retrieval without loading entire lore files into context.
 

@@ -1,203 +1,381 @@
-# Narratoria Development TODO
+## Spec Analysis: Coverage, Consistency, and Dependencies
 
-**Last Updated**: 2026-01-31
-**Current Branch**: 006-skill-state-persistence
-**Status**: Spec analysis complete; planning phase next
+### **Spec 001: Tool Protocol (Version 0.0.1)**
 
----
+**Scope**: Communication protocol between external tools and Narratoria runtime
 
-## 🎯 High Priority - Spec 006 Planning Phase
+**Covers**:
+- Transport model (process invocation, stdin/stdout)
+- NDJSON event envelopes (version, type, optional fields)
+- 6 event types: `log`, `state_patch`, `asset`, `ui_event`, `error`, `done`
+- Deep merge semantics for state patches
+- Asset file handling (tools responsible for creation)
+- Forward compatibility requirements
+- MVP requirement: narrative_choice UI event support only
 
-### Planning & Task Generation
-- [ ] Run `/speckit.plan` to generate `specs/006-skill-state-persistence/plan.md`
-- [ ] Run `/speckit.tasks` to generate `specs/006-skill-state-persistence/tasks.md`
-- [ ] Run `/speckit.analyze` again to validate plan/task consistency
-- [ ] Review generated plan for architecture decisions and data model details
-
-### Documentation & References
-- [ ] Update [specs/005-dart-implementation/spec.md](specs/005-dart-implementation/spec.md):
-  - [ ] Add 006 to parent specs list (currently missing)
-  - [ ] Add implementation guidance for ObjectBox persistence backend
-  - [ ] Document how Dart implements the persistence layer query interface
-
-### Deferred Design Decisions (for Planning Phase)
-- [ ] **U1 - Embedding Model Details**: Specify which models are supported (Ollama, LangChain, etc.)
-  - [ ] Document model selection criteria in plan.md
-  - [ ] Add fallback strategy if primary embedding service unavailable
-  - [ ] Include vector dimension constraints (current: 384-2048)
-
-- [ ] **U2 - Query Vector Terminology**: Review and either remove or use in requirements
-  - [ ] Add acceptance scenario for FR-147 (query performance monitoring)
-  - [ ] Clarify if "Query Vector" should be formally defined in data model
+**Quality**: Well-defined, minimal, extensible. Protocol version remains "0" until breaking changes needed.
 
 ---
 
-## 📋 Medium Priority - Cross-Spec Alignment
+### **Spec 002: Plan Execution (0.1.0)** + **Data Model**
 
-### Spec 005 Updates (Dart Implementation)
-- [ ] Add ObjectBox to technology stack table
-- [ ] Add LangChain (for Dart) to embedding options
-- [ ] Document persistence layer in MVP requirements section (3.2)
-- [ ] Add data structure diagrams for:
-  - [ ] Memory Event entity
-  - [ ] Faction Reputation entity
-  - [ ] NPC Perception Record entity
-  - [ ] Character Portrait entity
+**Scope**: Plan generation, execution engine, replan loop, narrator AI interface
 
-### Spec Reference Chain
-- [ ] Verify all specs properly reference their dependencies:
-  - [ ] 006 references 003, 004, 005 ✅
-  - [ ] 005 references 001, 002, 003, 004, **006** (needs update)
-  - [ ] 004 references 002, 003, **006** ✅
+**Covers**:
+- Plan JSON schema (tools array with dependencies, retry policies, parallel/sequential)
+- Execution semantics: topological sort, cycle detection, parallel execution
+- Failure handling (required vs non-required tools)
+- Replan loop (max 5 attempts, disabled skills tracking)
+- Narrator AI interface requirements
+- Retry logic with exponential backoff formula
+- Event aggregation and execution traces
+- Deep merge algorithm (per Spec 001)
+- Timeout and resource bounds
 
-### Constitution Compliance
-- [ ] Document in plan.md how persistence layer satisfies Principle II exception (like Narrator AI)
-- [ ] Clarify skill-private vs shared data in implementation guide
-- [ ] Add testing approach for graceful degradation (FR-148 concurrent access)
+**Quality**: Comprehensive. Data model includes detailed algorithms (Kahn's algorithm for topo sort, DFS for cycle detection).
 
 ---
 
-## 🛠️ Implementation Phase (Post-Planning)
+### **Spec 003: Skills Framework (0.1.0)**
 
-### Spec 006 Implementation
-- [ ] Implement persistence layer core:
-  - [ ] In-process database initialization (ObjectBox)
-  - [ ] Memory Event schema and storage
-  - [ ] Query interface for all skills
-  - [ ] Context augmentation interface (FR-142)
+**Scope**: Skill discovery, configuration, execution, data management, graceful degradation
 
-- [ ] Implement per-skill adapters:
-  - [ ] Memory skill: store/recall interface
-  - [ ] Reputation skill: faction data queries
-  - [ ] NPC Perception skill: perception history retrieval
-  - [ ] Character Portraits skill: portrait caching
+**Covers**:
+- Skill discovery from `skills/` directory
+- Skill manifest (skill.json) parsing
+- Behavioral prompts (prompt.md)
+- Configuration schema and UI form generation
+- Script execution via NDJSON protocol
+- Dependency respect and parallel/sequential execution
+- Per-skill timeouts (30s default)
+- Skill data storage in `skills/<skill>/data/`
+- Error states (healthy, degraded, temporaryFailure, permanentFailure)
+- Agent Skills Standard implementation
 
-- [ ] Implement advanced features:
-  - [ ] Semantic similarity search (FR-133)
-  - [ ] Decay calculation for reputation/perception (FR-146)
-  - [ ] Data retention policies (FR-145)
-  - [ ] Scoped queries by playthrough/session/location (FR-143)
-  - [ ] Performance monitoring (FR-147)
-  - [ ] Concurrent access handling (FR-148)
+**Note**: FR-035 allows "hot-reloading" with caveat that MVP requires restart.
 
-### Testing
-- [ ] Unit tests for persistence layer (each FR testable)
-- [ ] Integration tests for skill-persistence interaction
-- [ ] Performance tests:
-  - [ ] Semantic search latency (target: <500ms for 1000+ events)
-  - [ ] Context augmentation latency (target: <200ms)
-  - [ ] Portrait lookup latency (target: <100ms)
-- [ ] Data integrity tests:
-  - [ ] Concurrent write conflicts
-  - [ ] Application restart recovery
-  - [ ] Decay calculation accuracy
-- [ ] Edge case tests (5 documented edge cases)
+**Quality**: Well-structured. Clear relationships to Spec 001 (protocol), Spec 002 (execution), Spec 004 (individual skills).
 
 ---
 
-## 📚 Related Specifications - Updates Needed
+### **Spec 004: Narratoria Skills (0.1.0)**
 
-### Spec 003 (Skills Framework)
-- [ ] Verify skill configuration patterns support persistence backend selection
-- [ ] Review if skill discovery needs knowledge of persistence layer
+**Scope**: Individual skills shipped with Narratoria
 
-### Spec 004 (Narratoria Skills)
-- [ ] ✅ Memory skill priority elevated to P2
-- [ ] Verify all skill acceptance scenarios align with spec 006 FRs
-- [ ] Document memory skill's context augmentation behavior
+**Covers**:
 
-### Spec 002 (Plan Execution)
-- [ ] Review if context augmentation affects plan execution order
-- [ ] Verify concurrent skill access patterns compatible with persistence layer
+**Core Skills (MVP)**:
+- **Storyteller**: Rich narrative (local LLM or hosted API with fallback)
+- **Dice Roller**: Randomness (2d6 mechanics)
+- **Memory**: Semantic memory with embeddings and vector search
+- **Reputation**: Faction standing tracking with decay
 
----
+**Advanced Skills (Post-MVP)**:
+- **Player Choices**: Contextual option generation (considers stats, past choices, reputation, NPC perception)
+- **Character Portraits**: Generation and caching with semantic matching
+- **NPC Perception**: Individual NPC relationship tracking (-100 to +100 scores)
 
-## 🧪 Quality & Testing
+**Integration Requirements**:
+- Choice skill must query reputation and NPC perception skills
+- All skills communicate via Plan JSON (no direct calls)
+- Narrator AI orchestrates multi-step plans
+- Graceful degradation (fallbacks defined for each skill)
 
-### Analysis & Validation
-- [ ] Run `/speckit.analyze` after plan/tasks generation
-- [ ] Verify FR-to-task mapping is 100% covered
-- [ ] Check for unmapped user stories
-- [ ] Validate success criteria are measurable and achievable
-
-### Code Review Checklist
-- [ ] Constitution compliance verified
-- [ ] No implementation details leaked into specs
-- [ ] All requirements are testable and unambiguous
-- [ ] Acceptance scenarios map to actual code tests
-- [ ] Cross-spec consistency maintained
+**Quality**: Good scope definition, but **critical gap**: FR-068 onward defines advanced skills without indicating whether they block MVP or are purely post-MVP. References success criteria (SC-013 onwards) that assume they're implemented.
 
 ---
 
-## 🔄 Git & Branching
+### **Spec 005: Dart/Flutter Implementation (0.1.0)** + **Data Model**
 
-### Current Work
-- [x] Create spec 006 draft
-- [x] Patch spec 004 for ObjectBox
-- [x] Commit spec and checklist
-- [x] Run analysis and apply remediation
-- [ ] Merge remediation commits
+**Scope**: Reference implementation in Dart+Flutter, UI requirements, MVP features
 
-### Next Steps
-- [ ] Create plan.md and tasks.md via speckit
-- [ ] Commit plan and tasks to 006-skill-state-persistence branch
-- [ ] Create PR from 006-skill-state-persistence → main
-- [ ] Review PR for constitution compliance
-- [ ] Merge to main after approval
+**Covers**:
 
----
+**Flutter UI**:
+- Material Design 3 dark theme
+- Tool Execution Panel (logs, progress, status)
+- Asset Gallery (images, audio, video, graceful degradation)
+- Narrative State Panel (JSON inspection)
+- Story View (prose + assets)
+- Player Input Field
 
-## 📖 Documentation
+**MVP Requirements**:
+- Text input for prompts
+- Narrator AI Stub (hard-coded prompt→plan mapping for testing)
+- Tool invocation and event processing
+- NDJSON protocol compliance
+- Session state management with deep merge
+- Asset registry
+- Error recovery UI patterns
 
-### Narrative for Future Developers
-- [ ] Add ADR (Architecture Decision Record) explaining:
-  - [ ] Why shared persistence layer vs skill-private storage
-  - [ ] ObjectBox choice vs alternatives (SQLite, RocksDB, etc.)
-  - [ ] LangChain integration strategy for embeddings
-  - [ ] Decay algorithm rationale
+**Data Model**: Comprehensive Dart classes including:
+- Skill, SkillScript, SkillErrorState
+- PlanJson, ToolInvocation, RetryPolicy
+- PlanExecutionContext with topological sort and cycle detection
+- ProtocolEvent sealed class hierarchy
+- SessionState with deep merge
+- Exception hierarchy
 
-- [ ] Create data model diagram showing:
-  - [ ] Entity relationships
-  - [ ] Foreign key constraints
-  - [ ] Indexing strategy for performance
+**Quality**: Well-rounded. Includes error UI patterns and fallback narration templates.
 
-- [ ] Document query patterns:
-  - [ ] Semantic similarity search algorithm
-  - [ ] Scoped query filtering logic
-  - [ ] Concurrent access control mechanism
+**Note**: MVP Narrator AI Stub is deliberately simple (pattern-matching) to unblock other development.
 
 ---
 
-## ✅ Completed Items
+### **Spec 006: Skill State Persistence (0.1.0)**
 
-- [x] Spec 004 patched to reference ObjectBox
-- [x] Spec 006 created with 4 user stories, 18 FRs, 10 success criteria
-- [x] Quality checklist created
-- [x] Specification analysis performed
-- [x] FR collision fixed (113-130 → 131-148)
-- [x] Memory skill priority elevated to P2
-- [x] Architecture clarified for constitution compliance
-- [x] Commits created and tracked
+**Scope**: Persistent data layer for skill context, memory system, semantic search
+
+**Covers**:
+- 4-tier memory system (needs clarification on allocation):
+  - Tier 1 (Static): Campaign lore, NPC profiles, world rules
+  - Tier 2 (Incremental): Scene summaries post-choice
+  - Tier 3 (Weighted): NPC sentiment values
+  - Tier 4 (Episodic): Rare triumphs/failures (always retrieved)
+- Semantic search via embeddings
+- Context augmentation interface
+- Scoped queries (playthrough, session, location, tags)
+- Concurrent read access
+- Data retention policies and decay
+- Storage for Memory, Reputation, NPC Perception, Character Portraits skills
+
+**Architectural Note**: Spec 006 differs from Spec 003's `skills/<skill>/data/` pattern—this is **shared infrastructure** for cross-skill context, justified as exempt from Principle II (like Narrator AI).
+
+**Quality**: Clear intent but **open questions**:
+- How should lore be chunked? (paragraph, semantic, fixed tokens, hybrid?)
+- What context window allocation across tiers? (30/35/25/10? dynamic?)
 
 ---
 
-## 📞 Notes
+### **Spec 007: Campaign Format (Draft)**
 
-**Key Decision Points Made:**
-- Memory skill is P2 (foundational, not MVP but essential post-MVP)
-- Persistence layer is shared infrastructure (exception like Narrator AI)
-- ObjectBox for Dart + LangChain for embeddings (planned implementation)
-- Playthrough isolation in v1 (cross-playthrough queries future enhancement)
+**Scope**: Campaign package structure, manifest, asset ingestion, sparse data enrichment
 
-**Assumptions to Validate:**
-- Embedding model availability (local Ollama or hosted service)
-- Data volume expectations (50-200 events/session, 1000s/playthrough)
-- Latency tolerances (500ms search, 200ms augmentation)
-- Storage quota policies (configurable retention)
+**Covers**:
+- Campaign directory structure: `world/`, `characters/`, `plot/`, `lore/`, `art/`, `music/`
+- Manifest schema (title, version, author, genre, etc.)
+- World definition (setting.md, rules.md, constraints.md)
+- Character system (NPC profiles, player template, portraits)
+- Plot structure (premise.md, beats.json, endings/)
+- Lore files (indexed for semantic search)
+- Creative assets (PNG, JPEG, WebP, MP3, OGG, WAV, FLAC)
+- **Asset Metadata Structure**: Comprehensive schema with:
+  - Core fields: path, type, keywords, generated flag, checksum
+  - Provenance (for AI-generated content): source_model, generated_at, seed_data
+  - Type-specific metadata (image dimensions, audio duration, word count)
+  - Relationship graphs
+- **Keyword Sidecar Files** (`.keywords.txt`): Human override of auto-extracted keywords
+- Sparse data enrichment (LLM fills gaps in <3 files)
+- Campaign Format Creeds (respect human artistry, radical transparency, human override)
 
-**Risks to Monitor:**
-- Embedding quality affecting semantic search relevance
-- Concurrent access under load (plan performance tests)
-- Storage growth over long campaigns (retention policy testing)
-- Migration if embedding model changes (versioning strategy needed)
+**Quality**: Comprehensive and thoughtful. Asset metadata design is sophisticated with clear provenance tracking.
 
+**Validation Requirements**: FR-029 to FR-031 define error handling.
+
+---
+
+### **Spec 008: Narrative Engine (Draft)**
+
+**Scope**: Runtime execution of campaigns, scene loop, memory system, choice generation
+
+**Covers**:
+- Scene transition pipeline (7-step): Choice → Memory Update → Scene Rules → Memory Retrieval → Prose Gen → Choice Gen → Display
+- 4-tier memory system (mirrors Spec 006):
+  - Tier 1 (Static): Campaign lore, NPC profiles, world rules
+  - Tier 2 (Incremental): Scene summary per choice
+  - Tier 3 (Weighted): NPC sentiment values
+  - Tier 4 (Episodic): Triumphs/failures
+- Rules system (default: 2d6 + modifiers)
+- Plot beat integration with graceful degradation
+- Sentiment tracking (affects dialogue and options)
+- Episodic memory callbacks
+
+**Quality**: Good framework, but **3 open questions** block implementation:
+1. Lore chunking strategy (paragraph vs semantic vs fixed tokens)?
+2. Context window allocation across tiers?
+3. Player free-text input (structured choices only vs "Other" option vs always)?
+
+---
+
+## **Critical Issues & Inconsistencies**
+
+### 🔴 **Issue 1: Spec 006 vs Spec 008 Memory System Duplication**
+
+Both define a "4-tier memory system" but with **different contexts**:
+- **Spec 006**: Persistence layer—how memories are **stored and retrieved** from database
+- **Spec 008**: Narrative engine—how memories are **allocated in context window** during scene execution
+
+**Problem**: It's unclear if these are meant to be the same thing or different layers. They define the same 4 tiers but different purposes.
+
+**Recommendation**: Separate clearly:
+- Spec 006 should define *persistent storage schema* (ObjectBox tables, queries)
+- Spec 008 should define *context window budgeting* (how much space each tier gets)
+
+---
+
+### 🔴 **Issue 2: Missing Cross-Spec References**
+
+- **Spec 002** references "Spec 003" for skill discovery but Spec 003 doesn't detail how plan generator access skill manifests or behavioral prompts
+- **Spec 004** references "Spec 006" for Memory skill persistence but Spec 006 assumes Spec 004 skills are already defined
+- **Spec 007** and **Spec 008** have **no cross-reference** despite both defining scene/campaign execution
+- **Spec 006** assumes on-device embeddings model but no spec defines the embedding model selection/integration
+
+**Recommendation**: Add explicit "Prerequisites" section to each spec.
+
+---
+
+### 🟡 **Issue 3: Narrator AI Stub vs Real Narrator AI**
+
+- **Spec 005** defines MVP Narrator AI Stub as hard-coded pattern matching
+- **Spec 002** defines Narrator AI interface requirements (FR-001 to FR-010) for **real LLM-based implementation**
+- **Spec 004** assumes narrator can select skills and inject behavioral prompts
+- **No spec** defines transition from stub to real narrator or LLM integration architecture
+
+**Problem**: Unclear which specs apply to stub (MVP) vs real narrator.
+
+**Recommendation**: Mark Spec 002's narrator requirements as "Post-MVP LLM Integration" or split into two narratives.
+
+---
+
+### 🟡 **Issue 4: Skill Data Storage Pattern Inconsistency**
+
+- **Spec 003** defines skill-private data in `skills/<skill>/data/` (FR-103-107)
+- **Spec 006** introduces *shared* persistence layer for cross-skill context
+- **Spec 004** skill implementations don't clarify: Does Memory skill data go in `skills/memory/data/` or in shared persistence layer?
+
+**Problem**: Architectural principle unclear. Who owns the data?
+
+**Recommendation**: Explicitly state:
+- `skills/<skill>/data/` = skill-private cache/working files
+- Shared persistence layer (Spec 006) = cross-skill context (memory events, reputation scores, NPC perception)
+
+---
+
+### 🟡 **Issue 5: Overlap Between Spec 004 Skills and Spec 008 Engine**
+
+- **Spec 004** describes individual skills (Memory, Reputation, NPC Perception, Choice)
+- **Spec 008** describes the Narrative Engine's "4-tier memory system" and "scene transition pipeline"
+
+**Problem**: Unclear if Spec 008's memory tiers are **implemented as skills** (per Spec 004) or as **engine infrastructure**.
+
+Does Scene Rules step (FR-009) come from a skill or built-in logic?
+
+**Recommendation**: Clarify: Are scene execution responsibilities divided among skills, or is Spec 008 describing built-in engine logic?
+
+---
+
+### 🔴 **Issue 6: Spec 008 Open Questions Block Implementation**
+
+Three critical unknowns are explicitly noted as unresolved:
+1. **Lore chunking strategy** (FR-005) - impacts memory retrieval efficiency
+2. **Context window allocation** (FR-006) - impacts narrative quality and memory balance
+3. **Player free-text input** (Q3) - impacts interaction model
+
+**Problem**: These cannot be deferred post-MVP. Lore chunking affects Spec 007 ingestion. Context allocation affects memory tier implementation across Specs 006-008.
+
+**Recommendation**: Resolve these before finalizing Specs 006-008.
+
+---
+
+### 🟡 **Issue 7: Campaign Format Creeds Not Binding**
+
+- **Spec 007** defines "Campaign Format Creeds" as design philosophy
+- No enforcement mechanism defined (no validation schemas check `generated` flags)
+- **Spec 007** FR-034-036 try to enforce generated asset marking, but sidecar keywords (FR-039b) don't have similar enforcement
+
+**Recommendation**: Define ObjectBox validation that rejects assets missing provenance when `generated: true`.
+
+---
+
+### 🟡 **Issue 8: Success Criteria Mismatch Across Specs**
+
+- **Spec 004** defines SC-013-022 (Advanced Skills) but these aren't marked as post-MVP
+- **Spec 005** defines SC for MVP but doesn't cross-reference Spec 004
+- **Spec 006** defines SC-023-032 (persistence layer) but Spec 008 needs these to function
+
+**Recommendation**: Tag success criteria with MVP/post-MVP priority.
+
+---
+
+### 🟡 **Issue 9: Missing Reference: Embedding Model**
+
+- **Spec 006** assumes semantic embeddings for memory search (FR-132, FR-133)
+- **Spec 007** references embeddings for sparse data enrichment
+- **Spec 008** uses embeddings for semantic search
+- **No spec** defines: Which embedding model? How is it trained? Local or hosted?
+
+**Problem**: Affects performance, quality, and deployment.
+
+**Recommendation**: Add Spec 009 (Infrastructure) or append to CLAUDE.md with embedding model decision.
+
+---
+
+### 🟡 **Issue 10: Narrative Quality Metrics Not Defined**
+
+- Specs define success criteria (SC-001, SC-002, etc.) but many are subjective
+- **SC-002** (80% of choices reference past events) - how is this measured?
+- **SC-003** (Players report feeling AI "remembers") - survey? metric?
+- **SC-014** (Choices correctly reflect player stats) - what does "correctly" mean?
+
+**Recommendation**: Define acceptance test procedures (automated checks vs human review) for each SC.
+
+---
+
+## **Summary Table**
+
+| Spec | Status | Scope | MVP | Post-MVP | Key Dependencies |
+|------|--------|-------|-----|----------|------------------|
+| **001** | ✅ Draft | Protocol | Yes | - | None |
+| **002** | ✅ Draft | Plan Execution | Partial | LLM integration | 001, 003 |
+| **003** | ✅ Draft | Skill Framework | Yes | Hot-reload | 001, 002 |
+| **004** | ⚠️ Draft | Individual Skills | Core skills | Advanced skills | 003, 006 |
+| **005** | ✅ Draft | Dart/Flutter | Yes | - | 001-004 |
+| **006** | ⚠️ Draft | Persistence | Yes | Query optimization | Open questions |
+| **007** | ⚠️ Draft | Campaign Format | Yes | - | 008, LLM integration |
+| **008** | ❌ Draft | Narrative Engine | Yes | - | **3 Open Questions** |
+
+---
+
+## **Missing Specs**
+
+1. **Spec 009: Infrastructure & Deployment** - Embedding model selection, persistence backend (ObjectBox setup), LLM integration (Ollama, Gemma, etc.), build & release
+2. **Spec 010: Testing & Validation** - Acceptance test procedures, narrative quality benchmarks, integration test strategies
+3. **Spec 011: Data Import/Export** - Campaign archival, player save/load, story export formats 
+
+Completed: *Analyze spec coverage and create breakdown* (1/1)
+
+I've completed a comprehensive analysis of all 8 spec documents covering 85,000+ lines. Here's the executive summary:
+
+## **Quick Stats**
+- **8 specs total** covering ~50 major features
+- **2 critical inconsistencies** (memory duplication, unclear narrator AI scope)
+- **6 unresolved architectural questions** (data ownership, embedding model, narrative quality metrics)
+- **3 open implementation questions** in Spec 008 that block development
+- **Missing specs**: Infrastructure (009), Testing/Validation (010), Import/Export (011)
+
+## **Key Findings**
+
+**What's Strong**:
+- ✅ **Spec 001** (Tool Protocol) - Minimal, elegant, extensible
+- ✅ **Spec 005** (Dart/Flutter) - Complete reference implementation with classes and error patterns
+- ✅ **Spec 007** (Campaign Format) - Sophisticated asset metadata with provenance tracking
+
+**What Needs Clarification**:
+- ⚠️ **Spec 006 vs 008** — Both define "4-tier memory" but serve different purposes (unclear if they're the same thing)
+- ⚠️ **Spec 004 & 008 Overlap** — Unclear if scene execution is built-in engine logic or skill-based
+- ⚠️ **Narrator AI** — Spec 005's MVP stub differs from Spec 002's real implementation (no transition path defined)
+- ⚠️ **Skill Data Storage** — Ambiguous: private `skills/<skill>/data/` vs shared persistence layer ownership
+
+**What's Blocked**:
+- ❌ **Spec 008 Open Questions** —Three unresolved decisions block implementation:
+  1. How to chunk lore files? (affects Spec 007 ingestion)
+  2. Context window budget across memory tiers? (affects all memory specs)
+  3. Player free-text input model? (affects interaction design)
+
+**Major Gaps**:
+- No embedding model specification
+- No cross-reference between Campaigns (007) and Narrative Engine (008) despite 100% coupling
+- No definition of how Narrator AI accesses skill manifests or behavioral prompts
+- Success criteria lacking acceptance test procedures (SC-002 "80% references" — measured how?)
+
+The analysis includes detailed issue breakdown with recommendations for each problem. Specs 001-005 are relatively solid; Specs 006-008 need architectural alignment on persistence, memory, and narrative execution before implementation begins.

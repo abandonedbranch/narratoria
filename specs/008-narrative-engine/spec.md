@@ -134,7 +134,7 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 - **FR-002**: System MUST maintain Tier 2 (Incremental) memory that appends a scene summary after each player choice.
 - **FR-003**: System MUST maintain Tier 3 (Weighted) memory storing NPC sentiment values that bias retrieval of related content.
 - **FR-004**: System MUST maintain Tier 4 (Episodic) memory storing rare triumph/failure events with full context, always retrieved when relevant.
-- **FR-005**: Lore files MUST be chunked for retrieval. [NEEDS CLARIFICATION: Chunking strategy—by paragraph, by semantic boundary, or by fixed token count?]
+- **FR-005**: Lore files MUST be chunked by paragraph (split on `\n\n`) with a maximum of 512 tokens per chunk. If a single paragraph exceeds 512 tokens, it MUST be split on sentence boundaries (`.`, `!`, `?`). Each chunk MUST be stored with metadata including original file path, chunk index, and paragraph ID.
 - **FR-006**: System MUST allocate context window budget across memory tiers. [NEEDS CLARIFICATION: What percentage of context should be allocated to each tier? e.g., 30% static, 40% incremental, 20% episodic, 10% rules/prompt]
 
 #### Scene Transition Pipeline
@@ -209,22 +209,7 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 
 These questions significantly impact implementation scope and should be resolved before planning:
 
-### Q1: Memory Chunking Strategy
-
-**Context**: FR-005 requires lore files to be chunked for retrieval.
-
-**Question**: How should lore be split into retrievable segments?
-
-| Option | Strategy | Implications |
-|--------|----------|--------------|
-| A | By paragraph | Simple, preserves natural breaks, may split related content |
-| B | By semantic boundary | Better coherence, requires NLP processing, more complex |
-| C | Fixed token count (e.g., 200 tokens) | Predictable sizing, may split mid-sentence |
-| D | Hybrid: paragraphs with max token limit | Balance of coherence and size control |
-
----
-
-### Q2: Context Window Budget
+### Q1: Context Window Budget
 
 **Context**: FR-006 requires allocating context across memory tiers.
 
