@@ -154,14 +154,44 @@ A player who previously helped the town blacksmith returns to request a favor. T
 
 **FR-056**: System MUST ship with a `memory` skill for semantic memory and continuity
 
+**Purpose**: Allows the Plan Generator to store and retrieve narrative events across sessions using semantic search.
+
 **Components**:
-- `store-memory.dart` script that embeds and stores event summaries in local database
-- `recall-memory.dart` script that performs vector search for relevant context
+- `store-memory.dart` script that receives event summaries, generates embeddings, and stores via Spec 006 persistence layer
+- `recall-memory.dart` script that receives semantic queries, calls Spec 006 `semanticSearch()`, and returns ranked results
+
+**Input (store-memory)**:
+```json
+{
+  "summary": "Player helped blacksmith repair anvil",
+  "characters": ["player", "blacksmith_aldric"],
+  "location": "blacksmith_shop",
+  "significance": "high"
+}
+```
+
+**Input (recall-memory)**:
+```json
+{
+  "query": "interactions with blacksmith",
+  "limit": 3,
+  "filters": {"location": "blacksmith_shop"}
+}
+```
+
+**Output (recall-memory)**:
+```json
+{
+  "memories": [
+    {"summary": "...", "timestamp": "...", "relevance": 0.92},
+    {"summary": "...", "timestamp": "...", "relevance": 0.85}
+  ]
+}
+```
 
 **Configuration**:
-- `storageBackend`: objectbox | files
-- `embeddingModel`: Model for generating embeddings
-- `maxContextEvents`: Maximum events to retrieve per query
+- `embeddingModel`: Model for generating embeddings (default: sentence-transformers/all-MiniLM-L6-v2)
+- `similarityThreshold`: Minimum similarity score for results (default: 0.7)
 
 ### 4.4 Reputation Skill
 

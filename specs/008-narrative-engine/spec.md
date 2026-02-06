@@ -7,9 +7,17 @@
 
 ## Overview
 
-The Narrative Engine is the runtime brain of Narratoria—it executes campaigns by managing the scene loop, memory retrieval, and choice generation. If Spec 007 defines the **static campaign package**, Spec 008 defines the **dynamic execution**.
+The Narrative Engine is the runtime brain of Narratoria—it executes campaigns by managing the scene loop and orchestrating skills. If Spec 007 defines the **static campaign package**, Spec 008 defines the **dynamic execution**.
+
+**Core Responsibilities**:
+1. **Scene Loop**: Player choice → Plan generation → Plan execution → Display results
+2. **Plan Generation**: Local LLM analyzes context and decides which skills to invoke with what parameters
+3. **Contextual Retrieval**: LLM determines what data to fetch (memories, lore, reputation) based on scene needs—not fixed percentages
+4. **Skill Orchestration**: Execute plan via Spec 002 execution engine, aggregate results, feed into next scene
 
 **Core Goal**: Make choices feel "perplexingly on-point"—as if the AI truly understands the player's character and situation.
+
+**Architectural Principle**: The LLM Plan Generator is the intelligence. It decides contextually what data to retrieve, which skills to invoke, and how to synthesize results. There are no fixed "memory tier budgets"—retrieval is adaptive based on narrative needs.
 
 ---
 
@@ -128,23 +136,23 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 
 ### Functional Requirements
 
-#### Memory System (4 Tiers)
+#### Plan Generation and Contextual Retrieval
 
-- **FR-001**: System MUST maintain Tier 1 (Static) memory containing campaign lore, NPC profiles, and world rules, indexed for semantic retrieval.
-- **FR-002**: System MUST maintain Tier 2 (Incremental) memory that appends a scene summary after each player choice.
-- **FR-003**: System MUST maintain Tier 3 (Weighted) memory storing NPC sentiment values that bias retrieval of related content.
-- **FR-004**: System MUST maintain Tier 4 (Episodic) memory storing rare triumph/failure events with full context, always retrieved when relevant.
-- **FR-005**: Lore files MUST be chunked by paragraph (split on `\n\n`) with a maximum of 512 tokens per chunk. If a single paragraph exceeds 512 tokens, it MUST be split on sentence boundaries (`.`, `!`, `?`). Each chunk MUST be stored with metadata including original file path, chunk index, and paragraph ID.
-- **FR-006**: System MUST allocate context window budget across memory tiers. [NEEDS CLARIFICATION: What percentage of context should be allocated to each tier? e.g., 30% static, 40% incremental, 20% episodic, 10% rules/prompt]
+- **FR-001**: Plan Generator (local LLM) MUST analyze current scene context and generate Plan JSON that invokes relevant skills with appropriate input parameters
+- **FR-002**: Plan Generator MUST have access to campaign metadata (from Spec 007): world constraints, NPC profiles, plot beats, available skills
+- **FR-003**: Plan Generator MUST decide contextually which data to retrieve by invoking skills (Memory, Reputation, NPC Perception) with semantic queries in the generated plan
+- **FR-004**: Plan Generator MUST respect campaign constraints (from Spec 007 `world/constraints.md`) when generating plans—e.g., "no resurrection" means never generate plans involving revival
+- **FR-005**: Scene summaries MUST be stored after each player choice via the Memory skill (from Spec 004) for future retrieval
+- **FR-006**: Plan Generator MAY query lore, recent events, NPC relationships, faction reputation, or episodic memories based on scene needs—retrieval is adaptive, not fixed percentages
 
 #### Scene Transition Pipeline
 
-- **FR-007**: System MUST execute a 7-step pipeline: Choice → Memory Update → Scene Rules → Memory Retrieval → Prose Generation → Choice Generation → Display.
-- **FR-008**: Memory Update step MUST store scene summary, update sentiment, and check for episodic triggers.
-- **FR-009**: Scene Rules step MUST determine scene type (travel, dialogue, danger, resolution) based on narrative context.
-- **FR-010**: Memory Retrieval step MUST query static lore, recent incremental memories, sentiment-weighted content, and episodic memories.
-- **FR-011**: Prose Generation step MUST produce 2-3 paragraphs of scene-setting narrative.
-- **FR-012**: Choice Generation step MUST produce 3-4 contextually relevant options.
+- **FR-007**: System MUST execute scene transition pipeline: Player Choice → Plan Generation → Plan Execution (via Spec 002) → Aggregate Results → Display Prose and New Choices
+- **FR-008**: After each choice, Plan Generator MUST invoke Memory skill to store scene summary with: choice made, outcome, characters involved, location, and significance
+- **FR-009**: Plan Generator MUST determine scene type (travel, dialogue, danger, resolution) based on narrative context and generate appropriate skill invocations
+- **FR-010**: Plan Generator decides what to retrieve by generating Plan JSON that invokes skills with queries—e.g., `{toolId: "recall", toolPath: "skills/memory/recall.dart", input: {query: "past betrayals", limit: 3}}`
+- **FR-011**: Storyteller skill (from Spec 004) MUST produce 2-3 paragraphs of scene-setting narrative when invoked by the plan
+- **FR-012**: Player-Choices skill (from Spec 004, post-MVP) MUST produce 3-4 contextually relevant options when invoked by the plan
 
 #### Choice Generation
 
@@ -170,13 +178,12 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 
 ### Key Entities
 
-- **Scene**: A narrative moment with prose and choices. The atomic unit of gameplay.
-- **Memory Tier**: One of four storage layers with different persistence and retrieval characteristics.
-- **Scene Summary**: Compressed representation of what happened in a scene, stored in Tier 2.
-- **Sentiment Value**: Numeric score (-1.0 to +1.0) representing an NPC's attitude toward the player.
-- **Episodic Event**: Rare, significant story moment (triumph/failure) stored with full context.
-- **Plot Beat**: Campaign-defined story moment with trigger conditions and priority.
-- **Choice**: Player-facing option with text, underlying intent, and potential outcomes.
+- **Scene**: A narrative moment with prose and choices. The atomic unit of gameplay. Generated by executing a plan that orchestrates multiple skills.
+- **Plan JSON**: Generated by the LLM Plan Generator (Spec 002), defines which skills to invoke and with what parameters. Skills may query persistence layer (Spec 006) for data.
+- **Scene Summary**: Compressed representation of what happened in a scene. Stored via Memory skill after each choice for future semantic retrieval.
+- **Sentiment Value**: Numeric score (-1.0 to +1.0) representing an NPC's attitude toward the player. Stored in persistence layer (Spec 006), queried by NPC Perception skill (Spec 004).
+- **Plot Beat**: Campaign-defined story moment with trigger conditions and priority (from Spec 007). Plan Generator checks beat conditions and works beats into narrative when conditions met.
+- **Choice**: Player-facing option with text, underlying intent, and potential outcomes. Generated by Player-Choices skill (Spec 004) or Storyteller skill based on plan.
 
 ---
 
@@ -209,22 +216,7 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 
 These questions significantly impact implementation scope and should be resolved before planning:
 
-### Q1: Context Window Budget
-
-**Context**: FR-006 requires allocating context across memory tiers.
-
-**Question**: What percentage of context window should each tier receive?
-
-| Option | Allocation | Implications |
-|--------|------------|--------------|
-| A | 40% static, 30% incremental, 20% episodic, 10% system | Heavy lore focus, less room for recent history |
-| B | 25% static, 45% incremental, 20% episodic, 10% system | Heavy recent focus, less lore depth |
-| C | 30% static, 35% incremental, 25% episodic, 10% system | Balanced approach |
-| D | Dynamic: adjust based on available content | Most flexible, most complex |
-
----
-
-### Q3: Player Free-Text Input
+### Q1: Player Free-Text Input
 
 **Context**: Edge case asks about custom player actions.
 
