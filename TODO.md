@@ -199,17 +199,14 @@
 
 ## **Critical Issues & Inconsistencies**
 
-### 🔴 **Issue 1: Spec 006 vs Spec 008 Memory System Duplication**
+### ✅ **Issue 1: Spec 006 vs Spec 008 Memory System Duplication** [RESOLVED]
 
-Both define a "4-tier memory system" but with **different contexts**:
-- **Spec 006**: Persistence layer—how memories are **stored and retrieved** from database
-- **Spec 008**: Narrative engine—how memories are **allocated in context window** during scene execution
+**Resolution (commit 054f21f)**: Separated persistence (006) from orchestration (008):
+- **Spec 006**: Pure storage layer with query API (`semanticSearch()`, `exactMatch()`, `store()`, `update()`)
+- **Spec 008**: LLM Plan Generator makes contextual retrieval decisions (no fixed budgets)
+- **Spec 004**: Memory skill defines interface between them
 
-**Problem**: It's unclear if these are meant to be the same thing or different layers. They define the same 4 tiers but different purposes.
-
-**Recommendation**: Separate clearly:
-- Spec 006 should define *persistent storage schema* (ObjectBox tables, queries)
-- Spec 008 should define *context window budgeting* (how much space each tier gets)
+**Architectural Principle**: Plan Generator decides what to retrieve based on scene context, not fixed percentages.
 
 ---
 
@@ -251,29 +248,22 @@ Both define a "4-tier memory system" but with **different contexts**:
 
 ---
 
-### 🟡 **Issue 5: Overlap Between Spec 004 Skills and Spec 008 Engine**
+### ✅ **Issue 5: Overlap Between Spec 004 Skills and Spec 008 Engine** [RESOLVED]
 
-- **Spec 004** describes individual skills (Memory, Reputation, NPC Perception, Choice)
-- **Spec 008** describes the Narrative Engine's "4-tier memory system" and "scene transition pipeline"
-
-**Problem**: Unclear if Spec 008's memory tiers are **implemented as skills** (per Spec 004) or as **engine infrastructure**.
-
-Does Scene Rules step (FR-009) come from a skill or built-in logic?
-
-**Recommendation**: Clarify: Are scene execution responsibilities divided among skills, or is Spec 008 describing built-in engine logic?
+**Resolution (commit 054f21f)**: Clarified responsibilities:
+- **Spec 004**: Defines skill interfaces (what parameters Memory skill accepts, what it returns)
+- **Spec 008**: Defines when/why to invoke skills (Plan Generator decides contextually)
+- **Scene execution**: Orchestrated by Plan Generator invoking skills, not built-in engine logic
 
 ---
 
-### 🔴 **Issue 6: Spec 008 Open Questions Block Implementation**
+### � **Issue 6: Spec 008 Open Questions Block Implementation** [2 OF 3 RESOLVED]
 
-Three critical unknowns are explicitly noted as unresolved:
-1. **Lore chunking strategy** (FR-005) - impacts memory retrieval efficiency
-2. **Context window allocation** (FR-006) - impacts narrative quality and memory balance
-3. **Player free-text input** (Q3) - impacts interaction model
+~~1. **Lore chunking strategy** (FR-005)~~ ✅ **RESOLVED (commit c7ec6e6)**: Paragraph-based, 512 token max, sentence-boundary fallback
+~~2. **Context window allocation** (FR-006)~~ ✅ **RESOLVED (commit 054f21f)**: Eliminated fixed budgets; LLM decides contextually
+3. **Player free-text input** (Q1) ⏸️ **IN PROGRESS**: Determining interaction model
 
-**Problem**: These cannot be deferred post-MVP. Lore chunking affects Spec 007 ingestion. Context allocation affects memory tier implementation across Specs 006-008.
-
-**Recommendation**: Resolve these before finalizing Specs 006-008.
+**Recommendation**: Resolve player input question to fully unblock Spec 008 implementation.
 
 ---
 
@@ -328,11 +318,11 @@ Three critical unknowns are explicitly noted as unresolved:
 | **001** | ✅ Draft | Protocol | Yes | - | None |
 | **002** | ✅ Draft | Plan Execution | Partial | LLM integration | 001, 003 |
 | **003** | ✅ Draft | Skill Framework | Yes | Hot-reload | 001, 002 |
-| **004** | ⚠️ Draft | Individual Skills | Core skills | Advanced skills | 003, 006 |
+| **004** | ✅ Draft | Individual Skills | Core skills | Advanced skills | 003, 006 |
 | **005** | ✅ Draft | Dart/Flutter | Yes | - | 001-004 |
-| **006** | ⚠️ Draft | Persistence | Yes | Query optimization | Open questions |
-| **007** | ⚠️ Draft | Campaign Format | Yes | - | 008, LLM integration |
-| **008** | ❌ Draft | Narrative Engine | Yes | - | **3 Open Questions** |
+| **006** | ✅ Draft | Persistence | Yes | Query optimization | None |
+| **007** | ✅ Draft | Campaign Format | Yes | - | 008, LLM integration |
+| **008** | ⚠️ Draft | Narrative Engine | Yes | - | **1 Open Question** |
 
 ---
 

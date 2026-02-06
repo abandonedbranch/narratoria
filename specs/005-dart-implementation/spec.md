@@ -65,11 +65,13 @@ Displays current session state:
 - State changes highlighted (from `state_patch` events)
 - JSON inspector for debugging
 
-#### Player Input Field
-Natural language textarea for player prompts:
-- Multiline text input
-- Send button to submit prompt
-- Visual feedback during processing
+#### Player Choice Interface
+Displays AI-generated choices for player selection:
+- 3-5 choice buttons arranged vertically
+- Each choice shows descriptive text
+- Active/hover states for selection feedback
+- Disabled state during scene generation
+- **Note**: Players select from presented choices only; free-text input is not supported per Spec 008 FR-017
 
 ### 2.3 UI Layout
 
@@ -84,8 +86,10 @@ Natural language textarea for player prompts:
 │                   │  └──────────────────┘  │
 │                   │                         │
 │                   │  ┌──────────────────┐  │
-│                   │  │  Player Input    │  │
-│                   │  │  [text field]    │  │
+│                   │  │  Player Choices  │  │
+│                   │  │  [choice 1]      │  │
+│                   │  │  [choice 2]      │  │
+│                   │  │  [choice 3]      │  │
 │                   │  └──────────────────┘  │
 └─────────────────────────────────────────────┘
 ```
@@ -115,8 +119,8 @@ To deliver a minimum viable product that demonstrates the protocol and player in
 
 ### 3.1 Core Features (MUST)
 
-1. **Player Input**: Text field accepting natural language prompts
-2. **Narrator AI Stub**: In-process Dart service that converts prompts to Plan JSON (see §3.4 for implementation details)
+1. **Player Choice Selection**: UI displays 3-5 AI-generated choice buttons for player selection (no free-text input per Spec 008 FR-017)
+2. **Narrator AI Stub**: In-process Dart service that converts selected choices into Plan JSON (see §3.4 for implementation details)
 3. **Tool Invocation**: Execute tools per Plan JSON using process launch and stdin/stdout pipes
 4. **Event Processing**: Parse NDJSON from tool stdout and dispatch to handlers
 5. **UI Event Support**: Implement `narrative_choice` handler (display choice buttons; other events degrade gracefully)
@@ -126,8 +130,7 @@ To deliver a minimum viable product that demonstrates the protocol and player in
    - Story View (narrative text + rendered assets)
    - Tool Execution Panel (logs, progress)
    - Asset Gallery (images, audio, video with graceful degradation)
-   - Narrative State Panel (JSON inspector)
-
+   - Narrative State Panel (JSON inspector)   - Player Choice Interface (3-5 choice buttons, no free-text input)
 ### 3.2 Skill Implementation
 
 For MVP validation, implement the core skills defined in [Spec 004](../004-narratoria-skills/spec.md):
@@ -207,7 +210,7 @@ abstract class NarratorAI {
 
 ```dart
 class NarratorAIStub implements NarratorAI {
-  /// Hard-coded prompt → plan mappings for MVP
+  /// Hard-coded choice pattern → plan mappings for MVP
   final Map<RegExp, PlanJson Function(String, int)> _mappings = {
     RegExp(r'roll.*dice?', caseSensitive: false): _rollDicePlan,
     RegExp(r'check.*reputation', caseSensitive: false): _reputationPlan,
@@ -227,9 +230,9 @@ class NarratorAIStub implements NarratorAI {
 - MUST implement the `NarratorAI` interface to allow seamless replacement with LLM-backed implementation
 - MUST respect `disabledSkills` parameter and avoid selecting disabled tools
 - MUST track `generationAttempt` and `parentPlanId` in returned Plan JSON metadata
-- MUST return a valid Plan JSON for recognized prompts
-- MUST return a fallback plan with narrative-only response for unrecognized prompts
-- SHOULD support at least 5 prompt patterns for MVP testing
+- MUST return a valid Plan JSON for recognized choice patterns
+- MUST return a fallback plan with narrative-only response for unrecognized choices
+- SHOULD support at least 5 choice patterns for MVP testing
 
 **Fallback Plan:**
 
@@ -238,7 +241,7 @@ When no pattern matches, return a narrative-only plan:
 ```json
 {
   "requestId": "<uuid>",
-  "narrative": "The narrator considers your words: '<player-input>'...",
+  "narrative": "Your choice leads to unexpected consequences...",
   "tools": [],
   "parallel": false,
   "disabledSkills": [],
@@ -255,7 +258,7 @@ The Narratoria UI MUST handle errors gracefully per Constitution Principle IV. T
 | Error Source | Display Location | User Action |
 |--------------|------------------|-------------|
 | Tool failure (`done.ok=false`) | Tool Execution Panel + inline Story View notice | Retry or continue |
-| Plan generation failure | Story View with fallback narrative | Rephrase prompt |
+| Plan generation failure | Story View with fallback narrative | Select different choice |
 | Network/API error | Toast notification + Tool Panel detail | Check connection, retry |
 | Protocol violation | Developer console only | None (internal error) |
 | Max replan exceeded | Modal dialog with options | Restart session or continue with fallback |
@@ -393,7 +396,7 @@ src/
 │           ├── tool_execution_panel.dart
 │           ├── asset_gallery.dart
 │           ├── narrative_state_panel.dart
-│           ├── player_input_field.dart
+            ├── player_choice_interface.dart
 │           └── story_view.dart
 └── skills/               # Skill implementations (per Spec 004)
     ├── storyteller/      # Rich narrative enhancement

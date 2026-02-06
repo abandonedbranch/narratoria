@@ -121,14 +121,14 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 
 ### Edge Cases
 
-- What happens when the context window is too small to fit all relevant memories?
-  - Prioritize: episodic > recent incremental > high-sentiment NPCs > static lore. Truncate oldest/lowest-priority content.
-- How does the system handle player free-text input (custom actions)?
-  - [NEEDS CLARIFICATION: Should players be allowed to type custom actions, or only select from presented choices?]
+- What happens when the Plan Generator cannot generate valid choices for a scene?
+  - Fallback to generic choices: "Wait and observe", "Look around", "Continue forward". Log warning for debugging.
+- How does the system handle very long play sessions (1000+ choices)?
+  - Summarize older scene summaries to compress context while preserving key information. Store summaries in persistence layer.
 - What happens when the LLM generates invalid/inappropriate content?
   - Retry generation with adjusted prompt (max 3 attempts), then fall back to generic safe content.
-- How does the system handle very long play sessions (1000+ choices)?
-  - Summarize older incremental memories to compress context while preserving key information.
+- What happens when all choices lead to undesirable outcomes?
+  - System presents choices honestly; player agency includes accepting consequences. No "bail-out" mechanism.
 
 ---
 
@@ -160,6 +160,7 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 - **FR-014**: Choices MUST be character-appropriate (match player's established personality and abilities).
 - **FR-015**: Choices MUST be narratively interesting (Story Director skill nudges toward compelling outcomes).
 - **FR-016**: Choices MUST be mechanically valid (respect game rules and world constraints).
+- **FR-017**: Player interaction MUST be exclusively choice-based—players select from AI-generated options only. Free-text input is NOT supported. This ensures all player actions are contextually valid and narratively coherent.
 
 #### Rules System
 
@@ -214,20 +215,12 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 
 ## Open Questions
 
-These questions significantly impact implementation scope and should be resolved before planning:
+~~All critical open questions have been resolved. Spec 008 is ready for implementation.~~
 
-### Q1: Player Free-Text Input
-
-**Context**: Edge case asks about custom player actions.
-
-**Question**: Should players be able to type custom actions beyond presented choices?
-
-| Option | Approach | Implications |
-|--------|----------|--------------|
-| A | Structured choices only | Simpler, guaranteed valid options, less player freedom |
-| B | Free-text always available | Maximum freedom, risk of invalid/game-breaking input |
-| C | Free-text as 4th "Other" option | Balanced—clear choices plus escape hatch |
-| D | Free-text unlocked by setting/campaign flag | Author controls complexity |
+**Note**: Previous open questions resolved:
+- Q1 (Lore chunking): Resolved in favor of paragraph-based chunking (commit c7ec6e6)
+- Q2 (Context window budget): Eliminated in favor of LLM-driven contextual retrieval (commit 054f21f)  
+- Q3 (Player input model): Resolved in favor of structured choices only (see FR-017)
 
 ---
 
