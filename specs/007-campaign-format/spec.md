@@ -10,7 +10,6 @@
 **Read first:**
 1. [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md) - Understand asset handling
 2. [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md) - Understand how lore is semantically indexed (FR-132a: lore chunks stored with embeddings)
-3. [Spec 008 - Narrative Engine](../008-narrative-engine/spec.md) - Understand how campaigns are executed at runtime
 
 **Key relationships**: 
 - **Spec 007 and 008 are complementary**:
@@ -201,7 +200,7 @@ A story author includes character portraits, scene backgrounds, ambient music, a
 
 #### Lore System
 
-- **FR-022**: All files in `lore/` MUST be indexed for semantic search (RAG retrieval). Lore files MUST be chunked by paragraph (split on `\n\n`) with a maximum of 512 tokens per chunk. If a single paragraph exceeds 512 tokens, it MUST be split on sentence boundaries (`.`, `!`, `?`).
+- **FR-022**: All files in `lore/` MUST be indexed for semantic search (RAG retrieval). Lore files MUST be chunked by paragraph (split on `\n\n`) with a maximum of 512 tokens per chunk. Token counts MUST be computed using the `tiktoken` library with the `cl100k_base` tokenizer (compatible with the sentence-transformers embedding model). If a single paragraph exceeds 512 tokens, it MUST be split on sentence boundaries (`.`, `!`, `?`).
 - **FR-023**: Each lore chunk MUST be stored with metadata including: original file path, chunk index, paragraph ID, token count, and chunk method ("paragraph").
 - **FR-024**: System MUST support nested directories within `lore/` for organizational flexibility.
 
@@ -418,12 +417,12 @@ Metadata in ObjectBox:
 
 #### Provenance Validation (Campaign Format Creeds Enforcement)
 
-The Campaign Format Creeds require radical transparency about AI-generated content. To enforce these creeds mechanically, ObjectBox validation MUST reject assets that violate provenance requirements:
+The Campaign Format Creeds require radical transparency about AI-generated content. To enforce these creeds mechanically, the campaign ingestion layer/persistence adapter that writes to ObjectBox MUST reject assets that violate provenance requirements:
 
-- **FR-038**: When storing an asset to ObjectBox with `generated: true`, the system MUST validate that `provenance` object is present and contains all required fields: `source_model`, `generated_at`, and `seed_data`. If any field is missing, ObjectBox MUST reject the store operation with error: "Generated asset missing provenance (generated=true requires provenance.source_model, provenance.generated_at, provenance.seed_data)".
-- **FR-038a**: When storing an asset with `generated: false`, the `provenance` object MUST NOT be present (human-created assets have no provenance). If `generated: false` and `provenance` is present, ObjectBox MUST reject the store with error: "Human-created asset must not contain provenance (generated=false conflicts with provenance object)".
-- **FR-038b**: The `generated_at` timestamp in provenance MUST be a valid ISO 8601 datetime string. ObjectBox MUST reject non-conform timestamps.
-- **FR-038c**: All generated assets ingested into ObjectBox MUST display a warning to authors upon campaign load: "Campaign contains [N] AI-generated asset(s). Review `generated` flags and provenance metadata to verify correctness."
+- **FR-044**: When storing an asset to ObjectBox with `generated: true`, the system MUST validate that the `provenance` object is present and contains all required fields: `source_model`, `generated_at`, and `seed_data`. If any field is missing, the campaign ingestion layer/persistence adapter MUST reject the store operation and MUST NOT write the asset to ObjectBox, returning error: "Generated asset missing provenance (generated=true requires provenance.source_model, provenance.generated_at, provenance.seed_data)".
+- **FR-044a**: When storing an asset with `generated: false`, the `provenance` object MUST NOT be present (human-created assets have no provenance). If `generated: false` and `provenance` is present, the campaign ingestion layer/persistence adapter MUST reject the store operation and MUST NOT write the asset to ObjectBox, returning error: "Human-created asset must not contain provenance (generated=false conflicts with provenance object)".
+- **FR-044b**: The `generated_at` timestamp in provenance MUST be a valid ISO 8601 datetime string. The campaign ingestion layer/persistence adapter MUST reject assets with non-conform timestamps and MUST NOT write them to ObjectBox.
+- **FR-044c**: All generated assets ingested into ObjectBox MUST trigger a warning to authors upon campaign load: "Campaign contains [N] AI-generated asset(s). Review `generated` flags and provenance metadata to verify correctness."
 
 > **Rationale**: These validation rules ensure the Campaign Format Creeds ("Radical Transparency", "Respect Human Artistry") are not just design guidelines but enforceable data integrity constraints. Authors cannot accidentally share campaigns with unlabeled AI content or fraudulent provenance.
 

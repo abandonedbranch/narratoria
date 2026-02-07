@@ -9,7 +9,7 @@
 
 **Read first:**
 1. [Spec 003 - Skills Framework](../003-skills-framework/spec.md) - Understand what skills are
-2. [Spec 004 - Narratoria Skills](../004-narratopia-skills/spec.md) - Understand which skills need persistent storage (Memory, Reputation, NPC Perception, Character Portraits)
+2. [Spec 004 - Narratoria Skills](../004-narratoria-skills/spec.md) - Understand which skills need persistent storage (Memory, Reputation, NPC Perception, Character Portraits)
 
 **Key relationship**: Specs 004 and 006 are **co-dependent**:
 - **Spec 004** defines skill interfaces: what data types are stored/retrieved (memory events, faction reputation, NPC perception, character portraits)
