@@ -11,7 +11,7 @@
 1. [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md) - Understand tool communication and events
 2. [Spec 002 - Plan Execution](../002-plan-execution/spec.md) - Understand plan structure, execution semantics, and Narrator AI role (the core loop)
 3. [Spec 003 - Skills Framework](../003-skills-framework/spec.md) - Understand how skills are discovered and executed
-4. [Spec 004 - Narratoria Skills](../004-narratopia-skills/spec.md) - Understand individual skills (Storyteller, Dice Roller, Memory, Reputation, NPC Perception, etc.)
+4. [Spec 004 - Narratoria Skills](../004-narratoria-skills/spec.md) - Understand individual skills (Storyteller, Dice Roller, Memory, Reputation, NPC Perception, etc.)
 5. [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md) - Understand how contextual data (memories, lore, reputation) is stored and retrieved
 6. [Spec 007 - Campaign Format](../007-campaign-format/spec.md) - Understand campaign structure and content organization
 
@@ -174,7 +174,7 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 - **FR-007**: System MUST execute scene transition pipeline: Player Choice → Plan Generation → Plan Execution (via Spec 002) → Aggregate Results → Display Prose and New Choices
 - **FR-008**: After each choice, Plan Generator MUST invoke Memory skill to store scene summary with: choice made, outcome, characters involved, location, and significance
 - **FR-009**: Plan Generator MUST determine scene type (travel, dialogue, danger, resolution) based on narrative context and generate appropriate skill invocations
-- **FR-010**: Plan Generator decides what to retrieve by generating Plan JSON that invokes skills with queries—e.g., `{toolId: "recall", toolPath: "skills/memory/recall.dart", input: {query: "past betrayals", limit: 3}}`
+- **FR-010**: Plan Generator decides what to retrieve by generating Plan JSON that invokes skills with queries—e.g., `{toolId: "recall-memory", toolPath: "skills/memory/recall-memory.dart", input: {query: "past betrayals", limit: 3}}`
 - **FR-011**: Storyteller skill (from Spec 004) MUST produce 2-3 paragraphs of scene-setting narrative when invoked by the plan
 - **FR-012**: Player-Choices skill (from Spec 004) MUST produce 3-4 contextually relevant options when invoked by the plan
 
@@ -182,7 +182,7 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 
 - **FR-013**: Choices MUST be contextually grounded (reference relevant memories).
 - **FR-014**: Choices MUST be character-appropriate (match player's established personality and abilities).
-- **FR-015**: Choices MUST be narratively interesting (Story Director skill nudges toward compelling outcomes).
+- **FR-015**: Choices MUST be narratively interesting (driven by Storyteller and Player-Choices skills from Spec 004 to nudge toward compelling outcomes).
 - **FR-016**: Choices MUST be mechanically valid (respect game rules and world constraints).
 - **FR-017**: Player interaction MUST be exclusively choice-based—players select from AI-generated options only. Free-text input is NOT supported. This ensures all player actions are contextually valid and narratively coherent.
 

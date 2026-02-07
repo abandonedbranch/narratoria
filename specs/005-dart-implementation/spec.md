@@ -9,7 +9,7 @@
 **Read first in this order:**
 1. [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md) - Understand tool communication
 2. [Spec 002 - Plan Execution](../002-plan-execution/spec.md) and [Spec 003 - Skills Framework](../003-skills-framework/spec.md) - Understand plan execution and skill orchestration
-3. [Spec 004 - Narratopia Skills](../004-narratopia-skills/spec.md) - Understand what skills the system provides
+3. [Spec 004 - Narratoria Skills](../004-narratoria-skills/spec.md) - Understand what skills the system provides
 4. [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md) - Understand data persistence layer
 
 **Why this order**: Spec 005 is the reference implementation. You must understand all the concepts and contracts from prior specs before understanding how they're implemented in Flutter. This spec implements the protocol (001), execution engine (002), skill framework (003), individual skills (004), and persistence layer (006).
@@ -224,11 +224,11 @@ abstract class NarratorAI {
 }
 ```
 
-**MVP Stub Implementation:**
+**Development/Test Stub Implementation:**
 
 ```dart
 class NarratorAIStub implements NarratorAI {
-  /// Hard-coded choice pattern → plan mappings for MVP
+  /// Hard-coded choice pattern → plan mappings for testing
   final Map<RegExp, PlanJson Function(String, int)> _mappings = {
     RegExp(r'roll.*dice?', caseSensitive: false): _rollDicePlan,
     RegExp(r'check.*reputation', caseSensitive: false): _reputationPlan,
