@@ -5,6 +5,23 @@
 **Created**: 2026-01-26
 **Parent Specs**: [001-tool-protocol](../001-tool-protocol-spec/spec.md), [002-plan-execution](../002-plan-execution/spec.md)
 
+## Prerequisites
+
+**Read first**: [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md)
+
+**Then read together with**: [Spec 002 - Plan Execution](../002-plan-execution/spec.md)
+
+Specs 003 and 002 are **co-dependent** (see Spec 002's Prerequisites for explanation). Spec 003 defines the component model (skills); Spec 002 defines how they're orchestrated in plans.
+
+**How they connect**: 
+- Spec 002 produces Plan JSON describing which skill scripts to invoke
+- Spec 003 explains how skills are discovered, configured, and executed—skills respond to script invocations from Spec 002
+- The Narrator AI (in Spec 002) injects behavioral prompts from Spec 003 into system context when generating plans
+
+**After these**: Specs 004-008 build further. Spec 004 defines specific individual skills; Specs 005-008 show how to implement and execute skills.
+
+---
+
 ## RFC 2119 Keywords
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
@@ -86,7 +103,7 @@ A player wants to add a new skill (e.g., a rules engine for D&D 5e) to their Nar
 - **FR-032**: Skill discovery MUST load optional `prompt.md` files and make behavioral prompts available to plan generator
 - **FR-033**: Skill discovery MUST identify all executable scripts in `skills/*/scripts/` directories
 - **FR-034**: Skill discovery MUST skip skills with invalid manifests and log warnings without crashing application
-- **FR-035**: System SHOULD support hot-reloading of skills without application restart; MVP implementation MUST log "restart required" message when skill changes detected, with full hot-reload as post-MVP enhancement
+- **FR-035**: System SHOULD support hot-reloading of skills without application restart; when skill changes are detected, the system MUST handle them gracefully (either auto-reload or notify user of required restart)
 
 ### 4.2 Skill Configuration
 
@@ -114,11 +131,13 @@ A player wants to add a new skill (e.g., a rules engine for D&D 5e) to their Nar
 
 ### 4.4 Data Management (Framework)
 
-- **FR-103**: Each skill MUST be allowed to maintain its own data storage in `skills/<skill-name>/data/` directory
+- **FR-103**: Each skill MUST be allowed to maintain its own data storage in `skills/<skill-name>/data/` directory for temporary working files, caches, and skill-private runtime state
 - **FR-104**: Skill data storage MUST persist across application restarts
 - **FR-105**: Skill data MUST remain private to that skill; other skills MUST NOT directly access another skill's data directory
 - **FR-106**: Skills MAY use SQLite, JSON files, or other local storage formats for their data
 - **FR-107**: System MUST create skill data directories on first use if they do not exist
+
+> **Note on Cross-Skill Data**: `skills/<skill>/data/` is for skill-private working files. For persistent narrative data that is shared across skills (memory events, reputation, NPC perception, character portraits), see [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md). The Plan Generator in [Spec 002](../002-plan-execution/spec.md) orchestrates when skills access the shared persistence layer by including storage/retrieval operations in plans.
 
 ### 4.5 Graceful Degradation (Constitution Principle IV)
 

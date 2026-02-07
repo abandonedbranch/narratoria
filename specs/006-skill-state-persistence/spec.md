@@ -5,16 +5,36 @@
 **Created**: 2026-01-31
 **Parent Specs**: [003-skills-framework](../003-skills-framework/spec.md), [004-narratoria-skills](../004-narratoria-skills/spec.md), [005-dart-implementation](../005-dart-implementation/spec.md)
 
+## Prerequisites
+
+**Read first:**
+1. [Spec 003 - Skills Framework](../003-skills-framework/spec.md) - Understand what skills are
+2. [Spec 004 - Narratoria Skills](../004-narratoria-skills/spec.md) - Understand which skills need persistent storage (Memory, Reputation, NPC Perception, Character Portraits)
+
+**Key relationship**: Specs 004 and 006 are **co-dependent**:
+- **Spec 004** defines skill interfaces: what data types are stored/retrieved (memory events, faction reputation, NPC perception, character portraits)
+- **Spec 006** defines storage implementation: ObjectBox schema, query API, and performance semantics
+- **Reading order**: Read Spec 004 first (understand what needs to be stored), then read Spec 006 (understand how it's stored)
+
+**Connection**: Spec 006's query interface (FR-133-137) is called by Spec 004 skills: Memory skill calls `semanticSearch()` and `store()`; Reputation/NPC Perception skills call `update()` and `exactMatch()`. Spec 006 storage schema (FR-132-132d) stores the data types defined in Spec 004.
+
+**After this**: Specs 005 (implementation), 007 (campaign content with lore chunks to store), and 008 (narrative engine queries this layer) all use persistence.
+
+---
+
 ## RFC 2119 Keywords
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## 1. Purpose
 
-This specification defines the persistent data storage layer that enables skills to store and retrieve contextual information across story sessions and story playthroughs. The persistence layer serves two primary purposes:
+This specification defines the persistent data storage layer that provides a unified ObjectBox-based storage and retrieval interface for narrative data. The persistence layer is **infrastructure**, not business logic—it stores data and answers queries, but does not decide when or why data is retrieved (that's the responsibility of the Plan Generator in Spec 008 and individual skills in Spec 004).
 
-1. **Skill Memory**: Allow the Memory skill to embed and store significant narrative events with semantic context, enabling retrieval of relevant memories in future sessions
-2. **Context Augmentation**: Enable other skills (Reputation, NPC Perception, Character Portraits) to query persisted data and use it to inform their decisions during plan execution
+**Primary Responsibilities**:
+1. **Store Narrative Data**: Memory events, lore chunks, faction reputation, NPC perception, character portraits
+2. **Semantic Search**: Vector similarity search for context-relevant retrieval
+3. **Query Interface**: Fast, filtered access to stored data (<200ms latency)
+4. **Persistence**: Data survives application restarts and session boundaries
 
 **Core Skills Using This Layer**:
 - Memory - Stores narrative events and interactions with embeddings
@@ -23,7 +43,12 @@ This specification defines the persistent data storage layer that enables skills
 - Character Portraits - Caches generated character images
 
 **Architectural Note (Constitution Compliance):**
-The persistence layer is **shared infrastructure**, not skill-owned data directories. Like the Narrator AI (which is an in-process Dart service exempt from Principle II's out-of-process requirement), the persistence layer runs within the Dart runtime and provides a common query interface for all skills. This differs from the `skills/<skill-name>/data/` pattern described in the constitution, which applies to skill-private caches and working files. The shared persistence layer enables cross-skill context augmentation (e.g., Memory skill stores events that inform Reputation and NPC Perception skills) without violating the "no direct skill-to-skill calls" rule—skills communicate through the persistence layer's query interface, not by accessing each other's private directories.
+The persistence layer is **shared infrastructure**, not skill-owned data directories. Like the Narrator AI (which is an in-process Dart service exempt from Principle II's out-of-process requirement), the persistence layer runs within the Dart runtime and provides a common query interface for all skills. This differs from the `skills/<skill-name>/data/` pattern described in the constitution, which applies to skill-private caches and working files. The shared persistence layer enables cross-skill data access (e.g., Memory skill stores events that can be queried by any other skill) without violating the "no direct skill-to-skill calls" rule—skills communicate through the persistence layer's query interface, not by accessing each other's private directories.
+
+**What This Spec Does NOT Define**:
+- When/why to retrieve memories (decided by Plan Generator in Spec 008)
+- How much context to allocate to different data types (decided by LLM contextually)
+- Business logic for memory relevance (handled by semantic search ranking)
 
 **Scope excludes:**
 - Individual skill implementations (see [Spec 004](../004-narratoria-skills/spec.md))
@@ -36,14 +61,14 @@ The persistence layer is **shared infrastructure**, not skill-owned data directo
 ## 2. Terminology
 
 - **Memory Event**: A recorded narrative occurrence (e.g., "player befriends blacksmith", "betrays thieves guild") with timestamp and semantic embedding
-- **Semantic Embedding**: Numerical vector representation of a memory event for similarity-based retrieval
-- **Context Augmentation**: The process of retrieving relevant stored data and injecting it into a skill's execution context
+- **Semantic Embedding**: Numerical vector representation of text via sentence-transformers/all-MiniLM-L6-v2 for similarity-based retrieval (384 dimensions)
+- **Semantic Search**: Finding stored data by vector similarity to a query embedding using sentence-transformers embeddings
 - **Story Session**: A single continuous play session within a narrative playthrough
 - **Story Playthrough**: A complete or ongoing narrative arc spanning multiple sessions
-- **Skill Context**: The set of relevant stored data provided to a skill during plan execution
-- **Persistence Backend**: The data storage system (e.g., in-process database, file-based storage)
-- **Query Vector**: Embedding representation of a search query for finding relevant memories
-- **Decay Rate**: Time-based degradation of data relevance (e.g., older memories become less prominent in searches)
+- **Persistence Backend**: ObjectBox database running in-process (shared infrastructure)
+- **Query Interface**: The API skills use to retrieve data: `semanticSearch()`, `exactMatch()`, `store()`, `update()`
+- **Lore Chunk**: A paragraph-sized segment of campaign lore stored with embedding (see Spec 007 for chunking strategy)
+- **Decay Rate**: Time-based degradation of numeric values (e.g., reputation, perception scores)
 
 ---
 
@@ -66,13 +91,13 @@ A player engages in a story over multiple days. In session 1, they befriend the 
 
 ---
 
-### User Story 2 - Context-Aware Skill Augmentation (Priority: P1)
+### User Story 2 - Query Interface for Skills (Priority: P1)
 
-The narrator is preparing to generate player choices for an NPC interaction. The NPC Perception skill needs to know: (1) Has the player met this NPC before? (2) What was the prior interaction? (3) Does the player have faction reputation that influences initial perception? The persistence layer provides this data, enabling NPC Perception to make informed decisions.
+The Plan Generator (Spec 008) determines that the NPC Perception skill should be invoked to check the player's relationship with an NPC. The skill receives input from the plan, queries the persistence layer with: `exactMatch(npcId: "blacksmith_aldric")`, and receives the perception history. The skill processes this data and returns results to the Plan Executor.
 
-**Why this priority**: Without persisted context, skills cannot make intelligent decisions. Every interaction would be treated as first-contact, breaking story continuity and dynamic NPC behavior.
+**Why this priority**: Without a query interface, skills cannot access stored data. This is the fundamental contract between skills and persistence.
 
-**Independent Test**: Can be fully tested by: Recording NPC interaction data, requesting context for that NPC, and verifying complete relationship history is provided. Delivers: Skills receive necessary historical context for decision-making.
+**Independent Test**: Can be fully tested by: Storing NPC perception data, invoking a skill that queries for it, and verifying the correct data is returned. Delivers: Working query interface for skill access.
 
 **Acceptance Scenarios**:
 
@@ -131,41 +156,46 @@ The narrator describes a character portrait and the system generates an image. L
 
 ### Functional Requirements
 
-- **FR-131**: System MUST provide a persistence layer accessible to skills via query interface defined in this spec
-- **FR-132**: System MUST store memory events with the following minimum attributes: event summary, timestamp, story session ID, embedding vector, narrative context tags
-- **FR-133**: System MUST support semantic similarity search: given a query, return memories ranked by embedding similarity above configured threshold
-- **FR-134**: System MUST support exact-match filtering: query by timestamp range, story session, playthrough ID, or character identifier
-- **FR-135**: Memory skill MUST be able to store new memory events with generated embeddings into the persistence layer
-- **FR-136**: Memory skill MUST be able to query persisted memories and return ranked results (by recency and semantic relevance)
-- **FR-137**: Reputation skill MUST query persisted faction data and retrieve current standing for any faction
-- **FR-138**: Reputation skill MUST record reputation changes (delta, timestamp, faction ID) and persist them atomically
-- **FR-139**: NPC Perception skill MUST retrieve perception history for any NPC identifier
-- **FR-140**: NPC Perception skill MUST persist perception changes and calculate current perception from accumulated history
-- **FR-141**: Character Portraits skill MUST store generated portraits with character identifier and retrieve by character ID or semantic description match
-- **FR-142**: System MUST provide a context augmentation interface: given a skill execution context, return relevant persisted data to inject into that skill's input
-- **FR-143**: System MUST support scoped queries: memories/data filtered by current playthrough, session, location, or custom tags
-- **FR-144**: System MUST persist all skill data across application restarts with zero data loss
-- **FR-145**: System MUST support configurable data retention policies (time-based, count-based, storage-based)
-- **FR-146**: System MUST apply decay to time-sensitive data (reputation, perception) at configured rates
-- **FR-147**: System MUST provide query performance monitoring: track query latency, result count, search scope for debugging
-- **FR-148**: System MUST handle concurrent read access from multiple skills without blocking or data corruption
+- **FR-131**: System MUST provide an ObjectBox-based persistence layer accessible to skills via the query interface defined in this spec. Semantic embeddings are generated using sentence-transformers/all-MiniLM-L6-v2 (384-dimensional vectors) and cached with each record to avoid re-embedding on retrieval
+- **FR-132**: System MUST store memory events with the following minimum attributes: event summary, timestamp, story session ID, playthrough ID, embedding vector (384-dim via sentence-transformers), character identifiers
+- **FR-132a**: System MUST store lore chunks with metadata: original file path, chunk index, paragraph ID, token count, chunk content, and embedding vector
+- **FR-132b**: System MUST store faction reputation records with: faction ID, playthrough ID, current score, last update timestamp, decay rate
+- **FR-132c**: System MUST store NPC perception records with: NPC identifier, playthrough ID, perception score, last interaction timestamp, event history
+- **FR-132d**: System MUST store character portrait records with: character identifier, image path/data, description hash, generation timestamp
+- **FR-133**: System MUST provide `semanticSearch(query, dataType, limit, filters)` method that returns data ranked by embedding similarity above configured threshold (default: 0.7)
+- **FR-134**: System MUST provide `exactMatch(filters)` method supporting filters: timestamp range, story session, playthrough ID, character identifier, NPC identifier, faction ID, source file path
+- **FR-135**: System MUST provide `store(dataType, record)` method for persisting new records atomically
+- **FR-136**: System MUST provide `update(dataType, identifier, changes)` method for modifying existing records atomically
+- **FR-137**: System MUST provide `delete(dataType, identifier)` method for removing records (used for data retention policies)
+- **FR-138**: System MUST support scoped queries: data filtered by current playthrough, session, location, or custom tags
+- **FR-139**: System MUST persist all data across application restarts with zero data loss (ACID compliance)
+- **FR-140**: System MUST support configurable data retention policies (time-based, count-based, storage-based) executed during idle periods
+- **FR-141**: System MUST apply decay to time-sensitive numeric data (reputation scores, perception scores) based on configured decay rates when queried
+- **FR-142**: All query methods MUST complete within 200ms for databases containing up to 10,000 records
+- **FR-143**: System MUST handle concurrent read access from multiple skills without blocking or data corruption (read-optimized with write locks)
+- **FR-144**: System MUST provide query performance monitoring: log query latency, result count, search scope for debugging
 
 ### Key Entities
 
-- **Memory Event**: Represents a recorded narrative occurrence. Attributes: ID, summary text, embedding vector, timestamp, story session ID, playthrough ID, character identifiers (involved parties), action type (befriend/betray/help/harm), semantic tags (location, theme, consequence), relevance score
-  - Relationships: Associated with one playthrough and session; referenced by narrator for context augmentation
+**Note**: These entities define storage schema, not retrieval logic. Skills query this data via the interface defined in FR-133-144.
 
-- **Faction Reputation**: Represents player standing with a faction. Attributes: faction ID, current reputation score, last update timestamp, playthrough ID
-  - Relationships: Updated by Reputation skill; queried by Choice skill for option filtering; influences NPC Perception initialization
+- **Memory Event**: Stores a recorded narrative occurrence. Attributes: ID, summary text, embedding vector, timestamp, story session ID, playthrough ID, character identifiers, action type, semantic tags
+  - Query methods: `semanticSearch(query)`, `exactMatch(sessionId)`, `exactMatch(characterId)`
 
-- **NPC Perception Record**: Represents individual NPC's opinion of player. Attributes: NPC ID, perception score (-100 to +100), playthrough ID, perception events (history), decay-adjusted score
-  - Relationships: Updated by Perception skill; influences Choice and Dice Roller skill outcomes; seeded from Faction Reputation
+- **Lore Chunk**: Stores a paragraph of campaign lore. Attributes: ID, original file path, chunk index, paragraph ID, content, embedding vector, token count
+  - Query methods: `semanticSearch(query)`, `exactMatch(filePath)`
 
-- **Character Portrait**: Represents cached character image. Attributes: character ID, image data/path, description hash, generation timestamp, style preset, playthrough ID
-  - Relationships: Associated with NPC or player character; retrieved by Narrator for display; regenerated when description changes significantly
+- **Faction Reputation**: Stores player standing with a faction. Attributes: faction ID, playthrough ID, current score, last update timestamp, decay rate
+  - Query methods: `exactMatch(factionId, playthroughId)`, `update(factionId, scoreDelta)`
 
-- **Playthrough Session**: Represents a single continuous play session. Attributes: session ID, playthrough ID, start timestamp, end timestamp, location/arc, session summary
-  - Relationships: Contains zero or more memory events; establishes scope for queries
+- **NPC Perception**: Stores individual NPC's opinion of player. Attributes: NPC ID, playthrough ID, perception score (-100 to +100), last interaction timestamp, event history
+  - Query methods: `exactMatch(npcId, playthroughId)`, `update(npcId, scoreDelta, event)`
+
+- **Character Portrait**: Stores cached character image. Attributes: character ID, image path, description hash, generation timestamp, playthrough ID
+  - Query methods: `exactMatch(characterId)`, `semanticSearch(description)` for semantic matching
+
+- **Playthrough Session**: Metadata for session scope. Attributes: session ID, playthrough ID, start timestamp, end timestamp, current location
+  - Query methods: `exactMatch(sessionId)`, used as filter in scoped queries
 
 ---
 
@@ -211,4 +241,6 @@ The narrator describes a character portrait and the system generates an image. L
 5. **Playthrough Isolation**: Each playthrough has its own data scope. Cross-playthrough queries are not supported in this version (possible future enhancement).
 
 6. **Decay Semantics**: Time-based decay applies only to perception and reputation data. Memory events do not decay; they remain accessible indefinitely (archival system handles long-term storage).
+
+7. **Lore Chunking**: Campaign lore files are chunked by paragraph (split on `\n\n`) with max 512 tokens per chunk. Each chunk is stored with metadata: original file path, chunk index, paragraph ID, and token count. This enables efficient semantic retrieval without loading entire lore files into context.
 

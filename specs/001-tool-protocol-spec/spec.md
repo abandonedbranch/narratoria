@@ -14,11 +14,18 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ### Session 2026-01-24
 
-- Q: How should the Narrator AI Stub be implemented in the MVP? → A: In-process Dart function/class that returns hard-coded Plan JSON for known prompts
 - Q: What merge semantics should state_patch events use? → A: Deep merge (nested objects merged recursively; arrays replaced)
 - Q: Should independent tools continue when a sibling tool fails? → A: Continue automatically (independent tools proceed unless they also fail)
-- Q: Which ui_event types must the MVP implement? → A: narrative_choice only (display choice buttons/list from payload)
+- Q: Which ui_event types must be implemented? → A: narrative_choice for choice display; other events degrade gracefully
 - Q: Who creates asset files and determines paths? → A: Tools generate and write files independently; provide absolute paths in asset events
+
+---
+
+## Prerequisites
+
+**Read order**: This is the foundational spec; no prerequisites required.
+
+**Dependency chain**: Specs 002, 003, 005 build directly on this protocol. Specs 004, 006, 007, 008 assume this protocol is understood.
 
 ---
 
@@ -28,7 +35,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 - **Plan JSON**: Structured document produced by narrator AI describing which tools to execute, their inputs, dependencies, and execution strategy (parallel/sequential). See [Spec 002](../002-plan-execution/spec.md) for plan execution semantics and schema.
 - **Deep Merge**: State patch merge semantics where nested objects are merged recursively, arrays replaced entirely, and null values remove keys
 
-> **Note:** For UI component definitions (Narrative State Panel, Tool Execution Panel, Tools View), see [Spec 005](../005-dart-implementation/spec.md). For Narrator AI Stub implementation, see [Spec 002](../002-plan-execution/spec.md).
+> **Note:** For UI component definitions (Narrative State Panel, Tool Execution Panel, Tools View), see [Spec 005](../005-dart-implementation/spec.md). For Narrator AI (Phi-3.5 Mini) implementation details, see [Spec 002](../002-plan-execution/spec.md) and [Spec 005](../005-dart-implementation/spec.md).
 
 ---
 

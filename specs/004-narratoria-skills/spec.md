@@ -5,6 +5,25 @@
 **Created**: 2026-01-26
 **Parent Specs**: [002-plan-execution](../002-plan-execution/spec.md), [003-skills-framework](../003-skills-framework/spec.md)
 
+## Prerequisites
+
+**Read first**: Specs 001-003 in order
+- [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md) - Understand tool communication
+- [Spec 002 - Plan Execution](../002-plan-execution/spec.md) and [Spec 003 - Skills Framework](../003-skills-framework/spec.md) together - Understand how skills are selected and orchestrated
+
+**Then read together with**: [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md)
+
+Specs 004 and 006 are **co-dependent** for the Memory, Reputation, NPC Perception, and Character Portrait skills:
+- **Spec 004** defines the skill interfaces: what data types each skill stores and retrieves
+- **Spec 006** defines the storage implementation: ObjectBox schema, query API, and I/O contracts
+- **Reading order**: Read Spec 004 first (understand skill interfaces), then read Spec 006 (understand storage implementation)
+
+**Connection**: Many Spec 004 skills invoke Spec 006 persistence operations (Memory skill stores/recalls via persistence layer; Reputation skill updates faction scores; Character Portrait skill caches images).
+
+**After these**: Specs 005 (implementation) and 008 (narrative engine) use these skills.
+
+---
+
 ## RFC 2119 Keywords
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
@@ -19,7 +38,7 @@ This specification defines the individual skills that ship with Narratoria:
 - Memory - Semantic memory and continuity
 - Reputation - Faction standing tracking
 
-**Advanced Skills (Post-MVP)**:
+**Advanced Skills**:
 - Player Choices - Contextual multiple-choice options
 - Character Portraits - Visual character generation
 - NPC Perception - Individual NPC relationship tracking
@@ -154,14 +173,51 @@ A player who previously helped the town blacksmith returns to request a favor. T
 
 **FR-056**: System MUST ship with a `memory` skill for semantic memory and continuity
 
+**Purpose**: Allows the Plan Generator to store and retrieve narrative events across sessions using semantic search.
+
 **Components**:
-- `store-memory.dart` script that embeds and stores event summaries in local database
-- `recall-memory.dart` script that performs vector search for relevant context
+- `store-memory.dart` script that receives event summaries, generates embeddings, and stores via Spec 006 persistence layer
+- `recall-memory.dart` script that receives semantic queries, calls Spec 006 `semanticSearch()`, and returns ranked results
+
+**Input (store-memory)**:
+```json
+{
+  "summary": "Player helped blacksmith repair anvil",
+  "characters": ["player", "blacksmith_aldric"],
+  "location": "blacksmith_shop",
+  "significance": "high"
+}
+```
+
+**Input (recall-memory)**:
+```json
+{
+  "query": "interactions with blacksmith",
+  "limit": 3,
+  "filters": {"location": "blacksmith_shop"}
+}
+```
+
+**Output (recall-memory)**:
+```json
+{
+  "memories": [
+    {"summary": "...", "timestamp": "...", "relevance": 0.92},
+    {"summary": "...", "timestamp": "...", "relevance": 0.85}
+  ]
+}
+```
 
 **Configuration**:
-- `storageBackend`: objectbox | files
-- `embeddingModel`: Model for generating embeddings
-- `maxContextEvents`: Maximum events to retrieve per query
+- `embeddingModel`: MUST be `sentence-transformers/all-MiniLM-L6-v2` (33MB, 384-dimensional semantic embeddings, downloads from HuggingFace on first use). This model is optimized for semantic similarity and runs locally for privacy
+- `similarityThreshold`: Minimum similarity score for results (default: 0.7)
+
+**Embedding Model Details**:
+- **Model**: sentence-transformers/all-MiniLM-L6-v2 (Hugging Face: `sentence-transformers/all-MiniLM-L6-v2`)
+- **Size**: 33MB (~60MB on disk with dependencies)
+- **Dimensions**: 384-dimensional vectors
+- **Latency**: ~10-50ms per sentence on typical mobile hardware
+- **Coverage**: All stored memories, lore chunks, and semantic queries use this model for embeddings
 
 ### 4.4 Reputation Skill
 
@@ -179,7 +235,7 @@ A player who previously helped the town blacksmith returns to request a favor. T
 
 ---
 
-## 5. Advanced Skills (Post-MVP)
+## 5. Advanced Skills
 
 ### 5.1 Player Choices Skill
 
@@ -369,7 +425,7 @@ Record of action that modified perception.
 ### Advanced Skills
 
 - **SC-013**: Choice skill generates 3-5 contextual options within 3 seconds for 95% of decision points
-- **SC-014**: Generated choices correctly reflect player stats (options hidden/shown based on capabilities) in 90% of scenarios validated by acceptance tests
+- **SC-014**: Generated choices correctly reflect player stats by incorporating campaign-defined stat schema (campaign manifest defines stat types: relationships/reputation for dating sims, armor/strength for combat-heavy campaigns, etc.). Test method: (1) Verify Phi-3.5 prompt template includes `{player_stats}` injection, (2) Automated keyword grep: generate 20 choices with stat-variant inputs, verify ≥70% mention stat-relevant keywords (relationship/romance, armor/combat, etc.), (3) Code review: confirm prompt properly structures stats for LLM decision-making. Pass if all three checks succeed.
 - **SC-015**: Portrait skill generates character images within 15 seconds for 90% of requests when using local generation
 - **SC-016**: Portrait skill correctly retrieves cached portraits (semantic match) in 95% of character reappearances
 - **SC-017**: NPC perception skill initializes perception for new NPCs within 100ms, informed by faction reputation

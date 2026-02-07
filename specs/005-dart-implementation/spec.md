@@ -4,6 +4,18 @@
 > **Version**: 0.1.0
 > **Parent Specs**: [001-tool-protocol](../001-tool-protocol-spec/spec.md), [002-plan-execution](../002-plan-execution/spec.md), [003-skills-framework](../003-skills-framework/spec.md), [004-narratoria-skills](../004-narratoria-skills/spec.md)
 
+## Prerequisites
+
+**Read first in this order:**
+1. [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md) - Understand tool communication
+2. [Spec 002 - Plan Execution](../002-plan-execution/spec.md) and [Spec 003 - Skills Framework](../003-skills-framework/spec.md) - Understand plan execution and skill orchestration
+3. [Spec 004 - Narratoria Skills](../004-narratoria-skills/spec.md) - Understand what skills the system provides
+4. [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md) - Understand data persistence layer
+
+**Why this order**: Spec 005 is the reference implementation. You must understand all the concepts and contracts from prior specs before understanding how they're implemented in Flutter. This spec implements the protocol (001), execution engine (002), skill framework (003), individual skills (004), and persistence layer (006).
+
+---
+
 ## RFC 2119 Keywords
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
@@ -15,9 +27,16 @@ This specification defines the Dart+Flutter reference implementation of the Narr
 **Scope includes:**
 - Flutter UI implementation with Material Design 3
 - Dart class implementations of protocol entities and architectural components
-- MVP feature requirements
+- Phi-3.5 Mini narrator AI + sentence-transformers semantic embeddings integration
+- HuggingFace model download mechanism and local model caching
 - Project structure and file organization
 - Implementation guidance and best practices
+
+**AI Model Integration**:
+- **Narrator AI**: Phi-3.5 Mini (3.8B parameters, 2.5GB GGUF quantized) for plan generation and scene narration
+- **Embeddings**: sentence-transformers/all-MiniLM-L6-v2 (33MB) for semantic search over memories and lore
+- **Model Loading**: On first app launch, Narratoria downloads both models from HuggingFace Hub and caches them locally in the app's documents directory
+- **No External APIs**: All inference runs locally; no network calls during gameplay (Constitution Principle II compliance)
 
 **Scope excludes:**
 - Protocol definitions (see Spec 001)
@@ -65,11 +84,13 @@ Displays current session state:
 - State changes highlighted (from `state_patch` events)
 - JSON inspector for debugging
 
-#### Player Input Field
-Natural language textarea for player prompts:
-- Multiline text input
-- Send button to submit prompt
-- Visual feedback during processing
+#### Player Choice Interface
+Displays AI-generated choices for player selection:
+- 3-5 choice buttons arranged vertically
+- Each choice shows descriptive text
+- Active/hover states for selection feedback
+- Disabled state during scene generation
+- **Note**: Players select from presented choices only; free-text input is not supported per Spec 008 FR-017
 
 ### 2.3 UI Layout
 
@@ -84,8 +105,10 @@ Natural language textarea for player prompts:
 │                   │  └──────────────────┘  │
 │                   │                         │
 │                   │  ┌──────────────────┐  │
-│                   │  │  Player Input    │  │
-│                   │  │  [text field]    │  │
+│                   │  │  Player Choices  │  │
+│                   │  │  [choice 1]      │  │
+│                   │  │  [choice 2]      │  │
+│                   │  │  [choice 3]      │  │
 │                   │  └──────────────────┘  │
 └─────────────────────────────────────────────┘
 ```
@@ -107,35 +130,33 @@ ThemeData(
 
 ---
 
-## 3. MVP Requirements
+## 3. Core Implementation Requirements
 
-> Content extracted from Spec 001 §14
-
-To deliver a minimum viable product that demonstrates the protocol and player interaction flow, the Narratoria client MUST implement:
+The Narratoria client MUST fully implement all specification requirements:
 
 ### 3.1 Core Features (MUST)
 
-1. **Player Input**: Text field accepting natural language prompts
-2. **Narrator AI Stub**: In-process Dart service that converts prompts to Plan JSON (see §3.4 for implementation details)
+1. **Phi-3.5 Mini Integration**: In-process LLM that generates Plan JSON from player input (see §3.4)
+2. **Player Choice Selection**: UI displays 3-5 AI-generated choices from Phi-3.5-driven choice skill (no free-text input per Spec 008 FR-017)
 3. **Tool Invocation**: Execute tools per Plan JSON using process launch and stdin/stdout pipes
 4. **Event Processing**: Parse NDJSON from tool stdout and dispatch to handlers
-5. **UI Event Support**: Implement `narrative_choice` handler (display choice buttons; other events degrade gracefully)
-6. **State Management**: Maintain session state, apply `state_patch` events using deep merge
+5. **UI Event Support**: Implement `narrative_choice` handler; other events degrade gracefully
+6. **State Management**: Maintain session state, apply `state_patch` events using deep merge semantics
 7. **Asset Registry**: Store asset metadata from `asset` events
 8. **UI Panels**:
    - Story View (narrative text + rendered assets)
    - Tool Execution Panel (logs, progress)
    - Asset Gallery (images, audio, video with graceful degradation)
    - Narrative State Panel (JSON inspector)
-
+   - Player Choice Interface (3-5 choice buttons, no free-text input)
 ### 3.2 Skill Implementation
 
-For MVP validation, implement the core skills defined in [Spec 004](../004-narratoria-skills/spec.md):
+Implement all core skills defined in [Spec 004](../004-narratoria-skills/spec.md):
 
-1. **storyteller**: Rich narrative enhancement using LLM
+1. **storyteller**: Rich narrative enhancement using Phi-3.5 Mini
 2. **dice-roller**: Randomness and game mechanics
-3. **memory**: Semantic memory and continuity
-4. **reputation**: Faction standing tracking
+3. **memory**: Semantic memory with sentence-transformers embeddings and ObjectBox persistence
+4. **reputation**: Faction standing tracking with ObjectBox persistence
 
 Each skill follows the Agent Skills Standard defined in [Spec 003](../003-skills-framework/spec.md) with:
 - `skill.json` manifest file
@@ -203,15 +224,15 @@ abstract class NarratorAI {
 }
 ```
 
-**MVP Stub Implementation:**
+**Development/Test Stub Implementation:**
 
 ```dart
 class NarratorAIStub implements NarratorAI {
-  /// Hard-coded prompt → plan mappings for MVP
+  /// Hard-coded choice pattern → plan mappings for testing
   final Map<RegExp, PlanJson Function(String, int)> _mappings = {
     RegExp(r'roll.*dice?', caseSensitive: false): _rollDicePlan,
     RegExp(r'check.*reputation', caseSensitive: false): _reputationPlan,
-    RegExp(r'recall|remember', caseSensitive: false): _memoryPlan,
+    RegExp(r'memory|history', caseSensitive: false): _memoryPlan,
   };
 
   @override
@@ -227,9 +248,9 @@ class NarratorAIStub implements NarratorAI {
 - MUST implement the `NarratorAI` interface to allow seamless replacement with LLM-backed implementation
 - MUST respect `disabledSkills` parameter and avoid selecting disabled tools
 - MUST track `generationAttempt` and `parentPlanId` in returned Plan JSON metadata
-- MUST return a valid Plan JSON for recognized prompts
-- MUST return a fallback plan with narrative-only response for unrecognized prompts
-- SHOULD support at least 5 prompt patterns for MVP testing
+- MUST return a valid Plan JSON for recognized choice patterns
+- MUST return a fallback plan with narrative-only response for unrecognized choices
+- SHOULD support at least 5 choice patterns for testing
 
 **Fallback Plan:**
 
@@ -238,7 +259,7 @@ When no pattern matches, return a narrative-only plan:
 ```json
 {
   "requestId": "<uuid>",
-  "narrative": "The narrator considers your words: '<player-input>'...",
+  "narrative": "Your choice leads to unexpected consequences...",
   "tools": [],
   "parallel": false,
   "disabledSkills": [],
@@ -255,7 +276,7 @@ The Narratoria UI MUST handle errors gracefully per Constitution Principle IV. T
 | Error Source | Display Location | User Action |
 |--------------|------------------|-------------|
 | Tool failure (`done.ok=false`) | Tool Execution Panel + inline Story View notice | Retry or continue |
-| Plan generation failure | Story View with fallback narrative | Rephrase prompt |
+| Plan generation failure | Story View with fallback narrative | Select different choice |
 | Network/API error | Toast notification + Tool Panel detail | Check connection, retry |
 | Protocol violation | Developer console only | None (internal error) |
 | Max replan exceeded | Modal dialog with options | Restart session or continue with fallback |
@@ -393,7 +414,7 @@ src/
 │           ├── tool_execution_panel.dart
 │           ├── asset_gallery.dart
 │           ├── narrative_state_panel.dart
-│           ├── player_input_field.dart
+            ├── player_choice_interface.dart
 │           └── story_view.dart
 └── skills/               # Skill implementations (per Spec 004)
     ├── storyteller/      # Rich narrative enhancement

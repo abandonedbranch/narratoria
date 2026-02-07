@@ -5,6 +5,26 @@
 **Status**: Draft
 **Input**: User description: "Define the campaign directory structure and manifest schema for Narratoria story packages"
 
+## Prerequisites
+
+**Read first:**
+1. [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md) - Understand asset handling
+2. [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md) - Understand how lore is semantically indexed (FR-132a: lore chunks stored with embeddings)
+
+**Key relationships**: 
+- **Spec 007 and 008 are complementary**:
+  - Spec 007 defines the **static** campaign package structure (directory layout, manifest, content files)
+  - Spec 008 defines the **dynamic** execution of campaigns (scene loop, memory retrieval, choice generation)
+  - **Connection**: Campaign content from Spec 007 (lore files, NPC profiles, plot beats) is ingested into Spec 006 persistence layer and used by Spec 008 scene execution
+  - **Reading order**: Understand Spec 007 (what's in a campaign), then Spec 008 (how it's used during play)
+
+**How specs connect**:
+- Spec 007 lore files → Spec 006 ingestion (lore chunked and embedded per FR-132a)
+- Spec 007 NPC profiles + plot beats → Spec 008 retrieval (semantic search for context)
+- Spec 007 assets → Spec 001 asset events → displayed during play
+
+---
+
 ## Overview
 
 The Campaign Format defines how story authors package their narratives for Narratoria. A campaign is a self-contained directory containing world-building, characters, plot structure, lore, and creative assets. The directory structure itself serves as the ingestion interface for the ObjectBox vector database, enabling semantic indexing of all campaign content. The AI "hydrates" the campaign based on its completeness—filling gaps intelligently when content is sparse, or executing faithfully when content is detailed.
@@ -180,8 +200,8 @@ A story author includes character portraits, scene backgrounds, ambient music, a
 
 #### Lore System
 
-- **FR-022**: All files in `lore/` MUST be indexed for semantic search (RAG retrieval).
-- **FR-023**: Lore files SHOULD be chunked into retrievable segments for context-window efficiency.
+- **FR-022**: All files in `lore/` MUST be indexed for semantic search (RAG retrieval). Lore files MUST be chunked by paragraph (split on `\n\n`) with a maximum of 512 tokens per chunk. Token counts MUST be computed using the `tiktoken` library with the `cl100k_base` tokenizer (compatible with the sentence-transformers embedding model). If a single paragraph exceeds 512 tokens, it MUST be split on sentence boundaries (`.`, `!`, `?`).
+- **FR-023**: Each lore chunk MUST be stored with metadata including: original file path, chunk index, paragraph ID, token count, and chunk method ("paragraph").
 - **FR-024**: System MUST support nested directories within `lore/` for organizational flexibility.
 
 #### Creative Assets
@@ -268,7 +288,15 @@ For `type: "prose"` (Markdown files):
   "prose_metadata": {
     "word_count": "integer",
     "language": "string (ISO 639-1)",    // e.g., "en"
-    "chunks": ["string"]                 // Text chunks for RAG retrieval
+    "chunks": ["string"],                // Text chunks for RAG retrieval
+    "chunk_method": "paragraph",         // Chunking strategy used
+    "chunk_metadata": [                  // Per-chunk metadata
+      {
+        "chunk_id": "integer",
+        "paragraph_id": "integer",
+        "token_count": "integer"
+      }
+    ]
   }
 }
 ```
@@ -386,6 +414,17 @@ Metadata in ObjectBox:
 - **FR-041**: System MUST populate `provenance` metadata for all generated assets, including source model and generation timestamp.
 - **FR-042**: System SHOULD extract and store type-specific metadata (image dimensions, audio duration, word count) for enhanced retrieval.
 - **FR-043**: System SHOULD build relationship graphs between assets based on file references and semantic entity links.
+
+#### Provenance Validation (Campaign Format Creeds Enforcement)
+
+The Campaign Format Creeds require radical transparency about AI-generated content. To enforce these creeds mechanically, the campaign ingestion layer/persistence adapter that writes to ObjectBox MUST reject assets that violate provenance requirements:
+
+- **FR-044**: When storing an asset to ObjectBox with `generated: true`, the system MUST validate that the `provenance` object is present and contains all required fields: `source_model`, `generated_at`, and `seed_data`. If any field is missing, the campaign ingestion layer/persistence adapter MUST reject the store operation and MUST NOT write the asset to ObjectBox, returning error: "Generated asset missing provenance (generated=true requires provenance.source_model, provenance.generated_at, provenance.seed_data)".
+- **FR-044a**: When storing an asset with `generated: false`, the `provenance` object MUST NOT be present (human-created assets have no provenance). If `generated: false` and `provenance` is present, the campaign ingestion layer/persistence adapter MUST reject the store operation and MUST NOT write the asset to ObjectBox, returning error: "Human-created asset must not contain provenance (generated=false conflicts with provenance object)".
+- **FR-044b**: The `generated_at` timestamp in provenance MUST be a valid ISO 8601 datetime string. The campaign ingestion layer/persistence adapter MUST reject assets with non-conform timestamps and MUST NOT write them to ObjectBox.
+- **FR-044c**: All generated assets ingested into ObjectBox MUST trigger a warning to authors upon campaign load: "Campaign contains [N] AI-generated asset(s). Review `generated` flags and provenance metadata to verify correctness."
+
+> **Rationale**: These validation rules ensure the Campaign Format Creeds ("Radical Transparency", "Respect Human Artistry") are not just design guidelines but enforceable data integrity constraints. Authors cannot accidentally share campaigns with unlabeled AI content or fraudulent provenance.
 
 #### Validation
 
