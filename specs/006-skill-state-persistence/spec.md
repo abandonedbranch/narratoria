@@ -44,8 +44,8 @@ The persistence layer is **shared infrastructure**, not skill-owned data directo
 ## 2. Terminology
 
 - **Memory Event**: A recorded narrative occurrence (e.g., "player befriends blacksmith", "betrays thieves guild") with timestamp and semantic embedding
-- **Semantic Embedding**: Numerical vector representation of text for similarity-based retrieval (384-2048 dimensions)
-- **Semantic Search**: Finding stored data by vector similarity to a query embedding
+- **Semantic Embedding**: Numerical vector representation of text via sentence-transformers/all-MiniLM-L6-v2 for similarity-based retrieval (384 dimensions)
+- **Semantic Search**: Finding stored data by vector similarity to a query embedding using sentence-transformers embeddings
 - **Story Session**: A single continuous play session within a narrative playthrough
 - **Story Playthrough**: A complete or ongoing narrative arc spanning multiple sessions
 - **Persistence Backend**: ObjectBox database running in-process (shared infrastructure)
@@ -139,8 +139,8 @@ The narrator describes a character portrait and the system generates an image. L
 
 ### Functional Requirements
 
-- **FR-131**: System MUST provide an ObjectBox-based persistence layer accessible to skills via the query interface defined in this spec
-- **FR-132**: System MUST store memory events with the following minimum attributes: event summary, timestamp, story session ID, playthrough ID, embedding vector, character identifiers
+- **FR-131**: System MUST provide an ObjectBox-based persistence layer accessible to skills via the query interface defined in this spec. Semantic embeddings are generated using sentence-transformers/all-MiniLM-L6-v2 (384-dimensional vectors) and cached with each record to avoid re-embedding on retrieval
+- **FR-132**: System MUST store memory events with the following minimum attributes: event summary, timestamp, story session ID, playthrough ID, embedding vector (384-dim via sentence-transformers), character identifiers
 - **FR-132a**: System MUST store lore chunks with metadata: original file path, chunk index, paragraph ID, token count, chunk content, and embedding vector
 - **FR-132b**: System MUST store faction reputation records with: faction ID, playthrough ID, current score, last update timestamp, decay rate
 - **FR-132c**: System MUST store NPC perception records with: NPC identifier, playthrough ID, perception score, last interaction timestamp, event history

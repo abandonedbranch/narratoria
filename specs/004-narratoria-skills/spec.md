@@ -190,8 +190,15 @@ A player who previously helped the town blacksmith returns to request a favor. T
 ```
 
 **Configuration**:
-- `embeddingModel`: Model for generating embeddings (default: sentence-transformers/all-MiniLM-L6-v2)
+- `embeddingModel`: MUST be `sentence-transformers/all-MiniLM-L6-v2` (33MB, 384-dimensional semantic embeddings, downloads from HuggingFace on first use). This model is optimized for semantic similarity and runs locally for privacy
 - `similarityThreshold`: Minimum similarity score for results (default: 0.7)
+
+**Embedding Model Details**:
+- **Model**: sentence-transformers/all-MiniLM-L6-v2 (Hugging Face: `sentence-transformers/all-MiniLM-L6-v2`)
+- **Size**: 33MB (~60MB on disk with dependencies)
+- **Dimensions**: 384-dimensional vectors
+- **Latency**: ~10-50ms per sentence on typical mobile hardware
+- **Coverage**: All stored memories, lore chunks, and semantic queries use this model for embeddings
 
 ### 4.4 Reputation Skill
 

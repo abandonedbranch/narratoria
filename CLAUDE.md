@@ -66,7 +66,9 @@ This project follows a **specification-first, five-spec architecture**:
 - **UI**: Material Design 3 (dark theme)
 - **State**: Provider (ChangeNotifier pattern)
 - **Database**: SQLite (sqflite)
-- **LLM Backend**: Ollama for local models (Gemma 2B, Llama 3.2 3B, Qwen 2.5 3B)
+- **Narrator AI**: Phi-3.5 Mini (3.8B parameters, 2.5GB GGUF quantized) - runs in-process with HuggingFace model downloads
+- **Semantic Embeddings**: sentence-transformers/all-MiniLM-L6-v2 (33MB, 384-dimensional vectors)
+- **Model Management**: Automatic download from HuggingFace Hub on first app launch; cached locally for offline use
 - **Tools**: Any language (Rust, Go, Python, Dart) - must comply with Spec 001
 
 ## Core Principles (Constitution v1.2.0)

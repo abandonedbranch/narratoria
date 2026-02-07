@@ -15,9 +15,16 @@ This specification defines the Dart+Flutter reference implementation of the Narr
 **Scope includes:**
 - Flutter UI implementation with Material Design 3
 - Dart class implementations of protocol entities and architectural components
-- MVP feature requirements
+- MVP feature requirements: Phi-3.5 Mini narrator AI + sentence-transformers semantic embeddings
+- HuggingFace model download mechanism and local model caching
 - Project structure and file organization
 - Implementation guidance and best practices
+
+**AI Model Integration**:
+- **Narrator AI**: Phi-3.5 Mini (3.8B parameters, 2.5GB GGUF quantized) for plan generation and scene narration
+- **Embeddings**: sentence-transformers/all-MiniLM-L6-v2 (33MB) for semantic search over memories and lore
+- **Model Loading**: On first app launch, Narratoria downloads both models from HuggingFace Hub and caches them locally in the app's documents directory
+- **No External APIs**: All inference runs locally; no network calls during gameplay (Constitution Principle II compliance)
 
 **Scope excludes:**
 - Protocol definitions (see Spec 001)

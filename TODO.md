@@ -287,16 +287,20 @@
 
 ---
 
-### 🟡 **Issue 9: Missing Reference: Embedding Model**
+### ✅ **Issue 9: Missing Reference: Embedding Model** [RESOLVED]
 
-- **Spec 006** assumes semantic embeddings for memory search (FR-132, FR-133)
-- **Spec 007** references embeddings for sparse data enrichment
-- **Spec 008** uses embeddings for semantic search
-- **No spec** defines: Which embedding model? How is it trained? Local or hosted?
+**Resolution (commit TBD)**: Specified embedding model across all specs:
+- **Spec 004**: Memory skill configuration now specifies `sentence-transformers/all-MiniLM-L6-v2` (33MB, 384-dim embeddings)
+- **Spec 005**: Model download mechanism documented (HuggingFace on first app launch)
+- **Spec 006**: All embedding storage now explicitly uses sentence-transformers (384-dimensional vectors)
+- **Spec 008**: Clarified semantic search uses `sentence-transformers/all-MiniLM-L6-v2` embeddings
+- **CLAUDE.md**: Updated technology stack with Phi-3.5 Mini (narrator AI) + sentence-transformers (embeddings)
 
-**Problem**: Affects performance, quality, and deployment.
-
-**Recommendation**: Add Spec 009 (Infrastructure) or append to CLAUDE.md with embedding model decision.
+**Architectural Decision**: Hybrid approach maximizes performance and quality:
+- **Narrator AI**: Phi-3.5 Mini (3.8B, 2.5GB GGUF) for plan generation and narration
+- **Semantic Embeddings**: sentence-transformers/all-MiniLM-L6-v2 (33MB, optimized for similarity) for memory/lore retrieval
+- **Deployment**: Both download from HuggingFace Hub on first app launch; cached locally for offline use
+- **iPhone 17 Compatibility**: Total ~2.6GB (fits on basic iPhone 17 with 8GB+ RAM)
 
 ---
 
@@ -316,13 +320,13 @@
 | Spec | Status | Scope | MVP | Post-MVP | Key Dependencies |
 |------|--------|-------|-----|----------|------------------|
 | **001** | ✅ Draft | Protocol | Yes | - | None |
-| **002** | ✅ Draft | Plan Execution | Partial | LLM integration | 001, 003 |
+| **002** | ✅ Draft | Plan Execution (Phi-3.5 Mini narrator) | Yes | Enhanced LLM | 001, 003 |
 | **003** | ✅ Draft | Skill Framework | Yes | Hot-reload | 001, 002 |
-| **004** | ✅ Draft | Individual Skills | Core skills | Advanced skills | 003, 006 |
-| **005** | ✅ Draft | Dart/Flutter | Yes | - | 001-004 |
-| **006** | ✅ Draft | Persistence | Yes | Query optimization | None |
+| **004** | ✅ Draft | Individual Skills (sentence-transformers embeddings) | Core skills | Advanced skills | 003, 006 |
+| **005** | ✅ Draft | Dart/Flutter + Model Download | Yes | - | 001-008 |
+| **006** | ✅ Draft | Persistence (ObjectBox + sentence-transformers) | Yes | Query optimization | None |
 | **007** | ✅ Draft | Campaign Format | Yes | - | 008, LLM integration |
-| **008** | ⚠️ Draft | Narrative Engine | Yes | - | **1 Open Question** |
+| **008** | ✅ Draft | Narrative Engine (Phi-3.5 + embeddings) | Yes | - | **0 Open Questions** |
 
 ---
 

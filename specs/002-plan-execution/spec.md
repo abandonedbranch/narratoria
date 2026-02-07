@@ -70,7 +70,7 @@ A player launches Narratoria for the first time and types a simple action like "
 
 ### 4.1 Plan Generation (Narrator AI)
 
-- **FR-001**: System MUST include a local small language model (recommended: Gemma 2B, Llama 3.2 3B, Qwen 2.5 3B) for plan generation that runs entirely in-process
+- **FR-001**: System MUST include Phi-3.5 Mini (3.8B parameters) as the local narrator AI for plan generation. Model runs entirely in-process (2.5GB GGUF quantized, compatible with iPhone 17+). Model downloads automatically from HuggingFace Hub (`microsoft/Phi-3.5-mini-instruct` GGUF variant) on first app launch and caches locally for offline use
 - **FR-002**: Plan generator MUST convert player text input into structured Plan JSON documents following the schema defined in `contracts/plan-json.schema.json`
 - **FR-003**: Plan generator MUST select relevant skills based on player intent, then determine which skill scripts (if any) to invoke
 - **FR-004**: Plan generator MUST inject active skills' behavioral prompts into system context when generating plans

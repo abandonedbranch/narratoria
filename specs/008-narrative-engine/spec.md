@@ -10,14 +10,14 @@
 The Narrative Engine is the runtime brain of Narratoria—it executes campaigns by managing the scene loop and orchestrating skills. If Spec 007 defines the **static campaign package**, Spec 008 defines the **dynamic execution**.
 
 **Core Responsibilities**:
-1. **Scene Loop**: Player choice → Plan generation → Plan execution → Display results
-2. **Plan Generation**: Local LLM analyzes context and decides which skills to invoke with what parameters
-3. **Contextual Retrieval**: LLM determines what data to fetch (memories, lore, reputation) based on scene needs—not fixed percentages
+1. **Scene Loop**: Player choice → Plan generation (Phi-3.5 Mini) → Plan execution → Display results
+2. **Plan Generation**: Phi-3.5 Mini analyzes context (including retrieved memories via sentence-transformers semantic search) and decides which skills to invoke with what parameters
+3. **Contextual Retrieval**: LLM determines what data to fetch (memories, lore, reputation) based on scene needs—semantic search queries to Spec 006 persistence layer using sentence-transformers embeddings
 4. **Skill Orchestration**: Execute plan via Spec 002 execution engine, aggregate results, feed into next scene
 
 **Core Goal**: Make choices feel "perplexingly on-point"—as if the AI truly understands the player's character and situation.
 
-**Architectural Principle**: The LLM Plan Generator is the intelligence. It decides contextually what data to retrieve, which skills to invoke, and how to synthesize results. There are no fixed "memory tier budgets"—retrieval is adaptive based on narrative needs.
+**Architectural Principle**: Phi-3.5 Mini is the LLM brain. It decides contextually what data to retrieve (via semantic search on sentence-transformers embeddings), which skills to invoke, and how to synthesize results into cohesive narration. There are no fixed "memory tier budgets"—retrieval is adaptive based on narrative needs. The LLM maintains context awareness across the entire scene loop.
 
 ---
 
