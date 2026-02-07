@@ -759,10 +759,14 @@ result: {"a": 1}
 |----------|---------|--------------|-------|
 | Per-skill timeout | 30 seconds | Yes | Via skill manifest or plan |
 | Per-plan execution | 60 seconds | Yes | Total time for all tools |
-| Per-plan generation | 5 seconds | No | Strict; prevents LLM hangs |
+| Per-plan generation | 5 seconds | No | Strict; for typical inputs under 100 words |
 | Max concurrent tools | CPU cores | Yes | Implementation-specific |
 | Max replan attempts | 5 | No | Hard limit per Constitution |
 | Max retries per tool | 3 (default) | Yes | Via retryPolicy in plan |
+
+### 2.6 Analytics Logging
+
+The system must log all plan generation and execution attempts with timestamps, plan IDs, skill selections, and outcomes for debugging and analytics.
 
 ---
 
@@ -824,10 +828,11 @@ The runtime provides a Skills Settings UI accessible from application settings:
 
 - Display all discovered skills with name, description, and enabled/disabled toggle
 - Dynamically generate configuration forms from `config-schema.json` files
-- Supported input types: string (text, freeform), number, integer, boolean (toggle), enum (dropdown)
+- Supported input types: string (text, freeform), number, boolean (toggle), enum (dropdown)
 - Sensitive fields (API keys, passwords) use password-style masking; the `x-sensitive` flag triggers this
 - Environment variable substitution supported via `${VAR_NAME}` syntax in config values
 - Validation against schema constraints (required fields, type checking, min/max) before saving
+- Validation errors displayed inline in configuration forms with actionable error messages
 - Configuration saved to skill-specific `config.json` files
 
 **Configuration Schema Meta-Schema:**
@@ -880,7 +885,7 @@ The system continues functioning when skills are unavailable:
 
 ## 4. Narratoria Skills
 
-### 4.1 Core Skills (MVP)
+### 4.1 Core Skills
 
 #### 4.1.1 Storyteller
 
@@ -994,7 +999,7 @@ Reputation decay is time-based: faction reputation loses approximately 10% per c
 Generates contextual multiple-choice options that reflect the player's character, history, and relationships.
 
 **Components:**
-- `generate-choices.dart` — Analyzes context and produces 3-5 choices
+- `generate-choices.dart` — Analyzes context and produces 3-4 choices
 - `evaluate-choice.dart` — Determines outcome modifiers for selected choice
 
 **Configuration:**
@@ -1002,7 +1007,7 @@ Generates contextual multiple-choice options that reflect the player's character
 | Field | Type | Description |
 |-------|------|-------------|
 | `minOptions` | integer | Minimum choices (default: 3) |
-| `maxOptions` | integer | Maximum choices (default: 5) |
+| `maxOptions` | integer | Maximum choices (default: 4) |
 | `showDifficultyThreshold` | float | Show difficulty below this success probability |
 | `consequenceHintVerbosity` | enum | `none`, `brief`, `detailed` |
 
@@ -1017,7 +1022,7 @@ The choice skill considers multiple data sources when generating options:
 5. **Difficulty Indicators**: Options are marked when player stats suggest low success probability.
 6. **Consequence Hints**: Brief hints for each option (without spoiling outcomes).
 
-Choice generation must complete within 3 seconds. Options are emitted as a `ui_event` with event type `narrative_choice`. Freeform player input is always available as an alternative to generated choices.
+Choice generation must complete within 3 seconds. Options are emitted as a `ui_event` with event type `narrative_choice`. Players select from presented choices only; free-text input is not supported. If the choice skill fails, the narrator falls back to a simplified set of generic choices (e.g., "Continue", "Look around", "Wait").
 
 #### 4.2.2 Character Portraits
 
@@ -1142,9 +1147,9 @@ The Plan Generator decides *contextually* what data to retrieve. There are no fi
 
 The LLM may query lore, recent events, NPC relationships, faction reputation, or episodic memories based on scene needs. Retrieval is adaptive, driven by narrative context rather than predetermined budgets.
 
-### 5.4 MVP Stub Implementation
+### 5.4 Testing Stub
 
-For development and testing before full LLM integration, a Narrator AI Stub provides plan generation without requiring the actual model:
+For development and testing, a pattern-based plan generator provides deterministic plan generation without loading the full model:
 
 ```dart
 abstract class NarratorAI {
@@ -1158,7 +1163,7 @@ abstract class NarratorAI {
 }
 ```
 
-The stub uses hard-coded RegExp pattern → plan mappings (e.g., `roll.*dice?` → dice roll plan, `recall|remember` → memory plan) and returns a fallback plan with narrative-only response for unrecognized patterns. It supports at least 5 patterns for MVP testing and respects `disabledSkills` and replan metadata.
+The testing stub uses hard-coded RegExp pattern → plan mappings (e.g., `roll.*dice?` → dice roll plan, `recall|remember` → memory plan) and returns a fallback plan with narrative-only response for unrecognized patterns. It supports at least 5 patterns for integration testing and respects `disabledSkills` and replan metadata.
 
 ---
 
@@ -1254,6 +1259,7 @@ The persistence layer exposes five core methods:
 
 #### 6.1.3 Performance Requirements
 
+- Typical narrative sessions generate 50-200 memory events; the storage layer is designed for thousands of events per playthrough, not millions
 - All query methods must complete within 200ms for databases containing up to 10,000 records
 - Semantic search must return results in under 500ms for 1000+ stored events
 - Concurrent read access from multiple skills must not block or corrupt data (read-optimized with write locks)
@@ -1442,6 +1448,7 @@ All files in `lore/` are indexed for semantic search (RAG retrieval):
 - Maximum 512 tokens per chunk
 - If a single paragraph exceeds 512 tokens, it is split on sentence boundaries (`.`, `!`, `?`)
 - Each chunk is stored with metadata: original file path, chunk index, paragraph ID, token count, chunk method ("paragraph")
+- Token counts must be computed using the `tiktoken` library with the `cl100k_base` tokenizer (compatible with the sentence-transformers embedding model)
 - Nested directories within `lore/` are supported for organization
 
 #### 6.2.8 Creative Assets
@@ -1516,11 +1523,11 @@ Format: plain text, one keyword per line, comments with `#` prefix. When a sidec
 
 #### 6.2.11 Provenance Validation
 
-Provenance rules enforce the Campaign Format Creeds mechanically:
+Provenance rules are enforced mechanically at the campaign ingestion layer / ObjectBox persistence adapter. The adapter must reject assets that violate provenance requirements and must not write them to ObjectBox:
 
-- `generated: true` assets **require** a `provenance` object with `source_model`, `generated_at`, and `seed_data`. Missing fields cause the store operation to fail.
-- `generated: false` assets **must not** have a `provenance` object. Presence causes the store to be rejected.
-- `generated_at` must be a valid ISO 8601 datetime.
+- `generated: true` assets **require** a `provenance` object with `source_model`, `generated_at`, and `seed_data`. If any field is missing, the adapter rejects the store and returns error: `"Generated asset missing provenance (generated=true requires provenance.source_model, provenance.generated_at, provenance.seed_data)"`.
+- `generated: false` assets **must not** have a `provenance` object. If present, the adapter rejects the store and returns error: `"Human-created asset must not contain provenance (generated=false conflicts with provenance object)"`.
+- `generated_at` must be a valid ISO 8601 datetime. Non-conforming timestamps are rejected.
 - On campaign load, a warning is displayed: "Campaign contains [N] AI-generated asset(s). Review generated flags and provenance metadata to verify correctness."
 
 #### 6.2.12 Ingestion Enrichment Pipeline
@@ -1528,7 +1535,7 @@ Provenance rules enforce the Campaign Format Creeds mechanically:
 When a campaign contains sparse data (fewer than 3 content files), the system invokes an on-device LLM to enrich it:
 
 1. System detects sparse data and triggers enrichment
-2. LLM generates world setting, NPCs, plot beats, and lore entries
+2. An on-device LLM (candidate models: Ollama Gemma 2B, Llama 3.2 3B, Qwen 2.5 3B) generates world setting, NPCs, plot beats, and lore entries
 3. Generated files have `_generated` suffix and `generated: true` metadata
 4. Provenance metadata records source model, timestamp, and seed data
 5. Human-authored assets are *never* overwritten or regenerated
@@ -1742,7 +1749,7 @@ ThemeData(
 
 **Narrative State Panel**: Expandable tree view of session state, highlighted state changes from `state_patch` events, and a JSON inspector for debugging.
 
-**Player Choice Interface**: 3-5 choice buttons arranged vertically, descriptive text per choice, active/hover selection feedback, disabled state during scene generation. Players select from presented choices only.
+**Player Choice Interface**: 3-4 choice buttons arranged vertically, descriptive text per choice, active/hover selection feedback, disabled state during scene generation. Players select from presented choices only.
 
 #### 8.3.4 Error Recovery UI
 
@@ -1957,8 +1964,8 @@ Tools currently have full filesystem access. For third-party skills downloaded f
 
 | ID | Metric | Target | Test Method |
 |----|--------|--------|-------------|
-| SC-013 | Choice generation speed | 3-5 options within 3 seconds for 95% of decision points | Automated timing |
-| SC-014 | Choice stat relevance | ≥70% of choices mention stat-relevant keywords | Automated keyword grep across 20+ choice generations |
+| SC-013 | Choice generation speed | 3-4 options within 3 seconds for 95% of decision points | Automated timing |
+| SC-014 | Choice stat relevance | ≥70% of choices mention stat-relevant keywords | (1) Verify Phi-3.5 prompt template includes `{player_stats}` injection, (2) Automated keyword grep: 20+ choices with stat-variant inputs, verify ≥70% mention stat-relevant keywords, (3) Code review: confirm prompt structures stats for LLM. Pass if all three checks succeed. |
 | SC-015 | Portrait generation speed | <15 seconds for 90% of requests (local generation) | Automated timing |
 | SC-016 | Portrait cache accuracy | Cached portrait retrieved in 95% of character reappearances | Semantic matching validation |
 | SC-017 | NPC perception init speed | <100ms, informed by faction reputation | Benchmark with new NPCs |
@@ -1988,11 +1995,13 @@ Tools currently have full filesystem access. For third-party skills downloaded f
 | ID | Metric | Target | Test Method |
 |----|--------|--------|-------------|
 | SC-033 | Scene transition speed | <3 seconds on 8GB RAM device | Automated timing on target hardware |
-| SC-034 | Memory-driven choices | 80%+ reference past events | Entity extraction cross-referenced against stored memories; 50+ choices across 3 campaigns |
+| SC-034 | Memory-driven choices | 80%+ reference past events | Automated entity extraction from choice text, cross-referenced against stored memory events in ObjectBox via embedding similarity match. Pass if ≥80% of sampled choices (50+ choices across 3 campaigns) retrieve ≥1 matching memory event with similarity score ≥0.7. |
 | SC-035 | Plot beat timing | Trigger within 2 scenes of conditions met, 95% of cases | Automated condition monitoring |
 | SC-036 | NPC sentiment accuracy | 95% of interactions reflect correct sentiment | Dialogue sentiment analysis |
 | SC-037 | Long-session coherence | Coherent narrative across 100+ consecutive choices | End-to-end session test |
 | SC-038 | Episodic memory surfacing | Relevant episodic memories appear 100% of applicable situations | Targeted scenario tests |
+
+> **Note on SC-003 (Removed)**: Previously stated as "Players report feeling the AI remembers their choices in 90% of post-session surveys." Recognized as an emergent property rather than a formal requirement—when SC-034 (memory-driven choices) is achieved, players naturally feel the system remembers because it demonstrably references past events. No player survey required.
 
 ### 11.6 Campaign Format Metrics
 
