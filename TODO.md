@@ -210,14 +210,26 @@
 
 ---
 
-### 🔴 **Issue 2: Missing Cross-Spec References**
+### ✅ **Issue 2: Missing Cross-Spec References** [RESOLVED]
 
-- **Spec 002** references "Spec 003" for skill discovery but Spec 003 doesn't detail how plan generator access skill manifests or behavioral prompts
-- **Spec 004** references "Spec 006" for Memory skill persistence but Spec 006 assumes Spec 004 skills are already defined
-- **Spec 007** and **Spec 008** have **no cross-reference** despite both defining scene/campaign execution
-- **Spec 006** assumes on-device embeddings model but no spec defines the embedding model selection/integration
+**Resolution (commit TBD)**: Added explicit "Prerequisites" sections to all 8 specs documenting:
+- **Read order**: How specs build on each other
+- **Dependencies**: Which specs are prerequisites and why
+- **Circular dependencies**: Explained and resolved for 002↔003, 004↔006, 007↔008
 
-**Recommendation**: Add explicit "Prerequisites" section to each spec.
+**Spec-by-Spec Updates**:
+- **Spec 001**: Foundation (no prerequisites)
+- **Spec 002 & 003**: Marked as co-dependent pair (read together); explains how plans and skills co-define each other
+- **Spec 004 & 006**: Marked as co-dependent pair (read 004 first for interfaces, then 006 for storage); Memory skill is the connection point
+- **Spec 005**: Explicitly requires understanding Specs 001-006 before implementation details make sense
+- **Spec 007 & 008**: Marked as complementary pair (static structure vs dynamic execution); explains content flow from campaign to persistence to narrative engine
+- **Spec 008**: Comprehensive prerequisites explaining why all 7 prior specs are needed for scene execution
+
+**Key Clarifications**:
+1. **Plan Generator & Skills**: Spec 002's Narrator AI uses behavioral prompts from Spec 003 skills; it selects which scripts to invoke; Spec 003 explains skill discovery mechanism
+2. **Memory Skill**: Spec 004 defines interface (store/recall); Spec 006 implements storage backend; skills communicate via Spec 006 query API, not direct skill-to-skill calls
+3. **Campaign Execution**: Spec 007 provides static content (lore, NPCs, structure); Spec 006 ingests and indexes it; Spec 008 executes it by querying Spec 006
+4. **Circular Dependencies Resolved**: All circular dependencies are documented with clear reading order (always read definitions before uses)
 
 ---
 

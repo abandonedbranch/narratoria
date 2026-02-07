@@ -5,6 +5,27 @@
 **Status**: Draft
 **Input**: User description: "Define the campaign directory structure and manifest schema for Narratoria story packages"
 
+## Prerequisites
+
+**Read first:**
+1. [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md) - Understand asset handling
+2. [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md) - Understand how lore is semantically indexed (FR-132a: lore chunks stored with embeddings)
+3. [Spec 008 - Narrative Engine](../008-narrative-engine/spec.md) - Understand how campaigns are executed at runtime
+
+**Key relationships**: 
+- **Spec 007 and 008 are complementary**:
+  - Spec 007 defines the **static** campaign package structure (directory layout, manifest, content files)
+  - Spec 008 defines the **dynamic** execution of campaigns (scene loop, memory retrieval, choice generation)
+  - **Connection**: Campaign content from Spec 007 (lore files, NPC profiles, plot beats) is ingested into Spec 006 persistence layer and used by Spec 008 scene execution
+  - **Reading order**: Understand Spec 007 (what's in a campaign), then Spec 008 (how it's used during play)
+
+**How specs connect**:
+- Spec 007 lore files → Spec 006 ingestion (lore chunked and embedded per FR-132a)
+- Spec 007 NPC profiles + plot beats → Spec 008 retrieval (semantic search for context)
+- Spec 007 assets → Spec 001 asset events → displayed during play
+
+---
+
 ## Overview
 
 The Campaign Format defines how story authors package their narratives for Narratoria. A campaign is a self-contained directory containing world-building, characters, plot structure, lore, and creative assets. The directory structure itself serves as the ingestion interface for the ObjectBox vector database, enabling semantic indexing of all campaign content. The AI "hydrates" the campaign based on its completeness—filling gaps intelligently when content is sparse, or executing faithfully when content is detailed.

@@ -5,6 +5,23 @@
 **Created**: 2026-01-26
 **Parent Specs**: [001-tool-protocol](../001-tool-protocol-spec/spec.md), [002-plan-execution](../002-plan-execution/spec.md)
 
+## Prerequisites
+
+**Read first**: [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md)
+
+**Then read together with**: [Spec 002 - Plan Execution](../002-plan-execution/spec.md)
+
+Specs 003 and 002 are **co-dependent** (see Spec 002's Prerequisites for explanation). Spec 003 defines the component model (skills); Spec 002 defines how they're orchestrated in plans.
+
+**How they connect**: 
+- Spec 002 produces Plan JSON describing which skill scripts to invoke
+- Spec 003 explains how skills are discovered, configured, and executed—skills respond to script invocations from Spec 002
+- The Narrator AI (in Spec 002) injects behavioral prompts from Spec 003 into system context when generating plans
+
+**After these**: Specs 004-008 build further. Spec 004 defines specific individual skills; Specs 005-008 show how to implement and execute skills.
+
+---
+
 ## RFC 2119 Keywords
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).

@@ -4,6 +4,18 @@
 > **Version**: 0.1.0
 > **Parent Specs**: [001-tool-protocol](../001-tool-protocol-spec/spec.md), [002-plan-execution](../002-plan-execution/spec.md), [003-skills-framework](../003-skills-framework/spec.md), [004-narratoria-skills](../004-narratoria-skills/spec.md)
 
+## Prerequisites
+
+**Read first in this order:**
+1. [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md) - Understand tool communication
+2. [Spec 002 - Plan Execution](../002-plan-execution/spec.md) and [Spec 003 - Skills Framework](../003-skills-framework/spec.md) - Understand plan execution and skill orchestration
+3. [Spec 004 - Narratopia Skills](../004-narratopia-skills/spec.md) - Understand what skills the system provides
+4. [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md) - Understand data persistence layer
+
+**Why this order**: Spec 005 is the reference implementation. You must understand all the concepts and contracts from prior specs before understanding how they're implemented in Flutter. This spec implements the protocol (001), execution engine (002), skill framework (003), individual skills (004), and persistence layer (006).
+
+---
+
 ## RFC 2119 Keywords
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).

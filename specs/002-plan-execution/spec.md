@@ -5,6 +5,21 @@
 **Created**: 2026-01-26
 **Parent Specs**: [001-tool-protocol](../001-tool-protocol-spec/spec.md)
 
+## Prerequisites
+
+**Read first**: [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md)
+
+**Then read together with**: [Spec 003 - Skills Framework](../003-skills-framework/spec.md)
+
+Specs 002 and 003 are **co-dependent** and should be read as a complementary pair:
+- **Spec 002** defines Plan JSON structure and execution semantics—which depends on understanding Skills (defined in Spec 003)
+- **Spec 003** defines how Skills are discovered and executed—which depends on understanding Plans (defined in Spec 002)
+- **Recommendation**: Read Spec 001 → then alternate between Specs 002 and 003, understanding plans and skills together
+
+**After these**: Specs 004-008 build on these foundations. Spec 004 defines specific skills; Spec 006 defines where skill data is stored; Spec 008 shows how Narrator AI orchestrates skills through plans.
+
+---
+
 ## RFC 2119 Keywords
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).

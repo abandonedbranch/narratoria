@@ -5,6 +5,25 @@
 **Created**: 2026-01-26
 **Parent Specs**: [002-plan-execution](../002-plan-execution/spec.md), [003-skills-framework](../003-skills-framework/spec.md)
 
+## Prerequisites
+
+**Read first**: Specs 001-003 in order
+- [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md) - Understand tool communication
+- [Spec 002 - Plan Execution](../002-plan-execution/spec.md) and [Spec 003 - Skills Framework](../003-skills-framework/spec.md) together - Understand how skills are selected and orchestrated
+
+**Then read together with**: [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md)
+
+Specs 004 and 006 are **co-dependent** for the Memory, Reputation, NPC Perception, and Character Portrait skills:
+- **Spec 004** defines the skill interfaces: what data types each skill stores and retrieves
+- **Spec 006** defines the storage implementation: ObjectBox schema, query API, and I/O contracts
+- **Reading order**: Read Spec 004 first (understand skill interfaces), then read Spec 006 (understand storage implementation)
+
+**Connection**: Many Spec 004 skills invoke Spec 006 persistence operations (Memory skill stores/recalls via persistence layer; Reputation skill updates faction scores; Character Portrait skill caches images).
+
+**After these**: Specs 005 (implementation) and 008 (narrative engine) use these skills.
+
+---
+
 ## RFC 2119 Keywords
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).

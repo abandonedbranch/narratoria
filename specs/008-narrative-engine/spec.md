@@ -5,6 +5,30 @@
 **Status**: Draft (Open Questions Pending)
 **Input**: User description: "Scene pipeline, 4-tier memory system, and choice generation for executing campaigns"
 
+## Prerequisites
+
+**Read first in this order:**
+1. [Spec 001 - Tool Protocol](../001-tool-protocol-spec/spec.md) - Understand tool communication and events
+2. [Spec 002 - Plan Execution](../002-plan-execution/spec.md) - Understand plan structure, execution semantics, and Narrator AI role (the core loop)
+3. [Spec 003 - Skills Framework](../003-skills-framework/spec.md) - Understand how skills are discovered and executed
+4. [Spec 004 - Narratoria Skills](../004-narratopia-skills/spec.md) - Understand individual skills (Storyteller, Dice Roller, Memory, Reputation, NPC Perception, etc.)
+5. [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md) - Understand how contextual data (memories, lore, reputation) is stored and retrieved
+6. [Spec 007 - Campaign Format](../007-campaign-format/spec.md) - Understand campaign structure and content organization
+
+**Why this order is critical**: Spec 008 orchestrates everything. You cannot understand scene execution without grasping:
+- **Plans** (002): how Narrator AI generates execution plans
+- **Skills** (003-004): what capabilities are available
+- **Persistence** (006): what contextual data is available via queries
+- **Campaigns** (007): what content the engine is executing
+
+**Key relationships**:
+- Spec 008 inherits the **scene loop from Spec 002**: choice → plan generation → execution → results
+- Spec 008 invokes **skills from Spec 004** by name; Narrator AI selects them based on scene context
+- Spec 008 queries **persistence from Spec 006**: semantic search for memories, exact match for reputation/NPC perception
+- Spec 008 executes **campaign content from Spec 007**: lore provides context, plot beats guide pacing
+
+---
+
 ## Overview
 
 The Narrative Engine is the runtime brain of Narratoria—it executes campaigns by managing the scene loop and orchestrating skills. If Spec 007 defines the **static campaign package**, Spec 008 defines the **dynamic execution**.

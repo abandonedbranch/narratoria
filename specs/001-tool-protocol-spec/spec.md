@@ -22,6 +22,14 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ---
 
+## Prerequisites
+
+**Read order**: This is the foundational spec; no prerequisites required.
+
+**Dependency chain**: Specs 002, 003, 005 build directly on this protocol. Specs 004, 006, 007, 008 assume this protocol is understood.
+
+---
+
 ## Glossary
 
 - **Session State**: The runtime data model containing narrative state accumulated from `state_patch` events (e.g., `{"inventory": {"torch": {"lit": true}}}`)

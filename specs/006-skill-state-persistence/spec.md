@@ -5,6 +5,23 @@
 **Created**: 2026-01-31
 **Parent Specs**: [003-skills-framework](../003-skills-framework/spec.md), [004-narratoria-skills](../004-narratoria-skills/spec.md), [005-dart-implementation](../005-dart-implementation/spec.md)
 
+## Prerequisites
+
+**Read first:**
+1. [Spec 003 - Skills Framework](../003-skills-framework/spec.md) - Understand what skills are
+2. [Spec 004 - Narratoria Skills](../004-narratopia-skills/spec.md) - Understand which skills need persistent storage (Memory, Reputation, NPC Perception, Character Portraits)
+
+**Key relationship**: Specs 004 and 006 are **co-dependent**:
+- **Spec 004** defines skill interfaces: what data types are stored/retrieved (memory events, faction reputation, NPC perception, character portraits)
+- **Spec 006** defines storage implementation: ObjectBox schema, query API, and performance semantics
+- **Reading order**: Read Spec 004 first (understand what needs to be stored), then read Spec 006 (understand how it's stored)
+
+**Connection**: Spec 006's query interface (FR-133-137) is called by Spec 004 skills: Memory skill calls `semanticSearch()` and `store()`; Reputation/NPC Perception skills call `update()` and `exactMatch()`. Spec 006 storage schema (FR-132-132d) stores the data types defined in Spec 004.
+
+**After this**: Specs 005 (implementation), 007 (campaign content with lore chunks to store), and 008 (narrative engine queries this layer) all use persistence.
+
+---
+
 ## RFC 2119 Keywords
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
