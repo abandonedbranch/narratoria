@@ -176,7 +176,7 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 - **FR-009**: Plan Generator MUST determine scene type (travel, dialogue, danger, resolution) based on narrative context and generate appropriate skill invocations
 - **FR-010**: Plan Generator decides what to retrieve by generating Plan JSON that invokes skills with queries—e.g., `{toolId: "recall", toolPath: "skills/memory/recall.dart", input: {query: "past betrayals", limit: 3}}`
 - **FR-011**: Storyteller skill (from Spec 004) MUST produce 2-3 paragraphs of scene-setting narrative when invoked by the plan
-- **FR-012**: Player-Choices skill (from Spec 004, post-MVP) MUST produce 3-4 contextually relevant options when invoked by the plan
+- **FR-012**: Player-Choices skill (from Spec 004) MUST produce 3-4 contextually relevant options when invoked by the plan
 
 #### Choice Generation
 

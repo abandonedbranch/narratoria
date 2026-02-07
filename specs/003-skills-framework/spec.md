@@ -103,7 +103,7 @@ A player wants to add a new skill (e.g., a rules engine for D&D 5e) to their Nar
 - **FR-032**: Skill discovery MUST load optional `prompt.md` files and make behavioral prompts available to plan generator
 - **FR-033**: Skill discovery MUST identify all executable scripts in `skills/*/scripts/` directories
 - **FR-034**: Skill discovery MUST skip skills with invalid manifests and log warnings without crashing application
-- **FR-035**: System SHOULD support hot-reloading of skills without application restart; MVP implementation MUST log "restart required" message when skill changes detected, with full hot-reload as post-MVP enhancement
+- **FR-035**: System SHOULD support hot-reloading of skills without application restart; when skill changes are detected, the system MUST handle them gracefully (either auto-reload or notify user of required restart)
 
 ### 4.2 Skill Configuration
 

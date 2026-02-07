@@ -38,7 +38,7 @@ This specification defines the individual skills that ship with Narratoria:
 - Memory - Semantic memory and continuity
 - Reputation - Faction standing tracking
 
-**Advanced Skills (Post-MVP)**:
+**Advanced Skills**:
 - Player Choices - Contextual multiple-choice options
 - Character Portraits - Visual character generation
 - NPC Perception - Individual NPC relationship tracking
@@ -235,7 +235,7 @@ A player who previously helped the town blacksmith returns to request a favor. T
 
 ---
 
-## 5. Advanced Skills (Post-MVP)
+## 5. Advanced Skills
 
 ### 5.1 Player Choices Skill
 
