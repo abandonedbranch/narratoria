@@ -289,15 +289,14 @@
 
 ---
 
-### 🟡 **Issue 8: Remove MVP/Post-MVP Language Across Specs**
+### ✅ **Issue 8: Remove MVP/Post-MVP Language Across Specs** [RESOLVED]
 
-- **Spec 004** marks "Advanced Skills" as "(Post-MVP)" but should assume all features are MVP
-- **Spec 005** marks several sections as "MVP Requirements" but should assume all features are MVP
-- **Spec 006** and **Spec 008** may have MVP/post-MVP language that should be removed
+**Resolution (commit 9908245)**: Removed all MVP/Post-MVP distinctions:
+- **Spec 003**: FR-035 changed from "MVP implementation will... post-MVP enhancement" to unified hot-reload requirement
+- **Spec 004**: Removed "(Post-MVP)" from "Advanced Skills" label (overview and section heading); all skills assumed to be implementation requirements
+- **Spec 008**: Removed "(post-MVP)" tag from Player-Choices skill reference (FR-012)
 
-**Decision**: No MVP/post-MVP distinction in specs. All spec content assumes full MVP implementation. MVP scope decisions will be addressed separately in implementation roadmap.
-
-**Recommendation**: Remove "(Post-MVP)" and "MVP Requirements" language from all specs; treat all documented features as MVP-eligible.
+**Result**: All 8 specs now treat all documented features as MVP-eligible. MVP scope decisions will be determined separately in implementation roadmap, not in specifications.
 
 ---
 
