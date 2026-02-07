@@ -416,6 +416,17 @@ Metadata in ObjectBox:
 - **FR-042**: System SHOULD extract and store type-specific metadata (image dimensions, audio duration, word count) for enhanced retrieval.
 - **FR-043**: System SHOULD build relationship graphs between assets based on file references and semantic entity links.
 
+#### Provenance Validation (Campaign Format Creeds Enforcement)
+
+The Campaign Format Creeds require radical transparency about AI-generated content. To enforce these creeds mechanically, ObjectBox validation MUST reject assets that violate provenance requirements:
+
+- **FR-038**: When storing an asset to ObjectBox with `generated: true`, the system MUST validate that `provenance` object is present and contains all required fields: `source_model`, `generated_at`, and `seed_data`. If any field is missing, ObjectBox MUST reject the store operation with error: "Generated asset missing provenance (generated=true requires provenance.source_model, provenance.generated_at, provenance.seed_data)".
+- **FR-038a**: When storing an asset with `generated: false`, the `provenance` object MUST NOT be present (human-created assets have no provenance). If `generated: false` and `provenance` is present, ObjectBox MUST reject the store with error: "Human-created asset must not contain provenance (generated=false conflicts with provenance object)".
+- **FR-038b**: The `generated_at` timestamp in provenance MUST be a valid ISO 8601 datetime string. ObjectBox MUST reject non-conform timestamps.
+- **FR-038c**: All generated assets ingested into ObjectBox MUST display a warning to authors upon campaign load: "Campaign contains [N] AI-generated asset(s). Review `generated` flags and provenance metadata to verify correctness."
+
+> **Rationale**: These validation rules ensure the Campaign Format Creeds ("Radical Transparency", "Respect Human Artistry") are not just design guidelines but enforceable data integrity constraints. Authors cannot accidentally share campaigns with unlabeled AI content or fraudulent provenance.
+
 #### Validation
 
 - **FR-029**: System MUST validate campaign structure on load and report errors clearly.
