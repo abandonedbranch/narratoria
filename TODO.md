@@ -233,16 +233,16 @@
 
 ---
 
-### 🟡 **Issue 3: Narrator AI Stub vs Real Narrator AI**
+### ✅ **Issue 3: Narrator AI Stub vs Real Narrator AI** [RESOLVED]
 
-- **Spec 005** defines MVP Narrator AI Stub as hard-coded pattern matching
-- **Spec 002** defines Narrator AI interface requirements (FR-001 to FR-010) for **real LLM-based implementation**
-- **Spec 004** assumes narrator can select skills and inject behavioral prompts
-- **No spec** defines transition from stub to real narrator or LLM integration architecture
+**Resolution (commit fd644b3)**: Removed all MVP Narrator AI Stub language; unified all specs around Phi-3.5 Mini:
+- **Spec 001**: Removed 'Narrator AI Stub' clarifications; focused on protocol requirements
+- **Spec 002**: Updated terminology to show Phi-3.5 Mini instead of '(local LLM or stub)'
+- **Spec 005**: Removed 'MVP Requirements' framing; now 'Core Implementation Requirements'
+- **Spec 005**: Section 3.4 changed from "Narrator AI Stub Implementation" to "Phi-3.5 Mini Integration"
+- **CLAUDE.md**: Technology stack specifies Phi-3.5 Mini as narrator AI (see commit 84e1f37)
 
-**Problem**: Unclear which specs apply to stub (MVP) vs real narrator.
-
-**Recommendation**: Mark Spec 002's narrator requirements as "Post-MVP LLM Integration" or split into two narratives.
+**Architectural Decision**: No MVP/real distinction. All specs assume full Phi-3.5 Mini implementation from day one. MVP requirements are tracked separately (not in spec documents).
 
 ---
 
