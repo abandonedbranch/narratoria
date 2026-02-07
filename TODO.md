@@ -277,13 +277,15 @@
 
 ---
 
-### 🟡 **Issue 7: Campaign Format Creeds Not Binding**
+### ✅ **Issue 7: Campaign Format Creeds Not Binding** [RESOLVED]
 
-- **Spec 007** defines "Campaign Format Creeds" as design philosophy
-- No enforcement mechanism defined (no validation schemas check `generated` flags)
-- **Spec 007** FR-034-036 try to enforce generated asset marking, but sidecar keywords (FR-039b) don't have similar enforcement
+**Resolution (commit 68709ad)**: Added ObjectBox validation enforcement for Campaign Format Creeds:
+- **FR-038**: When `generated: true`, ObjectBox MUST validate presence of complete provenance object (source_model, generated_at, seed_data). Rejects store if missing.
+- **FR-038a**: When `generated: false`, provenance object MUST NOT be present. Rejects store if present.
+- **FR-038b**: ObjectBox validates `generated_at` timestamp is valid ISO 8601 format.
+- **FR-038c**: Campaign loader displays warning listing count of AI-generated assets and directs authors to review provenance.
 
-**Recommendation**: Define ObjectBox validation that rejects assets missing provenance when `generated: true`.
+**Outcome**: Campaign Format Creeds are now mechanically enforced at the data layer. Authors cannot inadvertently share campaigns with unlabeled AI content or fraudulent provenance.
 
 ---
 
