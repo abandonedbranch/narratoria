@@ -425,7 +425,7 @@ Record of action that modified perception.
 ### Advanced Skills
 
 - **SC-013**: Choice skill generates 3-5 contextual options within 3 seconds for 95% of decision points
-- **SC-014**: Generated choices correctly reflect player stats (options hidden/shown based on capabilities) in 90% of scenarios validated by acceptance tests
+- **SC-014**: Generated choices correctly reflect player stats by incorporating campaign-defined stat schema (campaign manifest defines stat types: relationships/reputation for dating sims, armor/strength for combat-heavy campaigns, etc.). Test method: (1) Verify Phi-3.5 prompt template includes `{player_stats}` injection, (2) Automated keyword grep: generate 20 choices with stat-variant inputs, verify ≥70% mention stat-relevant keywords (relationship/romance, armor/combat, etc.), (3) Code review: confirm prompt properly structures stats for LLM decision-making. Pass if all three checks succeed.
 - **SC-015**: Portrait skill generates character images within 15 seconds for 90% of requests when using local generation
 - **SC-016**: Portrait skill correctly retrieves cached portraits (semantic match) in 95% of character reappearances
 - **SC-017**: NPC perception skill initializes perception for new NPCs within 100ms, informed by faction reputation

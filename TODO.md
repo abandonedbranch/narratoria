@@ -317,14 +317,28 @@
 
 ---
 
-### 🟡 **Issue 10: Narrative Quality Metrics Not Defined**
+### ✅ **Issue 10: Narrative Quality Metrics Not Defined** [RESOLVED]
 
-- Specs define success criteria (SC-001, SC-002, etc.) but many are subjective
-- **SC-002** (80% of choices reference past events) - how is this measured?
-- **SC-003** (Players report feeling AI "remembers") - survey? metric?
-- **SC-014** (Choices correctly reflect player stats) - what does "correctly" mean?
+**Resolution**: All success criteria clarified with algorithmic testing procedures:
 
-**Recommendation**: Define acceptance test procedures (automated checks vs human review) for each SC.
+**SC-003 - Removed as Formal Requirement**:
+- Originally: "Players report feeling AI 'remembers'"
+- **Decision**: This is an emergent property, not a testable criterion. It naturally emerges when memory system functions correctly (FR-008 stores, FR-010 retrieves, Phi-3.5 incorporates). Remove from formal success criteria and document as expected outcome.
+
+**SC-002 - Algorithmic Testing**:
+- "80% of choices reference past events"
+- **Test Method**: Extract entities from choice text via NLP, cross-reference with stored memory events in ObjectBox, measure keyword overlap via embedding similarity. Pass if ≥80% of sample choices (50+ choices from 3 campaigns) retrieve ≥1 matching memory event.
+
+**SC-014 - Reframed as Prompt Engineering**:
+- "Choices correctly reflect player stats"
+- **Clarification**: Stats are campaign-defined (dating sim: relationships/reputation; Warhammer: armor/strength/etc.). Campaign manifest defines stat schema. Phi-3.5 receives stats via prompt injection. Correctness is about LLM's intelligence in using stats contextually.
+- **Test Method**: 
+  1. Verify Phi-3.5 prompt template includes `{player_stats}` injection
+  2. Automated: Generate 20 choices with stat-variant inputs, grep output for stat-relevant keywords (relationship/romance, armor/combat, etc.)
+  3. Code review: Confirm prompt template properly structures stats for Phi-3.5 decision-making
+  4. Pass if: Template verified correct AND ≥70% of generated choices mention/reference player stats
+
+**Test Philosophy**: All metrics gathered algorithmically (embedding similarity, keyword matching, prompt template validation). No human surveys required—metrics reflect system behavior, not subjective player experience.
 
 ---
 

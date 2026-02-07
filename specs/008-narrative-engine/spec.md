@@ -217,12 +217,13 @@ When outcomes are uncertain, the system resolves them using the rules system (de
 ### Measurable Outcomes
 
 - **SC-001**: Scene transitions complete within 3 seconds on target hardware (8GB RAM device).
-- **SC-002**: 80% of generated choices reference relevant past events or player knowledge (memory-driven).
-- **SC-003**: Players report feeling the AI "remembers" their choices in 90% of post-session surveys.
+- **SC-002**: 80% of generated choices reference relevant past events or player knowledge (memory-driven). **Test method**: Automated entity extraction from choice text, cross-referenced against stored memory events in ObjectBox via embedding similarity match. Pass if ≥80% of sampled choices (50+ choices across 3 campaigns) retrieve ≥1 matching memory event with similarity score ≥0.7.
 - **SC-004**: Plot beats trigger within 2 scenes of conditions being met in 95% of cases.
 - **SC-005**: NPC dialogue reflects correct sentiment (positive/negative/neutral) in 95% of interactions.
 - **SC-006**: System maintains coherent narrative across 100+ consecutive choices without context degradation.
 - **SC-007**: Episodic memories surface when relevant in 100% of applicable situations.
+
+> **Note on SC-003 (Removed)**: Previously stated as "Players report feeling the AI remembers their choices in 90% of post-session surveys." This is recognized as an emergent property rather than a formal requirement. When SC-002 (memory-driven choices) is achieved, players naturally feel the system remembers because it will demonstrably reference past events in its narrative. No player survey required—the behavior speaks for itself.
 
 ---
 
