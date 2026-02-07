@@ -58,8 +58,7 @@ Per the [Agent Skills Standard](https://agentskills.io/what-are-skills):
 - **Plan JSON**: Structured document produced by Narrator AI describing which skill scripts to invoke, their inputs, dependencies, and execution strategy.
 - **Skill Invocation**: An entry in the Plan JSON `tools` array that references a specific skill script to execute.
 - **Execution Trace**: Complete record of skill script execution including results, events, timing, and errors.
-- **Narrator AI**: The plan generation component that converts player input into Plan JSON by selecting appropriate skills and their scripts. May be implemented as local LLM, hosted API, or stub.
-- **Narrator AI Stub**: Simplified in-process implementation that converts player prompts to Plan JSON using hard-coded mappings (for MVP before LLM integration). See [Spec 005](../005-dart-implementation/spec.md) for Dart implementation.
+- **Narrator AI**: Phi-3.5 Mini (3.8B parameters) in-process LLM that converts player input into Plan JSON by analyzing context and selecting appropriate skills. Runs locally for privacy and latency; see [Spec 005](../005-dart-implementation/spec.md) for implementation.
 
 ---
 
@@ -115,7 +114,7 @@ A player launches Narratoria for the first time and types a simple action like "
 
 - **FR-023**: Narrator AI system MUST implement bounded retry loop: max 5 plan generation attempts before escalating to user
 - **FR-024**: Narrator AI system MUST track which skills have failed and disable them in subsequent replans
-- **FR-025**: Narrator AI system MUST provide simple template-based narration if plan generation fails after max attempts (graceful fallback)
+- **FR-025**: Narrator AI system MUST provide simple template-based narration if plan generation fails after max attempts (last-resort error recovery)
 - **FR-026**: Narrator AI system MUST log detailed error context for each failed plan (attempted plan, failed tools, retry counts)
 - **FR-027**: Plan executor MUST report specific failure reason (tool failure, circular dependency, timeout, invalid JSON) to enable accurate replan strategy
 - **FR-028**: System MUST NOT loop infinitely; if planner cannot generate viable plan after 5 attempts, display error to user and allow manual session recovery
@@ -137,7 +136,7 @@ Players interact with Narratoria by submitting natural language prompts (e.g., "
        │
        ▼
 ┌──────────────┐
-│ Narrator AI  │ (local LLM or stub)
+│ Narrator AI  │ (Phi-3.5 Mini LLM)
 │ analyzes     │
 │   prompt     │
 └──────┬───────┘

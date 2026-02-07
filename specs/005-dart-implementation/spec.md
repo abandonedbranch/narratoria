@@ -27,7 +27,7 @@ This specification defines the Dart+Flutter reference implementation of the Narr
 **Scope includes:**
 - Flutter UI implementation with Material Design 3
 - Dart class implementations of protocol entities and architectural components
-- MVP feature requirements: Phi-3.5 Mini narrator AI + sentence-transformers semantic embeddings
+- Phi-3.5 Mini narrator AI + sentence-transformers semantic embeddings integration
 - HuggingFace model download mechanism and local model caching
 - Project structure and file organization
 - Implementation guidance and best practices
@@ -130,34 +130,33 @@ ThemeData(
 
 ---
 
-## 3. MVP Requirements
+## 3. Core Implementation Requirements
 
-> Content extracted from Spec 001 §14
-
-To deliver a minimum viable product that demonstrates the protocol and player interaction flow, the Narratoria client MUST implement:
+The Narratoria client MUST fully implement all specification requirements:
 
 ### 3.1 Core Features (MUST)
 
-1. **Player Choice Selection**: UI displays 3-5 AI-generated choice buttons for player selection (no free-text input per Spec 008 FR-017)
-2. **Narrator AI Stub**: In-process Dart service that converts selected choices into Plan JSON (see §3.4 for implementation details)
+1. **Phi-3.5 Mini Integration**: In-process LLM that generates Plan JSON from player input (see §3.4)
+2. **Player Choice Selection**: UI displays 3-5 AI-generated choices from Phi-3.5-driven choice skill (no free-text input per Spec 008 FR-017)
 3. **Tool Invocation**: Execute tools per Plan JSON using process launch and stdin/stdout pipes
 4. **Event Processing**: Parse NDJSON from tool stdout and dispatch to handlers
-5. **UI Event Support**: Implement `narrative_choice` handler (display choice buttons; other events degrade gracefully)
-6. **State Management**: Maintain session state, apply `state_patch` events using deep merge
+5. **UI Event Support**: Implement `narrative_choice` handler; other events degrade gracefully
+6. **State Management**: Maintain session state, apply `state_patch` events using deep merge semantics
 7. **Asset Registry**: Store asset metadata from `asset` events
 8. **UI Panels**:
    - Story View (narrative text + rendered assets)
    - Tool Execution Panel (logs, progress)
    - Asset Gallery (images, audio, video with graceful degradation)
-   - Narrative State Panel (JSON inspector)   - Player Choice Interface (3-5 choice buttons, no free-text input)
+   - Narrative State Panel (JSON inspector)
+   - Player Choice Interface (3-5 choice buttons, no free-text input)
 ### 3.2 Skill Implementation
 
-For MVP validation, implement the core skills defined in [Spec 004](../004-narratoria-skills/spec.md):
+Implement all core skills defined in [Spec 004](../004-narratoria-skills/spec.md):
 
-1. **storyteller**: Rich narrative enhancement using LLM
+1. **storyteller**: Rich narrative enhancement using Phi-3.5 Mini
 2. **dice-roller**: Randomness and game mechanics
-3. **memory**: Semantic memory and continuity
-4. **reputation**: Faction standing tracking
+3. **memory**: Semantic memory with sentence-transformers embeddings and ObjectBox persistence
+4. **reputation**: Faction standing tracking with ObjectBox persistence
 
 Each skill follows the Agent Skills Standard defined in [Spec 003](../003-skills-framework/spec.md) with:
 - `skill.json` manifest file
