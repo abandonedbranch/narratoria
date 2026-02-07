@@ -131,11 +131,13 @@ A player wants to add a new skill (e.g., a rules engine for D&D 5e) to their Nar
 
 ### 4.4 Data Management (Framework)
 
-- **FR-103**: Each skill MUST be allowed to maintain its own data storage in `skills/<skill-name>/data/` directory
+- **FR-103**: Each skill MUST be allowed to maintain its own data storage in `skills/<skill-name>/data/` directory for temporary working files, caches, and skill-private runtime state
 - **FR-104**: Skill data storage MUST persist across application restarts
 - **FR-105**: Skill data MUST remain private to that skill; other skills MUST NOT directly access another skill's data directory
 - **FR-106**: Skills MAY use SQLite, JSON files, or other local storage formats for their data
 - **FR-107**: System MUST create skill data directories on first use if they do not exist
+
+> **Note on Cross-Skill Data**: `skills/<skill>/data/` is for skill-private working files. For persistent narrative data that is shared across skills (memory events, reputation, NPC perception, character portraits), see [Spec 006 - Skill State Persistence](../006-skill-state-persistence/spec.md). The Plan Generator in [Spec 002](../002-plan-execution/spec.md) orchestrates when skills access the shared persistence layer by including storage/retrieval operations in plans.
 
 ### 4.5 Graceful Degradation (Constitution Principle IV)
 

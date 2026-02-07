@@ -246,17 +246,15 @@
 
 ---
 
-### 🟡 **Issue 4: Skill Data Storage Pattern Inconsistency**
+### ✅ **Issue 4: Skill Data Storage Pattern** [RESOLVED]
 
-- **Spec 003** defines skill-private data in `skills/<skill>/data/` (FR-103-107)
-- **Spec 006** introduces *shared* persistence layer for cross-skill context
-- **Spec 004** skill implementations don't clarify: Does Memory skill data go in `skills/memory/data/` or in shared persistence layer?
+**Architectural Decision**:
+- **`skills/<skill>/data/`** = Temporary working files, caches, skill-private runtime state (Spec 003 FR-103-107)
+- **Persistence Layer (ObjectBox, Spec 006)** = Durable cross-skill context (memory events, reputation, NPC perception, portraits)
+- **Not all skills require persistent storage** — only Memory, Reputation, NPC Perception, Character Portraits
+- **Storage orchestration** — If a skill needs to persist/retrieve data, the Plan Generator includes that in the plan (e.g., Memory skill declares data dependencies as part of skill invocation)
 
-**Problem**: Architectural principle unclear. Who owns the data?
-
-**Recommendation**: Explicitly state:
-- `skills/<skill>/data/` = skill-private cache/working files
-- Shared persistence layer (Spec 006) = cross-skill context (memory events, reputation scores, NPC perception)
+**Benefit**: Clean separation between temporary execution state and persistent narrative context; Plan Generator can schedule storage/retrieval as plan steps.
 
 ---
 
@@ -289,13 +287,15 @@
 
 ---
 
-### 🟡 **Issue 8: Success Criteria Mismatch Across Specs**
+### 🟡 **Issue 8: Remove MVP/Post-MVP Language Across Specs**
 
-- **Spec 004** defines SC-013-022 (Advanced Skills) but these aren't marked as post-MVP
-- **Spec 005** defines SC for MVP but doesn't cross-reference Spec 004
-- **Spec 006** defines SC-023-032 (persistence layer) but Spec 008 needs these to function
+- **Spec 004** marks "Advanced Skills" as "(Post-MVP)" but should assume all features are MVP
+- **Spec 005** marks several sections as "MVP Requirements" but should assume all features are MVP
+- **Spec 006** and **Spec 008** may have MVP/post-MVP language that should be removed
 
-**Recommendation**: Tag success criteria with MVP/post-MVP priority.
+**Decision**: No MVP/post-MVP distinction in specs. All spec content assumes full MVP implementation. MVP scope decisions will be addressed separately in implementation roadmap.
+
+**Recommendation**: Remove "(Post-MVP)" and "MVP Requirements" language from all specs; treat all documented features as MVP-eligible.
 
 ---
 
