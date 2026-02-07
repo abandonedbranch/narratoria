@@ -267,13 +267,13 @@
 
 ---
 
-### � **Issue 6: Spec 008 Open Questions Block Implementation** [2 OF 3 RESOLVED]
+### ✅ **Issue 6: Spec 008 Open Questions Block Implementation** [RESOLVED]
 
 ~~1. **Lore chunking strategy** (FR-005)~~ ✅ **RESOLVED (commit c7ec6e6)**: Paragraph-based, 512 token max, sentence-boundary fallback
 ~~2. **Context window allocation** (FR-006)~~ ✅ **RESOLVED (commit 054f21f)**: Eliminated fixed budgets; LLM decides contextually
-3. **Player free-text input** (Q1) ⏸️ **IN PROGRESS**: Determining interaction model
+~~3. **Player interaction model**~~ ✅ **RESOLVED (commit 244c3b9)**: Structured choices only—narrator AI generates 3-5 choice buttons; no free-text input allowed
 
-**Recommendation**: Resolve player input question to fully unblock Spec 008 implementation.
+**Impact**: All open questions in Spec 008 now resolved. Implementation can proceed without architectural blockers.
 
 ---
 
