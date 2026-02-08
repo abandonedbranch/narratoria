@@ -62,7 +62,7 @@ Both models run on-device (compatible with iPhone 17+ and equivalent Android har
 
 #### 4. Semantic Memory for Narrative Continuity
 
-Cross-session continuity is achieved through ObjectBox persistence with vector search:
+Cross-session continuity is achieved through persistent embedded storage with vector search:
 - **Scene summaries** stored after each player choice with semantic embeddings
 - **Lore chunks** from campaign content (paragraph-based, 512-token max) indexed for retrieval
 - **NPC perception** and **faction reputation** tracked persistently
@@ -75,12 +75,12 @@ The Plan Generator (Phi-3.5 Mini) decides *contextually* what data to retrieve b
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | **Plan Generator** | Phi-3.5 Mini (3.8B) | Converts player choices to executable Plan JSON |
-| **Plan Executor** | Dart runtime | Executes skill scripts in dependency order with retry |
-| **Semantic Memory** | ObjectBox + sentence-transformers | Cross-session narrative continuity via vector search |
+| **Plan Executor** | Runtime engine | Executes skill scripts in dependency order with retry |
+| **Semantic Memory** | Vector database + sentence-transformers | Cross-session narrative continuity via vector search |
 | **Skills Framework** | Agent Skills Standard | Discover, configure, and execute modular capabilities |
 | **Campaign Format** | Directory + manifest.json | Story packages with lore, NPCs, plot beats, assets |
-| **UI Layer** | Flutter (Material Design 3) | Rich cross-platform storytelling interface |
-| **Persistence** | ObjectBox (in-process) | ACID storage for memories, reputation, state |
+| **UI Layer** | Cross-platform UI framework | Rich cross-platform storytelling interface |
+| **Persistence** | Embedded database (in-process) | ACID storage for memories, reputation, state |
 
 ### Performance Targets
 
@@ -106,10 +106,10 @@ The system is organized as an 8-layer stack:
 │ Layer 7: Campaign Format (Story Packages)          │  Content authoring
 │  - world/, characters/, plot/, lore/, art/, music/ │
 ├─────────────────────────────────────────────────────┤
-│ Layer 6: Skill State Persistence (ObjectBox)       │  Data management
+│ Layer 6: Skill State Persistence                   │  Data management
 │  - Memory events, lore, reputation, portraits      │
 ├─────────────────────────────────────────────────────┤
-│ Layer 5: Dart/Flutter Implementation (UI)          │  User interface
+│ Layer 5: UI Implementation                         │  User interface
 │  - Story View, Asset Gallery, Settings, Tools      │
 ├─────────────────────────────────────────────────────┤
 │ Layer 4: Narratoria Skills (Individual Skills)     │  Capabilities
@@ -153,7 +153,7 @@ Each layer builds on the contracts defined by layers below, enabling independent
 
 Narratoria embodies five constitutional principles:
 
-1. **Dart+Flutter First**: All client logic in idiomatic Dart/Flutter for cross-platform consistency
+1. **Cross-Platform First**: All client logic targets a single cross-platform codebase for consistency
 2. **Protocol-Boundary Isolation**: Skills run as independent OS processes; no shared memory
 3. **Single-Responsibility Tools**: Each skill performs one well-defined task
 4. **Graceful Degradation**: System continues functioning when features fail; bounded retries prevent infinite loops
@@ -258,7 +258,7 @@ When failures occur at any stage, the system enters the **replan loop**—a boun
 │                                                                 │
 │  ┌─────────────────┐  ┌──────────────────┐                    │
 │  │ Narrator AI      │  │ Plan Executor     │                    │
-│  │ (Phi-3.5 Mini)   │──│ (Dart runtime)    │                    │
+│  │ (Phi-3.5 Mini)   │──│ (Runtime engine)  │                    │
 │  │                   │  │                   │                    │
 │  │ • Generates plans │  │ • Topological sort│                    │
 │  │ • Selects skills  │  │ • Parallel exec   │                    │
@@ -278,7 +278,7 @@ When failures occur at any stage, the system enters the **replan loop**—a boun
 │            │  └──────┘   └─────┬────┘  └───────────┘          │
 │            │                    │                                │
 │  ┌─────────┴────────────────────┴──────────────────────┐        │
-│  │          Persistence Layer (ObjectBox)               │        │
+│  │          Persistence Layer (Embedded Database)       │        │
 │  │  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌─────────┐  │        │
 │  │  │ Memories │ │   Lore   │ │  NPC   │ │Portraits│  │        │
 │  │  │ (vectors)│ │ (chunks) │ │  Data  │ │ (cache) │  │        │
@@ -286,7 +286,7 @@ When failures occur at any stage, the system enters the **replan loop**—a boun
 │  └─────────────────────────────────────────────────────┘        │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────┐       │
-│  │          Flutter UI (Material Design 3)              │       │
+│  │          UI Layer                                    │       │
 │  │  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌──────────┐  │       │
 │  │  │  Story   │ │  Asset   │ │ State  │ │ Settings │  │       │
 │  │  │  View    │ │  Gallery │ │ Panel  │ │  (Skills)│  │       │
@@ -302,7 +302,7 @@ The following terms are used consistently throughout this document:
 | Term | Definition |
 |------|-----------|
 | **Skill** | A capability bundle that the Narrator AI can invoke. Contains behavioral prompts, optional scripts, configuration, and data storage. Follows the Agent Skills Standard. |
-| **Skill Script** | An executable component within a skill that performs actions (e.g., `roll-dice.dart`, `narrate.dart`). Communicates via NDJSON over stdin/stdout. |
+| **Skill Script** | An executable component within a skill that performs actions (e.g., `roll-dice`, `narrate`). Communicates via NDJSON over stdin/stdout. |
 | **Plan JSON** | Structured document produced by the Narrator AI describing which skill scripts to invoke, their inputs, dependencies, and execution strategy. |
 | **Skill Invocation** | An entry in the Plan JSON `tools` array that references a specific skill script to execute. The array is named `tools` for protocol compatibility. |
 | **Session State** | Runtime data model containing narrative state accumulated from `state_patch` events (e.g., `{"inventory": {"torch": {"lit": true}}}`). |
@@ -846,33 +846,14 @@ The following top-level keys establish conventions for common game data:
 
 #### 2.6.3 UI Reactive Rendering
 
-The Flutter UI layer uses the **Provider** pattern with `ChangeNotifier` to subscribe to session state changes:
+The UI layer uses a reactive state management pattern to subscribe to session state changes. The state container:
 
-```dart
-// Conceptual (not strict implementation)
-class SessionStateNotifier extends ChangeNotifier {
-  Map<String, dynamic> _state = {};
-  
-  void applyPatch(Map<String, dynamic> patch) {
-    _state = deepMerge(_state, patch);
-    notifyListeners();  // Triggers UI rebuild
-  }
-  
-  Map<String, dynamic> get state => _state;
-}
-```
+- Holds the current session state as a JSON object
+- Applies incoming `state_patch` events via deep merge
+- Notifies all subscribed UI components when state changes
+- Triggers selective re-renders of affected widgets
 
-Widgets rebuild automatically when state changes:
-
-```dart
-// Health bar widget
-Consumer<SessionStateNotifier>(builder: (context, state, child) {
-  final health = state.state['player']?['stats']?['health'] ?? 0;
-  final healthDef = campaignStats['health'];  // From stat definition
-  final maxHealth = healthDef?.rangeMax ?? 100;
-  return HealthBar(current: health, max: maxHealth);
-})
-```
+UI components bind to specific state paths (e.g., `player.stats.health`) and rebuild automatically when those paths change.
 
 **Key Properties:**
 
@@ -971,7 +952,7 @@ Narratoria implements the [Agent Skills Standard](https://agentskills.io/specifi
   "scripts": [
     {
       "name": "narrate",
-      "path": "narrate.dart",
+      "path": "scripts/narrate",
       "description": "Generate narrative prose",
       "timeout": 30000,
       "required": true
@@ -1066,7 +1047,7 @@ Rich narrative enhancement using the local LLM (Phi-3.5 Mini) or a configured ho
 
 **Components:**
 - Behavioral prompt for evocative narration
-- `narrate.dart` script that calls LLM (local or hosted) for detailed prose; must produce 2-3 paragraphs of scene-setting narrative
+- `narrate` script that calls LLM (local or hosted) for detailed prose; must produce 2-3 paragraphs of scene-setting narrative
 
 **Configuration:**
 
@@ -1085,7 +1066,7 @@ When the configured hosted API fails (network error, invalid key), the script gr
 Randomness and game mechanics for outcome resolution.
 
 **Components:**
-- `roll-dice.dart` script: parses dice formulas (e.g., `1d20+5`, `3d6`, `2d6+modifier`)
+- `roll-dice` script: parses dice formulas (e.g., `1d20+5`, `3d6`, `2d6+modifier`)
 - Emits `ui_event` with roll results for player display
 
 **Configuration:**
@@ -1100,8 +1081,8 @@ Randomness and game mechanics for outcome resolution.
 Semantic memory and continuity across sessions. This skill enables the "perplexingly on-point" narrative experience—the system's ability to reference past events, relationships, and player knowledge in contextually relevant ways.
 
 **Components:**
-- `store-memory.dart` — Receives event summaries, generates sentence-transformers embeddings, stores via the persistence layer
-- `recall-memory.dart` — Receives semantic queries, performs vector similarity search, returns ranked results
+- `store-memory` — Receives event summaries, generates sentence-transformers embeddings, stores via the persistence layer
+- `recall-memory` — Receives semantic queries, performs vector similarity search, returns ranked results
 
 **Store Input:**
 ```json
@@ -1151,8 +1132,8 @@ Semantic memory and continuity across sessions. This skill enables the "perplexi
 Faction standing tracking with persistence. Player actions have lasting consequences that affect NPC interactions and available choices.
 
 **Components:**
-- `update-reputation.dart` — Records reputation changes by faction
-- `query-reputation.dart` — Returns current reputation values
+- `update-reputation` — Records reputation changes by faction
+- `query-reputation` — Returns current reputation values
 
 **Configuration:**
 
@@ -1161,7 +1142,7 @@ Faction standing tracking with persistence. Player actions have lasting conseque
 | `factionList` | string[] | Faction names |
 | `reputationScale` | object | Min/max values |
 | `decayRate` | float | Reputation decay per in-game time unit |
-| `storageBackend` | enum | `objectbox` or `files` |
+| `storageBackend` | enum | `database` or `files` |
 
 Reputation decay is time-based: faction reputation loses approximately 10% per configured time unit for neutral relationships, with slower decay for strong opinions (±50 points).
 
@@ -1172,8 +1153,8 @@ Reputation decay is time-based: faction reputation loses approximately 10% per c
 Generates contextual multiple-choice options that reflect the player's character, history, and relationships.
 
 **Components:**
-- `generate-choices.dart` — Analyzes context and produces 3-4 choices
-- `evaluate-choice.dart` — Determines outcome modifiers for selected choice
+- `generate-choices` — Analyzes context and produces 3-4 choices
+- `evaluate-choice` — Determines outcome modifiers for selected choice
 
 **Configuration:**
 
@@ -1202,9 +1183,9 @@ Choice generation must complete within 3 seconds. Options are emitted as a `ui_e
 Visual character generation and persistent caching.
 
 **Components:**
-- `generate-portrait.dart` — Creates character images from narrative descriptions
-- `lookup-portrait.dart` — Retrieves cached portraits by character identifier
-- `update-portrait.dart` — Regenerates portrait for existing character
+- `generate-portrait` — Creates character images from narrative descriptions
+- `lookup-portrait` — Retrieves cached portraits by character identifier
+- `update-portrait` — Regenerates portrait for existing character
 
 **Configuration:**
 
@@ -1233,9 +1214,9 @@ Portraits are stored in `skills/character-portraits/data/` with a character-to-p
 Individual NPC relationship tracking, distinct from faction reputation. While reputation tracks standing with *groups*, perception tracks standing with *individuals*.
 
 **Components:**
-- `update-perception.dart` — Records perception changes
-- `query-perception.dart` — Returns current perception value and modifiers
-- `initialize-perception.dart` — Seeds perception for new NPCs
+- `update-perception` — Records perception changes
+- `query-perception` — Returns current perception value and modifiers
+- `initialize-perception` — Seeds perception for new NPCs
 
 **Configuration:**
 
@@ -1244,7 +1225,7 @@ Individual NPC relationship tracking, distinct from faction reputation. While re
 | `decayRate` | float | Perception decay per in-game time unit |
 | `factionInfluenceWeight` | float | How much faction reputation affects initial perception (0-1) |
 | `modifierScale` | float | Dice roll modifier per perception tier |
-| `storageBackend` | enum | `objectbox` or `files` |
+| `storageBackend` | enum | `database` or `files` |
 
 **Perception Mechanics:**
 - Perception scores range from -100 to +100 per NPC identifier
@@ -1313,7 +1294,7 @@ The Plan Generator decides *contextually* what data to retrieve. There are no fi
 ```json
 {
   "toolId": "recall",
-  "toolPath": "skills/memory/recall.dart",
+  "toolPath": "skills/memory/scripts/recall",
   "input": {"query": "past betrayals", "limit": 3}
 }
 ```
@@ -1322,19 +1303,10 @@ The LLM may query lore, recent events, NPC relationships, faction reputation, or
 
 ### 5.4 Testing Stub
 
-For development and testing, a pattern-based plan generator provides deterministic plan generation without loading the full model:
+For development and testing, a pattern-based plan generator provides deterministic plan generation without loading the full model. The Narrator AI interface requires:
 
-```dart
-abstract class NarratorAI {
-  Future<PlanJson> generatePlan({
-    required String playerInput,
-    required Set<String> disabledSkills,
-    required List<Skill> availableSkills,
-    String? parentPlanId,
-    int generationAttempt = 1,
-  });
-}
-```
+- **Inputs**: player input text, set of disabled skills, list of available skills, optional parent plan ID, generation attempt number
+- **Output**: a Plan JSON document
 
 The testing stub uses hard-coded RegExp pattern → plan mappings (e.g., `roll.*dice?` → dice roll plan, `recall|remember` → memory plan) and returns a fallback plan with narrative-only response for unrecognized patterns. It supports at least 5 patterns for integration testing and respects `disabledSkills` and replan metadata.
 
@@ -1344,7 +1316,7 @@ The testing stub uses hard-coded RegExp pattern → plan mappings (e.g., `roll.*
 
 ### 6.1 Persistence Layer
 
-The persistence layer is shared infrastructure providing a unified ObjectBox-based storage and retrieval interface for narrative data. It stores data and answers queries, but does not decide when or why data is retrieved—that's the responsibility of the Plan Generator and individual skills.
+The persistence layer is shared infrastructure providing a unified storage and retrieval interface for narrative data. It stores data and answers queries, but does not decide when or why data is retrieved—that's the responsibility of the Plan Generator and individual skills.
 
 **Primary Responsibilities:**
 1. Store narrative data: memory events, lore chunks, faction reputation, NPC perception, character portraits
@@ -1352,7 +1324,7 @@ The persistence layer is shared infrastructure providing a unified ObjectBox-bas
 3. Query interface: fast, filtered access to stored data (<200ms latency)
 4. Persistence: data survives application restarts and session boundaries
 
-**Architectural Note:** Like the Narrator AI, the persistence layer runs within the Dart runtime as shared infrastructure. This differs from skill-private `data/` directories. The shared layer enables cross-skill data access through a query interface without violating the "no direct skill-to-skill calls" rule.
+**Architectural Note:** Like the Narrator AI, the persistence layer runs within the runtime as shared infrastructure. This differs from skill-private `data/` directories. The shared layer enables cross-skill data access through a query interface without violating the "no direct skill-to-skill calls" rule.
 
 #### 6.1.1 Storage Schema
 
@@ -1744,7 +1716,7 @@ For each *.stat.txt in stats/ (including stats/hidden/):
   1. Parse filename stem → stat ID ("health", "chemistry")
   2. Parse header → range, default, display, label, category, hidden
   3. Parse prose body → behavioral prompt text
-  4. Store stat definition in ObjectBox:
+  4. Store stat definition in the persistence layer:
      - Stat ID, range bounds, default, display mode, category
      - Behavioral prose stored as embedding + raw text
      - Hidden flag
@@ -1876,12 +1848,12 @@ The narrator should describe a spreading warmth, the taste
 of honey and copper, and the visible closure of minor wounds.
 ```
 
-On ingestion, item headers are tokenized and stored in ObjectBox with semantic embeddings. When the Narrator AI generates a plan involving a dice roll or stat check, it can look up the relevant item's properties:
+On ingestion, item headers are tokenized and stored in the persistence layer with semantic embeddings. When the Narrator AI generates a plan involving a dice roll or stat check, it can look up the relevant item's properties:
 
 ```json
 {
   "toolId": "dice_roll",
-  "toolPath": "skills/dice-roller/roll.dart",
+  "toolPath": "skills/dice-roller/scripts/roll",
   "input": {
     "formula": "1d20 + player.stats.dexterity",
     "item_context": "weapon.short_sword"
@@ -1889,13 +1861,13 @@ On ingestion, item headers are tokenized and stored in ObjectBox with semantic e
 }
 ```
 
-The dice roller skill queries ObjectBox for `weapon.short_sword`, retrieves `damage: 1d6`, and factors it into the result.
+The dice roller skill queries the persistence layer for `weapon.short_sword`, retrieves `damage: 1d6`, and factors it into the result.
 
 ##### UI Rendering
 
 The UI renders stats deterministically based on definition metadata:
 
-1. **Discovery**: Query all stat definitions from ObjectBox where `hidden = false`
+1. **Discovery**: Query all stat definitions from the persistence layer where `hidden = false`
 2. **Grouping**: Group by `category` field
 3. **Ordering**: Within each category, alphabetical by label (or author-specified order if present)
 4. **Rendering**: Apply `display` mode:
@@ -2014,7 +1986,7 @@ When the Narrator AI generates narrative prose or makes planning decisions, it *
   ```json
   {
     "toolId": "recall",
-    "toolPath": "skills/memory/recall.dart",
+    "toolPath": "skills/memory/scripts/recall",
     "input": {
       "query": "wizard appearance",
       "sources": ["characters/npcs/wizard/profile.json", "art/characters/npc_wizard.png.keywords.txt"]
@@ -2295,20 +2267,13 @@ The system uses a deterministic lookup algorithm to resolve state-bound assets a
 
 When a campaign loads, the ingestion pipeline scans `ui/state/` and `ui/items/` directories and builds an in-memory index:
 
-```dart
+```
 // Conceptual data structure
-class StateAssetIndex {
-  // Exact path matches
-  Map<String, AssetMetadata> exactMatches;
-  
-  // Pattern matches (wildcards)
-  List<PatternMatch> patternMatches;
-  
-  // Type-based fallbacks
-  Map<String, AssetMetadata> typeFallbacks;
-  
-  // Category-level fallbacks
-  Map<String, AssetMetadata> categoryFallbacks;
+StateAssetIndex {
+  exactMatches:     Map<String, AssetMetadata>  // Exact path matches
+  patternMatches:   List<PatternMatch>          // Wildcard patterns
+  typeFallbacks:    Map<String, AssetMetadata>  // Type-based fallbacks
+  categoryFallbacks: Map<String, AssetMetadata> // Category-level fallbacks
 }
 ```
 
@@ -2410,45 +2375,13 @@ ui/state/
 
 **World Map with Fog of War Example:**
 
-```dart
-// UI rendering logic for world map
-class WorldMapWidget extends StatelessWidget {
-  Widget build(BuildContext context) {
-    final locations = sessionState['world']['locations'];
-    
-    return Stack(
-      children: [
-        // Base map image
-        Image.asset('ui/maps/world_map.webp'),
-        
-        // Location markers (only discovered locations)
-        ...locations.entries
-          .where((entry) => entry.value['discovered'] == true)
-          .map((entry) {
-            final locationId = entry.key;
-            final statePath = 'world.locations.$locationId.marker';
-            
-            // Deterministic asset lookup
-            final markerAsset = assetIndex.resolve(statePath);
-            
-            // Position from state or campaign data
-            final position = entry.value['map_position'] ?? 
-                             campaignData.getLocationPosition(locationId);
-            
-            return Positioned(
-              left: position.x,
-              top: position.y,
-              child: GestureDetector(
-                onTap: () => showLocationDetails(locationId),
-                child: Image(image: markerAsset.image),
-              ),
-            );
-          }).toList(),
-      ],
-    );
-  }
-}
-```
+The world map UI renders discovered location markers by:
+
+1. Reading `world.locations` from session state
+2. Filtering to only `discovered: true` locations
+3. For each discovered location, resolving the marker asset via `assetIndex.resolve(statePath)`
+4. Positioning markers using coordinates from state (`map_position`) or campaign data
+5. Enabling tap interaction to open location details
 
 **Key Behaviors:**
 
@@ -2503,7 +2436,7 @@ The in-memory asset index is deliberately chosen for performance despite minimum
 Target Device: 8GB RAM
 ├── Phi-3.5 Mini model: 2.5GB (31%)
 ├── sentence-transformers: 60MB (0.75%)
-├── ObjectBox + Flutter + OS: ~500MB (6%)
+├── Database + UI Framework + OS: ~500MB (6%)
 ├── Available headroom: ~5GB (62%)
 └── Asset index (10K assets): 2.5MB (0.03% of total)
 ```
@@ -2520,14 +2453,14 @@ The system uses a **three-tier caching strategy** balancing speed, memory, and d
 - Zero disk I/O during lookups
 - Invalidated on campaign reload or app restart
 
-**Tier 2: ObjectBox Cache (Cross-Session Persistence)**
-- Index serialized to ObjectBox during campaign ingestion
+**Tier 2: Embedded Database Cache (Cross-Session Persistence)**
+- Index serialized to the persistence layer during campaign ingestion
 - Includes campaign version checksum for invalidation
 - Rebuilt only when campaign files change (detected via SHA-256 hash)
 - Load time: <50ms for large campaigns
 
 **Tier 3: Campaign Directory (No Cache)**
-- Fallback if ObjectBox cache is missing or invalidated
+- Fallback if persistence cache is missing or invalidated
 - Full directory scan + metadata parsing
 - Build time: <100ms for 1000 assets, <500ms for 10,000 assets
 
@@ -2536,7 +2469,7 @@ The system uses a **three-tier caching strategy** balancing speed, memory, and d
 ```
 Campaign Load
     ↓
-Check ObjectBox for cached index
+Check persistence layer for cached index
     ↓
     ├─ Cache Hit (version matches)
     │    ↓
@@ -2550,32 +2483,25 @@ Check ObjectBox for cached index
          ↓
        Build index (100-500ms depending on size)
          ↓
-       Serialize to ObjectBox with version hash
+       Serialize to persistence layer with version hash
          ↓
        Ready for lookups
 ```
 
-**ObjectBox Schema for Cached Index:**
+**Persistence Schema for Cached Index:**
 
-```dart
-@Entity()
-class CampaignAssetIndexCache {
-  @Id()
-  int id = 0;
-  
-  String campaignId;           // Unique campaign identifier
-  String campaignVersion;      // Semver from manifest.json
-  String contentHash;          // SHA-256 of ui/ directory tree
-  DateTime indexedAt;          // When index was built
-  
-  // Serialized index data (JSON or MessagePack)
-  @Property(type: PropertyType.byteVector)
-  List<int> indexData;
-  
-  int assetCount;              // For metadata/debugging
-  int sizeBytes;               // Serialized size
-}
-```
+The cached index record stores:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | auto | Primary key |
+| campaignId | string | Unique campaign identifier |
+| campaignVersion | string | Semver from manifest.json |
+| contentHash | string | SHA-256 of ui/ directory tree |
+| indexedAt | datetime | When index was built |
+| indexData | byte[] | Serialized index data (JSON or MessagePack) |
+| assetCount | integer | For metadata/debugging |
+| sizeBytes | integer | Serialized size |
 
 **Cache Invalidation Rules:**
 
@@ -2592,21 +2518,21 @@ For campaigns exceeding 5,000 assets, additional optimizations activate:
 1. **Incremental Indexing**: Index built in chunks; UI remains responsive
 2. **Demand-based Loading**: Wildcard patterns indexed lazily on first match
 3. **Bloom Filter Pre-check**: Fast negative lookups before hash map queries
-4. **Compressed Storage**: Index data compressed with zstd in ObjectBox (2-3x reduction)
+4. **Compressed Storage**: Index data compressed with zstd in the persistence layer (2-3x reduction)
 
 **Memory vs. Disk Trade-off Decision:**
 
 | Strategy | Lookup Speed | Memory Usage | Disk I/O | Cache Warmup |
 |----------|--------------|--------------|----------|--------------|
 | In-memory only | <1ms | 2.5MB (10K) | 0 during play | 100-500ms |
-| ObjectBox only | 5-10ms | ~500KB | Every lookup | 0ms |
+| Database only | 5-10ms | ~500KB | Every lookup | 0ms |
 | Hybrid (chosen) | <1ms | 2.5MB | 0 during play | 50ms (cached) |
 
 **Why Hybrid Wins:**
 
 - **Speed**: In-memory lookups are 10-20x faster than disk queries
 - **Negligible RAM**: Even 10K assets use <0.05% of available memory
-- **Fast Startup**: ObjectBox cache reduces cold-start from 500ms → 50ms
+- **Fast Startup**: Database cache reduces cold-start from 500ms → 50ms
 - **Offline Friendly**: No external dependencies; fully local
 
 **Alternative Rejected:**
@@ -2623,13 +2549,13 @@ Writing a `cache/` directory to the campaign folder was considered but rejected:
 - Simple implementation
 - Fast cache loading (direct file I/O)
 
-**Decision**: ObjectBox-based caching provides the speed benefits without filesystem complexity or campaign directory pollution.
+**Decision**: Database-backed caching provides the speed benefits without filesystem complexity or campaign directory pollution.
 
 **Monitoring and Telemetry:**
 
 The system logs index performance metrics:
 
-```dart
+```json
 // Logged on campaign load
 {
   "event": "asset_index_built",
@@ -2669,7 +2595,7 @@ These metrics enable authors to optimize asset organization and detect performan
 
 #### 6.2.13 Provenance Validation
 
-Provenance rules are enforced mechanically at the campaign ingestion layer / ObjectBox persistence adapter. The adapter must reject assets that violate provenance requirements and must not write them to ObjectBox:
+Provenance rules are enforced mechanically at the campaign ingestion layer / persistence adapter. The adapter must reject assets that violate provenance requirements and must not write them to the database:
 
 - `generated: true` assets **require** a `provenance` object with `source_model`, `generated_at`, and `seed_data`. If any field is missing, the adapter rejects the store and returns error: `"Generated asset missing provenance (generated=true requires provenance.source_model, provenance.generated_at, provenance.seed_data)"`.
 - `generated: false` assets **must not** have a `provenance` object. If present, the adapter rejects the store and returns error: `"Human-created asset must not contain provenance (generated=false conflicts with provenance object)"`.
@@ -2710,7 +2636,7 @@ The state model has three tiers:
 
 1. **Session State (transient)**: In-memory JSON updated by `state_patch` events. Lost when the application exits.
 2. **Skill Private Data**: Per-skill `data/` directories for caches and working files. Persists across restarts.
-3. **Shared Persistence**: ObjectBox-based storage for cross-skill data (memories, reputation, perception, portraits). ACID-compliant, persists across restarts.
+3. **Shared Persistence**: Embedded database storage for cross-skill data (memories, reputation, perception, portraits). ACID-compliant, persists across restarts.
 
 ---
 
@@ -2786,212 +2712,19 @@ The Narrative Engine checks plot beat conditions during each scene transition:
 
 ---
 
-## 8. Implementation
+## 8. Design Rationale
 
-### 8.1 Technology Stack
-
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Language | Dart 3.x | Cross-platform client logic |
-| Framework | Flutter SDK (latest stable) | UI and platform integration |
-| Design System | Material Design 3 | Consistent, accessible UI |
-| State Management | Provider (ChangeNotifier) | Reactive UI updates |
-| Database | ObjectBox (in-process) | Persistent storage with vector search |
-| Narrator AI | Phi-3.5 Mini (GGUF) | Plan generation and narration |
-| Embeddings | sentence-transformers/all-MiniLM-L6-v2 | Semantic search |
-| Testing | flutter_test, integration_test | Unit and integration testing |
-
-### 8.2 Project Structure
-
-```
-src/
-├── lib/
-│   ├── models/                     # Dart class implementations
-│   │   ├── plan_json.dart          # PlanJson, ToolInvocation, RetryPolicy, PlanMetadata
-│   │   ├── protocol_events.dart    # Sealed class hierarchy for protocol events
-│   │   ├── session_state.dart      # SessionState with DeepMerge
-│   │   └── tool_execution_status.dart  # ToolResult, ExecutionResult, ToolError
-│   ├── services/                   # Business logic
-│   │   ├── tool_invoker.dart       # Process launch and NDJSON parsing
-│   │   ├── plan_executor.dart      # Topological sort, retry, parallel execution
-│   │   ├── narrator_ai.dart        # NarratorAI interface and stub
-│   │   ├── skill_discovery.dart    # Manifest parsing and validation
-│   │   └── skill_config.dart       # Configuration loading and UI generation
-│   └── ui/                         # Flutter widgets
-│       ├── screens/
-│       │   ├── main_screen.dart
-│       │   ├── storytelling_screen.dart
-│       │   └── skills_settings_screen.dart
-│       └── widgets/
-│           ├── tool_execution_panel.dart
-│           ├── asset_gallery.dart
-│           ├── narrative_state_panel.dart
-│           ├── player_choice_interface.dart
-│           └── story_view.dart
-└── skills/                         # Skill implementations
-    ├── storyteller/
-    │   ├── skill.json
-    │   ├── config-schema.json
-    │   ├── prompt.md
-    │   └── narrate.dart
-    ├── dice-roller/
-    │   ├── skill.json
-    │   └── roll-dice.dart
-    ├── memory/
-    │   ├── skill.json
-    │   ├── store-memory.dart
-    │   └── recall-memory.dart
-    └── reputation/
-        ├── skill.json
-        ├── update-reputation.dart
-        └── query-reputation.dart
-```
-
-### 8.3 Flutter UI
-
-#### 8.3.1 Theming
-
-Dark-themed Material Design 3 for immersive storytelling:
-
-```dart
-ThemeData(
-  useMaterial3: true,
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: Colors.deepPurple,
-    brightness: Brightness.dark,
-  ),
-  typography: Typography.material2021(),
-)
-```
-
-#### 8.3.2 Layout
-
-```
-┌─────────────────────────────────────────────┐
-│  NavigationRail   │   Main Content Area     │
-│                   │                         │
-│  • Narrative      │  ┌──────────────────┐  │
-│  • Tools          │  │  Story View      │  │
-│  • Assets         │  │  (narrative text │  │
-│  • State          │  │   + assets)      │  │
-│                   │  └──────────────────┘  │
-│                   │                         │
-│                   │  ┌──────────────────┐  │
-│                   │  │  Player Choices  │  │
-│                   │  │  [choice 1]      │  │
-│                   │  │  [choice 2]      │  │
-│                   │  │  [choice 3]      │  │
-│                   │  └──────────────────┘  │
-└─────────────────────────────────────────────┘
-```
-
-#### 8.3.3 UI Components
-
-**Story View**: Narrative text with rendered assets (character portraits, scene backgrounds). Prose displays as rich formatted text; assets display inline.
-
-**Tool Execution Panel**: Real-time progress for active tool invocations—tool name, status, streaming log output, progress indicators, error display, and completion status.
-
-**Asset Gallery**: Images with preview and metadata, audio player controls, video player controls, and placeholder cards for unsupported media types.
-
-**Narrative State Panel**: Expandable tree view of session state, highlighted state changes from `state_patch` events, and a JSON inspector for debugging.
-
-**Player Choice Interface**: 3-4 choice buttons arranged vertically, descriptive text per choice, active/hover selection feedback, disabled state during scene generation. Players select from presented choices only.
-
-#### 8.3.4 Error Recovery UI
-
-| Error Source | Display Location | User Action |
-|--------------|------------------|-------------|
-| Tool failure (`done.ok=false`) | Tool Panel + inline Story View notice | Retry or continue |
-| Plan generation failure | Story View with fallback narrative | Select different choice |
-| Network/API error | Toast notification + Tool Panel detail | Check connection, retry |
-| Protocol violation | Developer console only | None (internal) |
-| Max replan exceeded | Modal dialog with options | Restart session or continue with fallback |
-
-**Inline Error Notice:**
-```
-┌─────────────────────────────────────┐
-│ ⚠ The torch-lighter skill failed.  │
-│ The story continues without it...   │
-│ [Show Details] [Retry] [Dismiss]    │
-└─────────────────────────────────────┘
-```
-
-**Max Replan Modal:**
-```
-┌─────────────────────────────────────┐
-│  ⚠ Story Generation Issue           │
-│  The narrator couldn't complete     │
-│  your request after 5 attempts.     │
-│  [Continue with Fallback]           │
-│  [Restart Session]                  │
-│  [View Error Details]               │
-└─────────────────────────────────────┘
-```
-
-Error recovery requirements: user-friendly messages (no raw stack traces), actionable recovery options, preserved narrative continuity via fallback narration, detailed logging for debugging, animated transitions between error and recovery states.
-
-### 8.4 Dart Class Model
-
-The following core Dart classes implement the architecture:
-
-**Skill Model:**
-- `Skill` — Capability bundle: name, version, description, scripts, error state, enabled flag. Factory `Skill.fromManifest()` for loading from `skill.json`. Check `isAvailable` (enabled AND not permanently failed).
-- `SkillScript` — Executable within a skill: name, path, timeout (default 30s), required flag.
-- `SkillErrorState` — Enum: `healthy`, `degraded`, `temporaryFailure`, `permanentFailure`. Extension method `canSelect` returns false only for `permanentFailure`.
-- `ConfigField` — Configuration field with type, title, description, default, enum values, min/max, sensitive flag, env var substitution, UI category.
-
-**Plan Model:**
-- `PlanJson` — Plan document: requestId, narrative, tools list, parallel flag, disabled skills set, metadata. Factory `PlanJson.fromJson()` and `toJson()`.
-- `ToolInvocation` — Invocation descriptor: toolId, toolPath, input, dependencies, required, async, retryPolicy. Factory from JSON.
-- `RetryPolicy` — Retry configuration with `delayForAttempt(n)` computing $\text{backoffMs} \times 2^{(n-1)}$.
-- `PlanMetadata` — Generation tracking: attempt number, parent plan ID.
-
-**Execution Model:**
-- `PlanExecutionContext` — Dependency resolution: builds adjacency graph, performs cycle detection via DFS, computes topological order via Kahn's algorithm, provides `getReadyTools(completed)` and `getDependents(toolId)`.
-- `ToolResult` — Per-tool result: toolId, state (pending/running/success/failed/skipped/timeout), output, events, execution time, retry count, error.
-- `ExecutionResult` — Plan-level result: planId, success, canReplan, failed tools, disabled skills, tool results, aggregated state, aggregated assets, execution time, attempt number.
-- `ToolError` — Error details: code, message, category (toolFailure/circularDependency/timeout/invalidJson/processError), details.
-
-**Protocol Events (Sealed Class Hierarchy):**
-- `ProtocolEvent` — Base sealed class. Factory `ProtocolEvent.fromJson()` dispatches on `type` field.
-  - `LogEvent` — level (debug/info/warn/error), message, fields
-  - `StatePatchEvent` — patch (JSON object)
-  - `AssetEvent` — assetId, kind, mediaType, path, metadata
-  - `UiEventEvent` — event name, payload
-  - `ErrorEvent` — errorCode, errorMessage, details
-  - `DoneEvent` — ok (bool), summary
-
-**Session State:**
-- `SessionState` — Container with deep merge. `applyPatch()` updates state. `get<T>(path)` supports dot-notation access (e.g., `"inventory.torch.lit"`). Copy support for snapshots.
-
-**Asset Reference:**
-- `AssetReference` — Generated asset: assetId, kind, mediaType, path, toolId, metadata. Factory `fromEvent()` converts `AssetEvent`.
-
-**Exception Hierarchy:**
-- `NarratoriaException` — Base exception
-  - `CyclicDependencyException` — Circular dependency in plan
-  - `PlanExecutionException` — Plan execution failure with failed tool list
-  - `ToolTimeoutException` — Tool exceeded timeout
-  - `ProtocolViolationException` — Invalid JSON, unknown event type
-  - `UnknownEventTypeException` — Unrecognized event type string
-  - `SkillScriptNotFoundError` — Script missing from skill
-  - `MaxReplanAttemptsException` — 5 replan attempts exhausted
-
----
-
-## 9. Design Rationale
-
-### 9.1 Why Protocol-First?
+### 8.1 Why Protocol-First?
 
 **Decision**: All tool communication via NDJSON over stdin/stdout pipes.
 
 **Alternatives Considered**: Shared memory, gRPC, REST APIs, FFI bindings.
 
-**Rationale**: NDJSON over pipes is the simplest possible IPC mechanism. It requires no dependencies, works on every platform, is trivially testable (pipe a file to stdin, validate stdout), and enables language independence. A skill written in Python, Rust, or Go conforms to the same protocol as one written in Dart.
+**Rationale**: NDJSON over pipes is the simplest possible IPC mechanism. It requires no dependencies, works on every platform, is trivially testable (pipe a file to stdin, validate stdout), and enables language independence. A skill written in Python, Rust, or Go conforms to the same protocol as one written in any other language.
 
 The trade-off is performance—process launch overhead is higher than in-process calls. But skill scripts typically run for hundreds of milliseconds to seconds (LLM inference, image generation, database queries), so process launch latency (<50ms) is negligible relative to execution time.
 
-### 9.2 Why Bounded Retry?
+### 8.2 Why Bounded Retry?
 
 **Decision**: Maximum 5 plan attempts, 3 retries per tool, exponential backoff.
 
@@ -3001,7 +2734,7 @@ The trade-off is performance—process launch overhead is higher than in-process
 
 The key innovation is **skill disabling during replanning**: when a skill fails, it's removed from the available skill set for subsequent plans, forcing the Narrator AI to find alternative approaches.
 
-### 9.3 Why On-Device AI?
+### 8.3 Why On-Device AI?
 
 **Decision**: Phi-3.5 Mini (3.8B) + sentence-transformers, both running locally.
 
@@ -3011,7 +2744,7 @@ The key innovation is **skill disabling during replanning**: when a skill fails,
 
 The 3.8B parameter model is the sweet spot for mobile devices with 8GB RAM: large enough for coherent multi-paragraph prose and structured JSON generation, small enough to run in-process with acceptable latency (<3 seconds per scene).
 
-### 9.4 Why No Free-Text Input?
+### 8.4 Why No Free-Text Input?
 
 **Decision**: Players select from AI-generated choices only.
 
@@ -3021,15 +2754,15 @@ The 3.8B parameter model is the sweet spot for mobile devices with 8GB RAM: larg
 
 This also enables measurable quality: we can verify that 80% of choices reference past events (SC-002), which is impossible to measure with arbitrary free-text input.
 
-### 9.5 Why ObjectBox?
+### 8.5 Why ObjectBox?
 
-**Decision**: ObjectBox as the persistence backend.
+**Decision**: ObjectBox as the current persistence backend.
 
-**Alternatives Considered**: SQLite (sqflite), raw JSON files, Hive, Isar.
+**Alternatives Considered**: SQLite, raw JSON files, Hive, Isar.
 
-**Rationale**: ObjectBox provides native vector search capability alongside traditional CRUD operations, which is essential for the semantic memory system. SQLite with extension modules could achieve similar results but with more complexity. ObjectBox's in-process architecture aligns with the "no network" constraint, and its Dart SDK provides ergonomic integration.
+**Rationale**: ObjectBox provides native vector search capability alongside traditional CRUD operations, which is essential for the semantic memory system. SQLite with extension modules could achieve similar results but with more complexity. ObjectBox's in-process architecture aligns with the "no network" constraint, and its client SDK provides ergonomic integration. This is a current technology choice that may evolve as alternatives mature.
 
-### 9.6 Why Campaign Format Creeds?
+### 8.6 Why Campaign Format Creeds?
 
 **Decision**: Mandatory provenance tracking and transparency metadata.
 
@@ -3041,9 +2774,9 @@ This is especially important for shared campaigns: when one author shares a camp
 
 ---
 
-## 10. Open Design Decisions
+## 9. Open Design Decisions
 
-### 10.1 Multiplayer Coordination
+### 9.1 Multiplayer Coordination
 
 How should Narratoria handle multiple players in a shared narrative? Options include:
 - Shared session state with turn-based choice selection
@@ -3052,39 +2785,39 @@ How should Narratoria handle multiple players in a shared narrative? Options inc
 
 Currently out of scope (single-player focus), but the protocol-boundary architecture is extensible to multiplayer: skill scripts don't know how many players exist.
 
-### 10.2 Voice Narration
+### 9.2 Voice Narration
 
 Should the system support text-to-speech for narration? The on-device constraint limits model options, but small TTS models (e.g., Piper, Coqui) are becoming viable. This would enhance accessibility and immersion.
 
-### 10.3 Campaign Marketplace
+### 9.3 Campaign Marketplace
 
 How should campaigns be distributed? A community repository with rating, search, and verification could accelerate the content ecosystem. Provenance tracking already supports this (campaigns declare AI content transparently).
 
-### 10.4 Model Upgrade Migration
+### 9.4 Model Upgrade Migration
 
 When embedding models improve, how should old embeddings be handled? Current plan: old embeddings remain; new memories use the new model; query vectors use the current model. This may cause degraded relevance for old memories. A background re-embedding process could resolve this but adds complexity.
 
-### 10.5 Cancellation and Interruption
+### 9.5 Cancellation and Interruption
 
 The current architecture has no cancellation mechanism for in-flight skill scripts. If a player wants to undo a choice or the system needs to interrupt a long-running tool, there's no protocol-level support. Future options: SIGINT handling, stdin-based cancel messages, or timeout-only termination.
 
-### 10.6 Tool Versioning and Capability Negotiation
+### 9.6 Tool Versioning and Capability Negotiation
 
 Currently, tools declare a static `version: "0"` and there's no mechanism for tools to advertise their capabilities to the runtime. As skills evolve, version negotiation may become necessary to maintain backward compatibility.
 
-### 10.7 Network Protocols for Remote Tools
+### 9.7 Network Protocols for Remote Tools
 
 All tools currently run as local OS processes. For computationally expensive operations (large model inference, high-resolution image generation), remote tool execution over network protocols could extend capability—at the cost of the privacy and offline guarantees.
 
-### 10.8 Authentication and Sandboxing
+### 9.8 Authentication and Sandboxing
 
 Tools currently have full filesystem access. For third-party skills downloaded from untrusted sources, sandboxing (filesystem restrictions, network limitations, resource caps) would improve security. This requires platform-specific implementation.
 
 ---
 
-## 11. Success Criteria & Metrics
+## 10. Success Criteria & Metrics
 
-### 11.1 Core System Metrics
+### 10.1 Core System Metrics
 
 | ID | Metric | Target | Test Method |
 |----|--------|--------|-------------|
@@ -3095,7 +2828,7 @@ Tools currently have full filesystem access. For third-party skills downloaded f
 | SC-005 | Script execution success | 99% of invocations complete within timeout | Automated: run 1000+ script invocations, measure success rate |
 | SC-006 | Graceful degradation | App continues without crash on skill failure; helpful error message | Fault injection tests |
 
-### 11.2 Skill Performance Metrics
+### 10.2 Skill Performance Metrics
 
 | ID | Metric | Target | Test Method |
 |----|--------|--------|-------------|
@@ -3106,7 +2839,7 @@ Tools currently have full filesystem access. For third-party skills downloaded f
 | SC-011 | Config persistence | Config survives restarts; correctly loaded on next invocation | Automated: save, restart, validate |
 | SC-012 | Plan failure handling | Logs error, marks step failed, continues remaining steps | Fault injection in plan execution |
 
-### 11.3 Advanced Skill Metrics
+### 10.3 Advanced Skill Metrics
 
 | ID | Metric | Target | Test Method |
 |----|--------|--------|-------------|
@@ -3121,7 +2854,7 @@ Tools currently have full filesystem access. For third-party skills downloaded f
 | SC-021 | Cross-factor choices | Choices respect both reputation AND perception when applicable | Scenario tests with both factors |
 | SC-022 | Portrait cross-session | Images associated correctly across sessions | Multi-session portrait retrieval test |
 
-### 11.4 Persistence Metrics
+### 10.4 Persistence Metrics
 
 | ID | Metric | Target | Test Method |
 |----|--------|--------|-------------|
@@ -3136,12 +2869,12 @@ Tools currently have full filesystem access. For third-party skills downloaded f
 | SC-031 | Concurrent query safety | 5+ simultaneous queries without blocking or deadlock | Stress test |
 | SC-032 | Scope filtering | No out-of-scope results in filtered queries | Cross-playthrough isolation test |
 
-### 11.5 Narrative Engine Metrics
+### 10.5 Narrative Engine Metrics
 
 | ID | Metric | Target | Test Method |
 |----|--------|--------|-------------|
 | SC-033 | Scene transition speed | <3 seconds on 8GB RAM device | Automated timing on target hardware |
-| SC-034 | Memory-driven choices | 80%+ reference past events | Automated entity extraction from choice text, cross-referenced against stored memory events in ObjectBox via embedding similarity match. Pass if ≥80% of sampled choices (50+ choices across 3 campaigns) retrieve ≥1 matching memory event with similarity score ≥0.7. |
+| SC-034 | Memory-driven choices | 80%+ reference past events | Automated entity extraction from choice text, cross-referenced against stored memory events in the persistence layer via embedding similarity match. Pass if ≥80% of sampled choices (50+ choices across 3 campaigns) retrieve ≥1 matching memory event with similarity score ≥0.7. |
 | SC-035 | Plot beat timing | Trigger within 2 scenes of conditions met, 95% of cases | Automated condition monitoring |
 | SC-036 | NPC sentiment accuracy | 95% of interactions reflect correct sentiment | Dialogue sentiment analysis |
 | SC-037 | Long-session coherence | Coherent narrative across 100+ consecutive choices | End-to-end session test |
@@ -3149,7 +2882,7 @@ Tools currently have full filesystem access. For third-party skills downloaded f
 
 > **Note on SC-003 (Removed)**: Previously stated as "Players report feeling the AI remembers their choices in 90% of post-session surveys." Recognized as an emergent property rather than a formal requirement—when SC-034 (memory-driven choices) is achieved, players naturally feel the system remembers because it demonstrably references past events. No player survey required.
 
-### 11.6 Campaign Format Metrics
+### 10.6 Campaign Format Metrics
 
 | ID | Metric | Target | Test Method |
 |----|--------|--------|-------------|
@@ -3166,7 +2899,7 @@ Tools currently have full filesystem access. For third-party skills downloaded f
 
 ---
 
-## 12. Appendices
+## 11. Appendices
 
 ### A. Glossary
 
@@ -3212,7 +2945,7 @@ Layer 2: Plan Execution ←──────── Layer 3: Skills Framework
     ↑                                  ↑
 Layer 4: Narratoria Skills ──────► Layer 6: Persistence
     ↑                                  ↑
-Layer 5: Dart Implementation ─────────┤
+Layer 5: UI Implementation ───────────┤
     ↑                                  ↑
 Layer 7: Campaign Format ─────────────┤
     ↑                                  ↑
@@ -3223,12 +2956,12 @@ Layer 8: Narrative Engine ────────────┘
 1. Start with Layer 1 (Tool Protocol) — foundational communication
 2. Read Layers 2 and 3 together — plan execution and skills are co-dependent
 3. Read Layers 4 and 6 together — skill interfaces and storage implementation are co-dependent
-4. Read Layer 5 — reference implementation ties everything together
+4. Read Layer 5 — UI implementation ties everything together
 5. Read Layers 7 and 8 — campaign content and runtime execution
 
 ### E. Future Roadmap
 
-**Phase 1 (MVP)**: Core protocol, plan execution, 4 core skills (storyteller, dice-roller, memory, reputation), basic Flutter UI, ObjectBox persistence, minimal campaign support.
+**Phase 1 (MVP)**: Core protocol, plan execution, 4 core skills (storyteller, dice-roller, memory, reputation), basic UI, persistence layer, minimal campaign support.
 
 **Phase 2 (Advanced Skills)**: Player Choices skill, Character Portraits skill, NPC Perception skill, skill integration (cross-skill plans), campaign enrichment pipeline.
 
