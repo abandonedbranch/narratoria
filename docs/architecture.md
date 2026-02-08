@@ -301,7 +301,7 @@ The following terms are used consistently throughout this document:
 
 | Term | Definition |
 |------|-----------|
-| **Skill** | A capability bundle that the Narrator AI can invoke. Contains behavioral prompts, optional scripts, configuration, and data storage. Follows the Agent Skills Standard. |
+| **Skill** | A capability bundle that the Narrator AI can invoke. Defined by a `SKILL.md` file (YAML frontmatter + markdown body) following the [Agent Skills Standard](https://agentskills.io/specification), with Narratoria extensions for scripts, configuration, and data storage. |
 | **Skill Script** | An executable component within a skill that performs actions (e.g., `roll-dice`, `narrate`). Communicates via NDJSON over stdin/stdout. |
 | **Plan JSON** | Structured document produced by the Narrator AI describing which skill scripts to invoke, their inputs, dependencies, and execution strategy. |
 | **Skill Invocation** | An entry in the Plan JSON `tools` array that references a specific skill script to execute. The array is named `tools` for protocol compatibility. |
@@ -315,7 +315,7 @@ The following terms are used consistently throughout this document:
 | **Lore Chunk** | A paragraph-sized segment of campaign lore stored with a semantic embedding vector for retrieval. |
 | **Memory Event** | A recorded narrative occurrence with timestamp and semantic embedding (e.g., "player befriends blacksmith"). |
 | **Persona Profile** | Player character data including stats, traits, background, and preferences. |
-| **Behavioral Prompt** | Markdown file (`prompt.md`) injected into Narrator AI system context; guides behavior for a specific skill. |
+| **Behavioral Prompt** | The markdown body of a skill's `SKILL.md` file, injected into the Narrator AI system context when the skill is activated; guides AI behavior for that skill. |
 | **Error State** | Skill health status: `healthy`, `degraded`, `temporaryFailure`, or `permanentFailure`. |
 | **Perception Score** | Numerical value (-100 to +100) representing an individual NPC's opinion of the player. |
 | **Faction Reputation** | Player standing with named factions, influencing NPC attitudes and available choices. |
@@ -928,70 +928,125 @@ The system must log all plan generation and execution attempts with timestamps, 
 
 ### 3.1 Agent Skills Standard
 
-Narratoria implements the [Agent Skills Standard](https://agentskills.io/specification). A skill is a capability bundle containing:
+Narratoria implements the [Agent Skills Standard](https://agentskills.io/specification) with Narratoria-specific extensions for AI orchestration. A skill is a directory containing at minimum a `SKILL.md` file:
 
-- **`skill.json`** — Manifest file defining identity, version, author, scripts, and capabilities
-- **`prompt.md`** — Behavioral prompt injected into Narrator AI system context
-- **`config-schema.json`** — JSON Schema defining user-configurable settings
-- **`config.json`** — User-saved configuration values
-- **`scripts/`** — Executable programs that perform the skill's work
-- **`data/`** — Private persistent storage for the skill
+- **`SKILL.md`** — Required. YAML frontmatter (metadata) + markdown body (behavioral guidance and documentation)
+- **`scripts/`** — Optional. Executable programs that perform the skill's work
+- **`references/`** — Optional. Additional documentation agents can read on demand (Narratoria stores configuration schemas here)
+- **`assets/`** — Optional. Templates, images, and other static resources
+- **`config.json`** — Optional, Narratoria extension. User-saved configuration values (written by the runtime)
+- **`data/`** — Optional, Narratoria extension. Private persistent storage for the skill
 
-#### Skill Manifest Schema (`skill.json`)
+#### SKILL.md Format
 
-```json
-{
-  "name": "storyteller",
-  "displayName": "Storyteller",
-  "description": "Rich narrative enhancement using LLM",
-  "version": "1.0.0",
-  "author": "Narratoria",
-  "license": "MIT",
-  "prompt": "prompt.md",
-  "configSchema": "config-schema.json",
-  "scripts": [
-    {
-      "name": "narrate",
-      "path": "scripts/narrate",
-      "description": "Generate narrative prose",
-      "timeout": 30000,
-      "required": true
-    }
-  ],
-  "capabilities": ["narration", "prose"],
-  "priority": 80,
-  "retryPolicy": { "maxRetries": 3, "backoffMs": 100 }
-}
+The `SKILL.md` file uses YAML frontmatter for metadata followed by a markdown body containing behavioral guidance and documentation. Standard fields go in the frontmatter root; Narratoria-specific extensions go under the `x-narratoria` key in `metadata`.
+
+```markdown
+---
+name: storyteller
+description: Rich narrative enhancement using local or hosted LLMs. Use when
+  the narrator needs to generate evocative prose for scene descriptions,
+  dialogue, or transitions.
+license: MIT
+metadata:
+  author: Narratoria
+  version: "1.0.0"
+  x-narratoria:
+    displayName: Storyteller
+    capabilities:
+      - narration
+      - prose
+      - scene-setting
+    priority: 80
+    retryPolicy:
+      maxRetries: 3
+      backoffMs: 100
+---
+
+# Storyteller Skill
+
+This skill enhances narrative scenes with rich, evocative prose using a
+configurable LLM provider (local Phi-3.5 Mini by default, or hosted APIs).
+
+## Scripts
+
+- **`scripts/narrate`** — Generate narrative prose from scene context. Required
+  for the skill to function. Default timeout: 30 seconds.
+
+## Configuration
+
+See [references/config-schema.json](references/config-schema.json) for the
+configuration schema. Settings include LLM provider selection, API keys, and
+narrative style preferences.
+
+## Behavioral Guidance
+
+When generating plans that involve storytelling:
+- Use vivid sensory details appropriate to the campaign tone
+- Match narrative style to campaign setting (epic fantasy, noir, sci-fi, etc.)
+- Reference recent memories when contextually relevant
+- Produce 2-3 paragraphs of scene-setting narrative per invocation
+- Avoid purple prose; maintain readability
 ```
 
-Required fields: `name` (lowercase, alphanumeric, hyphens), `version` (semver), `description`. The `name` must match the pattern `^[a-z0-9-]+$`.
+**Standard Fields** (per [Agent Skills Standard](https://agentskills.io/specification)):
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | 1-64 chars, lowercase alphanumeric + hyphens, must match directory name |
+| `description` | Yes | Max 1024 chars. What the skill does and when to use it |
+| `license` | No | SPDX identifier or reference to bundled license file |
+| `compatibility` | No | Environment requirements (max 500 chars) |
+| `metadata` | No | Arbitrary key-value map for additional metadata |
+
+**Narratoria Extensions** (under `metadata.x-narratoria`):
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `displayName` | string | — | Human-readable name for UI display |
+| `capabilities` | string[] | [] | Semantic tags for plan generator skill selection |
+| `priority` | integer | 50 | Selection weight when multiple skills match (0-100) |
+| `retryPolicy` | object | — | Default retry behavior for all scripts in `scripts/` |
+
+Scripts are not declared in the `SKILL.md` frontmatter. They are executable files in the `scripts/` directory, discovered by the runtime at startup. The `SKILL.md` markdown body should document available scripts, their purpose, and any required inputs. Script-specific metadata (timeouts, required flags) can be documented in `references/` as a Narratoria extension (e.g., `references/script-manifest.json`).
+
+The markdown body after frontmatter serves dual purposes:
+1. **Human documentation** — skill users and authors can read it directly
+2. **Behavioral guidance** — injected into the Plan Generator's system context when the skill is activated
+
+This follows the Agent Skills Standard's progressive disclosure model: the runtime loads only `name` and `description` at startup, then reads the full `SKILL.md` body when the skill is activated for a plan.
 
 ### 3.2 Skill Discovery
 
 At startup, the runtime scans the `skills/` directory and discovers all valid skills:
 
-1. Parse `skill.json` manifests; validate required fields (name, version, description)
-2. Load optional `prompt.md` files; make behavioral prompts available to the Plan Generator
-3. Identify all executable scripts in `skills/*/scripts/` directories
-4. Skip skills with invalid manifests; log warnings without crashing
-5. Hot-reloading should be supported: when skill changes are detected, handle gracefully (auto-reload or notify user)
+1. Locate all `SKILL.md` files in `skills/*/SKILL.md`; parse YAML frontmatter
+2. Validate required fields (`name`, `description`); verify `name` matches directory name
+3. Scan `scripts/` directories within each skill to discover available script executables
+4. Store `name` + `description` for lightweight skill selection during plan generation
+5. Skip skills with invalid or missing `SKILL.md`; log warnings without crashing
+6. Hot-reloading should be supported: when `SKILL.md` changes are detected, handle gracefully (auto-reload or notify user)
+
+The full `SKILL.md` markdown body is read into the Plan Generator's context only when the skill is activated for a plan — not at startup. This keeps initial context usage low per the Agent Skills Standard's progressive disclosure model.
 
 ### 3.3 Skill Configuration
+
+> **Note:** Configuration management (`references/config-schema.json`, `config.json`) is a Narratoria extension, not part of the Agent Skills Standard. The standard defines `SKILL.md` and optional `scripts/`, `references/`, and `assets/` directories; Narratoria uses the `references/` directory for configuration schemas and adds `config.json` and `data/` as extensions for skills that need user-editable settings (API keys, model selection, tuning parameters) and private storage.
 
 The runtime provides a Skills Settings UI accessible from application settings:
 
 - Display all discovered skills with name, description, and enabled/disabled toggle
-- Dynamically generate configuration forms from `config-schema.json` files
+- Dynamically generate configuration forms from `references/config-schema.json` files within each skill directory
 - Supported input types: string (text, freeform), number, boolean (toggle), enum (dropdown)
 - Sensitive fields (API keys, passwords) use password-style masking; the `x-sensitive` flag triggers this
 - Environment variable substitution supported via `${VAR_NAME}` syntax in config values
 - Validation against schema constraints (required fields, type checking, min/max) before saving
 - Validation errors displayed inline in configuration forms with actionable error messages
-- Configuration saved to skill-specific `config.json` files
+- Configuration saved to skill-specific `config.json` files within the skill directory
 
 **Configuration Schema Meta-Schema:**
 
-Each skill's `config-schema.json` is itself a JSON Schema with Narratoria extensions:
+Each skill's `config-schema.json` is a standard JSON Schema with Narratoria-specific extensions:
 
 | Extension | Type | Description |
 |-----------|------|-------------|
@@ -1703,7 +1758,7 @@ arrest warrant at 90.
 
 1. Header lines are `key: value` pairs (colon-space separated)
 2. First blank line ends the header
-3. Everything after the blank line is **behavioral prose** — injected into the Narrator AI's context alongside skill `prompt.md` files
+3. Everything after the blank line is **behavioral prose** — injected into the Narrator AI's context alongside `SKILL.md` behavioral guidance
 4. Lines starting with `#` in the header are comments (ignored)
 5. Unknown header keys are stored as metadata but not interpreted by the runtime
 
@@ -1994,7 +2049,7 @@ When the Narrator AI generates narrative prose or makes planning decisions, it *
   }
   ```
 
-- The Storyteller skill's behavioral prompt (`prompt.md`) includes explicit instructions:
+- The Storyteller skill's `SKILL.md` behavioral guidance includes explicit instructions:
   ```markdown
   When describing characters, locations, or items:
   1. Check if campaign data exists for this entity
@@ -2913,8 +2968,8 @@ All machine-readable contracts are maintained as JSON Schema files:
 |----------|----------|-----------|
 | Plan JSON Schema | `contracts/plan-json.schema.json` | Plan documents from Narrator AI |
 | Execution Result Schema | `contracts/execution-result.schema.json` | Plan execution traces |
-| Skill Manifest Schema | `contracts/skill-manifest.schema.json` | `skill.json` manifest files |
-| Config Schema Meta-Schema | `contracts/config-schema-meta.schema.json` | Skill `config-schema.json` files |
+| SKILL.md Frontmatter Schema | `contracts/skill-frontmatter.schema.json` | `SKILL.md` YAML frontmatter (including `x-narratoria` extensions) |
+| Config Schema Meta-Schema | `contracts/config-schema-meta.schema.json` | Skill `config-schema.json` files (Narratoria extension) |
 | Campaign Manifest Schema | `contracts/manifest.schema.json` | Campaign `manifest.json` files |
 | Asset Metadata Schema | `contracts/asset-metadata.schema.json` | Ingested asset metadata |
 | NPC Profile Schema | `contracts/npc-profile.schema.json` | NPC `profile.json` files |
