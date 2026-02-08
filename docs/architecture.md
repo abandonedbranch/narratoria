@@ -50,7 +50,7 @@ This ensures the player *always* receives a response, maintaining narrative flow
 
 Narratoria combines two specialized models running entirely in-process:
 
-- **Phi-3.5 Mini (3.8B parameters, 2.5GB GGUF quantized)**: Generates Plan JSON documents that orchestrate skill invocations and produces scene narration. Automatically downloads from HuggingFace Hub on first launch; cached locally for offline use.
+- **Phi-4 or Phi-4-mini (3.8B-14B parameters, 2.5GB-8GB GGUF quantized)**: Generates Plan JSON documents that orchestrate skill invocations and produces scene narration. Phi-4 provides significant quality improvements over Phi-3.5, with Phi-4-mini offering a smaller footprint for resource-constrained devices. Automatically downloads from HuggingFace Hub on first launch; cached locally for offline use.
 
 - **sentence-transformers/all-MiniLM-L6-v2 (33MB, 384-dimensional embeddings)**: Generates semantic vectors for memory retrieval, lore search, and contextual matching. Enables "perplexingly on-point" choices that reference past events through vector similarity search.
 
@@ -68,13 +68,13 @@ Cross-session continuity is achieved through persistent embedded storage with ve
 - **NPC perception** and **faction reputation** tracked persistently
 - **Character portraits** cached to avoid redundant generation
 
-The Plan Generator (Phi-3.5 Mini) decides *contextually* what data to retrieve based on narrative needs—there are no fixed "memory tiers" or rigid context budgets. The LLM analyzes the scene and generates plans that invoke memory retrieval skills with semantic queries.
+The Plan Generator (Phi-4 or Phi-4-mini) decides *contextually* what data to retrieve based on narrative needs—there are no fixed "memory tiers" or rigid context budgets. The LLM analyzes the scene and generates plans that invoke memory retrieval skills with semantic queries.
 
 ### Key Technical Components
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| **Plan Generator** | Phi-3.5 Mini (3.8B) | Converts player choices to executable Plan JSON |
+| **Plan Generator** | Phi-4 or Phi-4-mini (3.8B-14B) | Converts player choices to executable Plan JSON |
 | **Plan Executor** | Runtime engine | Executes skill scripts in dependency order with retry |
 | **Semantic Memory** | Vector database + sentence-transformers | Cross-session narrative continuity via vector search |
 | **Skills Framework** | Agent Skills Standard | Discover, configure, and execute modular capabilities |
@@ -211,7 +211,7 @@ The fundamental data flow in Narratoria follows a cycle:
                                │
                                ▼
                     ┌──────────────────────┐
-                    │   Plan Generator     │  Phi-3.5 Mini analyzes:
+                    │   Plan Generator     │  Phi-4/Phi-4-mini analyzes:
                     │   (Narrator AI)      │  - Player choice
                     │                      │  - Session state
                     │                      │  - Available skills
@@ -258,7 +258,7 @@ When failures occur at any stage, the system enters the **replan loop**—a boun
 │                                                                 │
 │  ┌─────────────────┐  ┌──────────────────┐                    │
 │  │ Narrator AI      │  │ Plan Executor     │                    │
-│  │ (Phi-3.5 Mini)   │──│ (Runtime engine)  │                    │
+│  │ (Phi-4/Phi-4-mini)│──│ (Runtime engine)  │                    │
 │  │                   │  │                   │                    │
 │  │ • Generates plans │  │ • Topological sort│                    │
 │  │ • Selects skills  │  │ • Parallel exec   │                    │
@@ -966,7 +966,7 @@ metadata:
 # Storyteller Skill
 
 This skill enhances narrative scenes with rich, evocative prose using a
-configurable LLM provider (local Phi-3.5 Mini by default, or hosted APIs).
+configurable LLM provider (local Phi-4 or Phi-4-mini by default, or hosted APIs).
 
 ## Scripts
 
@@ -1098,7 +1098,7 @@ The system continues functioning when skills are unavailable:
 
 #### 4.1.1 Storyteller
 
-Rich narrative enhancement using the local LLM (Phi-3.5 Mini) or a configured hosted provider.
+Rich narrative enhancement using the local LLM (Phi-4 or Phi-4-mini) or a configured hosted provider.
 
 **Components:**
 - Behavioral prompt for evocative narration
@@ -1309,7 +1309,7 @@ Skills do not call each other directly. All inter-skill communication occurs thr
 
 ### 5.1 Narrator AI
 
-The Narrator AI is Phi-3.5 Mini (3.8B parameters, 2.5GB GGUF quantized), running entirely in-process. It converts player choices into structured Plan JSON documents by analyzing context and selecting appropriate skills.
+The Narrator AI uses Phi-4 or Phi-4-mini (3.8B-14B parameters, 2.5GB-8GB GGUF quantized), running entirely in-process. Phi-4 provides significant improvements in reasoning and instruction-following over Phi-3.5, with Phi-4-mini offering a smaller footprint suitable for mobile devices. It converts player choices into structured Plan JSON documents by analyzing context and selecting appropriate skills.
 
 **Responsibilities:**
 - Convert player text input into Plan JSON following the schema
@@ -1323,7 +1323,8 @@ The Narrator AI is Phi-3.5 Mini (3.8B parameters, 2.5GB GGUF quantized), running
 - Avoid creating circular dependencies in the tools array
 
 **Model Loading:**
-- Downloads automatically from HuggingFace Hub (`microsoft/Phi-3.5-mini-instruct` GGUF variant) on first app launch
+- Downloads automatically from HuggingFace Hub (`microsoft/Phi-4` or `microsoft/Phi-4-mini` GGUF variant) on first app launch
+- Phi-4-mini recommended for mobile devices (iPhone, Android); full Phi-4 for desktop
 - Cached locally in the app's documents directory for offline use
 - No network calls during gameplay
 
@@ -1344,7 +1345,7 @@ sentence-transformers/all-MiniLM-L6-v2 provides the semantic backbone for memory
 
 ### 5.3 Contextual Retrieval
 
-The Plan Generator decides *contextually* what data to retrieve. There are no fixed "memory tier budgets" or rigid context window allocations. Instead, Phi-3.5 Mini analyzes the current scene and generates plans that invoke memory retrieval skills with semantic queries:
+The Plan Generator decides *contextually* what data to retrieve. There are no fixed "memory tier budgets" or rigid context window allocations. Instead, Phi-4 or Phi-4-mini analyzes the current scene and generates plans that invoke memory retrieval skills with semantic queries:
 
 ```json
 {
@@ -1495,34 +1496,35 @@ campaign_name/
 ├── manifest.json                    # Required: campaign metadata
 ├── README.md                        # Campaign format creeds
 ├── world/
-│   ├── setting.md                   # World, era, tone, environment
-│   ├── rules.md                     # Custom game mechanics (optional)
-│   └── constraints.md               # Absolute AI boundaries (optional)
+│   ├── setting.txt                  # World, era, tone, environment
+│   ├── rules.txt                    # Custom game mechanics (optional)
+│   └── constraints.txt              # Absolute AI boundaries (optional)
 ├── characters/
 │   ├── npcs/{name}/
 │   │   ├── profile.json             # Name, role, personality, motivations
-│   │   ├── secrets.md               # Hidden information (optional)
+│   │   ├── backstory.txt            # Character backstory (optional)
+│   │   ├── secrets.txt              # Hidden information (optional)
 │   │   └── portrait.png             # Character artwork (optional)
 │   └── player/
 │       └── template.json            # Character creation constraints
 ├── plot/
-│   ├── premise.md                   # Starting situation and hook
+│   ├── premise.txt                  # Starting situation and hook
 │   ├── beats.json                   # Key story moments with conditions
 │   └── endings/                     # Multiple ending definitions
-│       ├── redemption.md
-│       └── betrayal.md
+│       ├── redemption.txt
+│       └── betrayal.txt
 ├── lore/                            # Indexed for semantic search (RAG)
 │   ├── history/
 │   ├── magic/
 │   └── locations/
-├── stats/                           # Stat definitions (*.stat.txt)
-│   ├── health.stat.txt              # Player stat: health gauge
-│   ├── mana.stat.txt                # Player stat: magic resource
+├── stats/                           # Stat definitions (*.json)
+│   ├── health.json                  # Player stat: health gauge
+│   ├── mana.json                    # Player stat: magic resource
 │   └── hidden/                      # Hidden stats (not shown to player)
-│       └── suspicion.stat.txt
-├── items/                           # Item definitions (*.item.txt)
-│   ├── weapon.short_sword.item.txt
-│   └── potion.healing.item.txt
+│       └── suspicion.json
+├── items/                           # Item definitions (*.json)
+│   ├── weapon.short_sword.json
+│   └── potion.healing.json
 ├── art/                             # Images (PNG, JPEG, WebP)
 │   ├── characters/
 │   ├── locations/
@@ -1532,7 +1534,13 @@ campaign_name/
     └── combat/
 ```
 
-All directories and files except `manifest.json` are optional. Markdown files are used for prose; JSON for structured data.
+All directories and files except `manifest.json` are optional. 
+
+**File Format Convention:**
+- `.txt` — Human-authored prose for LLM context injection (lore, setting, backstories, endings)
+- `.json` — Structured data for runtime queries (profiles, beats, stats, items, manifest)
+
+This two-format system maximizes authoring flexibility while maintaining parsing simplicity. During ingestion, all content undergoes semantic embedding regardless of format.
 
 #### 6.2.3 Manifest Schema
 
@@ -1658,127 +1666,101 @@ Stats are **named numeric gauges that constrain what the narrative can do**. Eve
 
 Whether a stat is called "HP," "Hull Integrity," "Composure," "Chemistry," or "Favor with the Empress," it's always a named number with a range that gates, modifies, or depletes. Narratoria treats stats generically — the system doesn't need to know what "health" means in advance. It knows there are N stats, each has a range, and each gets a UI gauge.
 
-**Core Principle**: *Convention over configuration.* Authors define stats by creating files in a `stats/` directory. The filename, extension, and a simple header block carry all the semantics the runtime needs.
+**Core Principle**: *Convention over configuration.* Authors define stats by creating JSON files in a `stats/` directory.
 
 ##### Stat File Convention
 
 **Location**: `campaign_name/stats/`
-**Filename pattern**: `{stat_id}.stat.txt`
-**Hidden stats**: `campaign_name/stats/hidden/` (or `hidden: yes` in header)
+**Filename pattern**: `{stat_id}.json`
+**Hidden stats**: `campaign_name/stats/hidden/` (or `"hidden": true` in JSON)
 
-**File format**: A key-value header block (lines before the first blank line), followed by freeform behavioral prose.
+**Example: Fantasy RPG — `stats/health.json`**
 
-**Example: Fantasy RPG — `stats/health.stat.txt`**
-
-```
-range: 0-100
-default: 100
-display: bar
-label: Health
-category: vital
-
-Health represents physical well-being. When health reaches 0,
-the character is incapacitated. Combat damage, poison, and
-exhaustion reduce health. Rest, potions, and healing magic
-restore it.
-
-The narrator should describe declining health through
-increasingly vivid physical symptoms — heavy breathing at 70,
-visible wounds at 40, barely standing at 15.
+```json
+{
+  "id": "health",
+  "range": {"min": 0, "max": 100},
+  "default": 100,
+  "display": "bar",
+  "label": "Health",
+  "category": "vital",
+  "hidden": false,
+  "behavioral_prompt": "Health represents physical well-being. When health reaches 0, the character is incapacitated. Combat damage, poison, and exhaustion reduce health. Rest, potions, and healing magic restore it. The narrator should describe declining health through increasingly vivid physical symptoms — heavy breathing at 70, visible wounds at 40, barely standing at 15."
+}
 ```
 
-**Example: Dating Sim — `stats/chemistry.stat.txt`**
+**Example: Dating Sim — `stats/chemistry.json`**
 
-```
-range: 0-10
-default: 0
-display: hearts
-label: Chemistry
-category: relationship
-
-Chemistry measures romantic tension between the player and
-a love interest. It rises through flirting, shared vulnerability,
-and meaningful gifts. It drops through insensitivity, betrayal,
-or prolonged absence.
-
-At 8+, the love interest initiates romantic dialogue unprompted.
-At 3 or below, they become distant and formal.
+```json
+{
+  "id": "chemistry",
+  "range": {"min": 0, "max": 10},
+  "default": 0,
+  "display": "hearts",
+  "label": "Chemistry",
+  "category": "relationship",
+  "behavioral_prompt": "Chemistry measures romantic tension between the player and a love interest. It rises through flirting, shared vulnerability, and meaningful gifts. It drops through insensitivity, betrayal, or prolonged absence. At 8+, the love interest initiates romantic dialogue unprompted. At 3 or below, they become distant and formal."
+}
 ```
 
-**Example: Sci-Fi — `stats/hull_integrity.stat.txt`**
+**Example: Sci-Fi — `stats/hull_integrity.json`**
 
-```
-range: 0-1000
-default: 1000
-display: bar
-label: Hull Integrity
-category: ship
-
-Hull integrity represents the structural health of the player's
-starship. Asteroid impacts, weapons fire, and hard landings
-reduce it. Repair drones, spacedock maintenance, and emergency
-patches restore it.
-
-Below 200, the narrator should describe sparking conduits,
-flickering lights, and hull breach warnings.
+```json
+{
+  "id": "hull_integrity",
+  "range": {"min": 0, "max": 1000},
+  "default": 1000,
+  "display": "bar",
+  "label": "Hull Integrity",
+  "category": "ship",
+  "behavioral_prompt": "Hull integrity represents the structural health of the player's starship. Asteroid impacts, weapons fire, and hard landings reduce it. Repair drones, spacedock maintenance, and emergency patches restore it. Below 200, the narrator should describe sparking conduits, flickering lights, and hull breach warnings."
+}
 ```
 
-**Example: Hidden Stat — `stats/hidden/suspicion.stat.txt`**
+**Example: Hidden Stat — `stats/hidden/suspicion.json`**
 
-```
-range: 0-100
-default: 0
-display: bar
-label: Suspicion
-category: social
-hidden: yes
-
-Suspicion tracks how much the town guard suspects the player
-of criminal activity. Witnessing theft, finding contraband,
-or receiving tips from informants raises suspicion. Bribes,
-good deeds, and time passing lower it.
-
-The narrator should reveal suspicion indirectly — guards
-watching more closely at 30, being followed at 60, an
-arrest warrant at 90.
+```json
+{
+  "id": "suspicion",
+  "range": {"min": 0, "max": 100},
+  "default": 0,
+  "display": "bar",
+  "label": "Suspicion",
+  "category": "social",
+  "hidden": true,
+  "behavioral_prompt": "Suspicion tracks how much the town guard suspects the player of criminal activity. Witnessing theft, finding contraband, or receiving tips from informants raises suspicion. Bribes, good deeds, and time passing lower it. The narrator should reveal suspicion indirectly — guards watching more closely at 30, being followed at 60, an arrest warrant at 90."
+}
 ```
 
-##### Header Fields
+##### JSON Field Definitions
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `range` | string | Yes | — | Numeric bounds as `{min}-{max}` (e.g., `0-100`, `1-20`, `-50-50`) |
+| `id` | string | Yes | — | Unique stat identifier (matches filename stem) |
+| `range` | object | Yes | — | Numeric bounds with `min` and `max` (e.g., `{"min": 0, "max": 100}`) |
 | `default` | number | No | `min` value | Starting value for new playthroughs |
 | `display` | enum | No | `bar` | UI rendering hint: `bar`, `number`, `hearts`, `pips`, `ring`, `hidden` |
 | `label` | string | No | Filename stem, title-cased | Human-readable display name |
 | `category` | string | No | `general` | Grouping key for UI layout (e.g., `vital`, `resource`, `relationship`, `ship`, `social`) |
-| `hidden` | boolean | No | `false` | If `yes`, the system tracks but does not display to the player |
-
-**Parsing Rules:**
-
-1. Header lines are `key: value` pairs (colon-space separated)
-2. First blank line ends the header
-3. Everything after the blank line is **behavioral prose** — injected into the Narrator AI's context alongside `SKILL.md` behavioral guidance
-4. Lines starting with `#` in the header are comments (ignored)
-5. Unknown header keys are stored as metadata but not interpreted by the runtime
+| `hidden` | boolean | No | `false` | If `true`, the system tracks but does not display to the player |
+| `behavioral_prompt` | string | No | — | Prose injected into Narrator AI context to guide stat narration |
 
 ##### Ingestion and State Binding
 
 On campaign load, the ingestion pipeline processes `stats/`:
 
 ```
-For each *.stat.txt in stats/ (including stats/hidden/):
+For each *.json in stats/ (including stats/hidden/):
   1. Parse filename stem → stat ID ("health", "chemistry")
-  2. Parse header → range, default, display, label, category, hidden
-  3. Parse prose body → behavioral prompt text
-  4. Store stat definition in the persistence layer:
+  2. Load and validate JSON → range, default, display, label, category, hidden, behavioral_prompt
+  3. Store stat definition in the persistence layer:
      - Stat ID, range bounds, default, display mode, category
-     - Behavioral prose stored as embedding + raw text
+     - Behavioral prompt stored as embedding + raw text
      - Hidden flag
-  5. Register state path: player.stats.{stat_id}
-  6. Initialize session state: player.stats.{stat_id} = default
-  7. Check for UI asset: ui/state/player.stats.{stat_id}.{ext}
-  8. Inject behavioral prose into Narrator AI system context
+  4. Register state path: player.stats.{stat_id}
+  5. Initialize session state: player.stats.{stat_id} = default
+  6. Check for UI asset: ui/state/player.stats.{stat_id}.{ext}
+  7. Inject behavioral_prompt into Narrator AI system context
 ```
 
 **Resulting Session State:**
@@ -1827,25 +1809,22 @@ NPC stats defined within `characters/npcs/{name}/profile.json`:
 Authors can create stat files scoped to specific NPCs for richer behavioral prose:
 
 ```
-stats/npc.owen.chemistry.stat.txt
-stats/npc.owen.trust.stat.txt
+stats/npc.owen.chemistry.json
+stats/npc.owen.trust.json
 ```
 
-**`stats/npc.owen.chemistry.stat.txt`:**
+**`stats/npc.owen.chemistry.json`:**
 
-```
-range: 0-10
-default: 0
-display: hearts
-label: Chemistry with Owen
-category: relationship
-
-Owen is guarded after a past betrayal. Chemistry builds slowly
-through consistent kindness and shared creative pursuits.
-Grand gestures make him uncomfortable — he values quiet moments.
-
-At 7+, Owen begins sharing personal stories unprompted.
-At 2 or below, he avoids being alone with the player.
+```json
+{
+  "id": "npc.owen.chemistry",
+  "range": {"min": 0, "max": 10},
+  "default": 0,
+  "display": "hearts",
+  "label": "Chemistry with Owen",
+  "category": "relationship",
+  "behavioral_prompt": "Owen is guarded after a past betrayal. Chemistry builds slowly through consistent kindness and shared creative pursuits. Grand gestures make him uncomfortable — he values quiet moments. At 7+, Owen begins sharing personal stories unprompted. At 2 or below, he avoids being alone with the player."
+}
 ```
 
 **NPC stat state path**: `npcs.{npc_id}.stats.{stat_id}`
@@ -1867,43 +1846,38 @@ When both an inline stat and a dedicated file exist for the same NPC stat, the d
 
 ##### Items with Stat-Relevant Data
 
-Items are defined in `items/` using `.item.txt` files with the same header-plus-prose convention:
+Items are defined in `items/` using JSON files with structured data and behavioral prompts:
 
-**`items/weapon.short_sword.item.txt`:**
+**`items/weapon.short_sword.json`:**
 
-```
-type: weapon
-damage: 1d6
-weight: 3
-label: Short Sword
-category: melee
-
-A reliable sidearm favored by scouts and rogues. Its short
-blade excels in tight quarters — corridors, ship decks,
-and tavern brawls.
-
-The narrator should describe its use as quick, precise strikes
-rather than heavy cleaving blows.
+```json
+{
+  "id": "short_sword",
+  "type": "weapon",
+  "damage": "1d6",
+  "weight": 3,
+  "label": "Short Sword",
+  "category": "melee",
+  "behavioral_prompt": "A reliable sidearm favored by scouts and rogues. Its short blade excels in tight quarters — corridors, ship decks, and tavern brawls. The narrator should describe its use as quick, precise strikes rather than heavy cleaving blows."
+}
 ```
 
-**`items/potion.healing.item.txt`:**
+**`items/potion.healing.json`:**
 
-```
-type: consumable
-effect: health +25
-uses: 1
-weight: 0.5
-label: Healing Potion
-category: consumable
-
-A small glass vial containing a warm crimson liquid. When
-consumed, it rapidly mends wounds and restores vitality.
-
-The narrator should describe a spreading warmth, the taste
-of honey and copper, and the visible closure of minor wounds.
+```json
+{
+  "id": "healing_potion",
+  "type": "consumable",
+  "effect": "health +25",
+  "uses": 1,
+  "weight": 0.5,
+  "label": "Healing Potion",
+  "category": "consumable",
+  "behavioral_prompt": "A small glass vial containing a warm crimson liquid. When consumed, it rapidly mends wounds and restores vitality. The narrator should describe a spreading warmth, the taste of honey and copper, and the visible closure of minor wounds."
+}
 ```
 
-On ingestion, item headers are tokenized and stored in the persistence layer with semantic embeddings. When the Narrator AI generates a plan involving a dice roll or stat check, it can look up the relevant item's properties:
+On ingestion, item data is tokenized and stored in the persistence layer with semantic embeddings. When the Narrator AI generates a plan involving a dice roll or stat check, it can look up the relevant item's properties:
 
 ```json
 {
@@ -2489,7 +2463,7 @@ The in-memory asset index is deliberately chosen for performance despite minimum
 
 ```
 Target Device: 8GB RAM
-├── Phi-3.5 Mini model: 2.5GB (31%)
+├── Phi-4-mini model: 2.5GB (31%) or Phi-4: 8GB (100% limit)
 ├── sentence-transformers: 60MB (0.75%)
 ├── Database + UI Framework + OS: ~500MB (6%)
 ├── Available headroom: ~5GB (62%)
@@ -2657,24 +2631,481 @@ Provenance rules are enforced mechanically at the campaign ingestion layer / per
 - `generated_at` must be a valid ISO 8601 datetime. Non-conforming timestamps are rejected.
 - On campaign load, a warning is displayed: "Campaign contains [N] AI-generated asset(s). Review generated flags and provenance metadata to verify correctness."
 
-#### 6.2.14 Ingestion Enrichment Pipeline
+#### 6.2.14 Campaign Ingestion Pipeline
 
-When a campaign contains sparse data (fewer than 3 content files), the system invokes an on-device LLM to enrich it:
+**Core Principle**: *Every piece of campaign content becomes semantically searchable through universal tokenization and embedding.*
 
-1. System detects sparse data and triggers enrichment
-2. An on-device LLM (candidate models: Ollama Gemma 2B, Llama 3.2 3B, Qwen 2.5 3B) generates world setting, NPCs, plot beats, and lore entries
-3. Generated files have `_generated` suffix and `generated: true` metadata
-4. Provenance metadata records source model, timestamp, and seed data
-5. Human-authored assets are *never* overwritten or regenerated
-6. Enrichment completes within 15 seconds on target hardware
+When a campaign loads, the ingestion pipeline transforms the filesystem hierarchy into a fully-indexed semantic knowledge graph stored in ObjectBox. This enables the Narrator AI and all skills to query campaign content through natural language similarity search rather than rigid path-based lookups.
 
-**Minimal Campaign Example:**
+##### File Format Convention
 
-A campaign with only 3 files (`manifest.json`, `world/setting.md`, `plot/premise.md`) triggers enrichment that generates NPCs, plot beats, lore entries, and world rules—all marked with provenance metadata. Time to play: ~10 seconds.
+Campaign authors use two formats to maximize authoring flexibility while maintaining parsing simplicity:
 
-**Complete Campaign Example:**
+| Format | Purpose | Examples |
+|--------|---------|----------|
+| `.txt` | Human-authored prose for LLM context injection | `setting.txt`, `premise.txt`, `{npc_name}_backstory.txt`, lore files |
+| `.json` | Structured data for runtime queries | `manifest.json`, `profile.json`, `beats.json`, stat/item definitions |
 
-A campaign with 20+ content files (defined NPCs with profiles, plot beats with conditions, lore, artwork with keyword sidecars, music) requires no enrichment. The AI executes faithfully. Time to play: ~5 seconds.
+The distinction is purely authorial convenience—both formats undergo identical semantic ingestion.
+
+##### Phase 1: Directory Walking & Discovery
+
+The ingestion pipeline recursively scans the campaign directory:
+
+```
+function discoverCampaignAssets(campaignPath):
+    assets = []
+    
+    for file in recursiveDirectoryWalk(campaignPath):
+        if file.extension in ['.txt', '.json', '.md']:
+            assets.add({
+                type: 'text',
+                path: file.path,
+                format: file.extension,
+                relativePath: file.relativeTo(campaignPath),
+                sizeBytes: file.size,
+                modifiedAt: file.lastModified
+            })
+        else if file.extension in ['.png', '.jpg', '.webp', '.mp3', '.ogg', '.wav', '.flac']:
+            assets.add({
+                type: 'binary',
+                path: file.path,
+                format: file.extension,
+                relativePath: file.relativePath(campaignPath),
+                sizeBytes: file.size
+            })
+    
+    return assets
+```
+
+**Discovery Performance**: <100ms for campaigns with up to 1000 files.
+
+##### Phase 2: Metadata Extraction from Paths
+
+The ingestion system derives semantic context from filename and directory structure using pattern-matching rules:
+
+```
+Path: characters/npcs/leeory/profile.json
+  → category: "character"
+  → entityType: "npc"
+  → entityId: "leeory"
+  → contentType: "profile"
+  → semanticRole: "character_definition"
+
+Path: plot/beats.json
+  → category: "plot"
+  → contentType: "beats"
+  → semanticRole: "story_structure"
+
+Path: lore/magic/elemental_theory.txt
+  → category: "lore"
+  → topic: "magic"
+  → subtopic: "elemental_theory"
+  → semanticRole: "worldbuilding"
+
+Path: stats/health.json
+  → category: "mechanics"
+  → mechanic: "stat"
+  → statId: "health"
+  → semanticRole: "game_system"
+```
+
+**Metadata Derivation Rules:**
+
+1. **Top-level directory** → primary category (`world`, `characters`, `plot`, `lore`, `stats`, `items`, `art`, `music`, `ui`)
+2. **Second-level directory** → subcategory or entity type (`npcs`, `player`, `beats`, `endings`, `history`, `locations`)
+3. **Filename** → entity identifier and content type (parsed by convention: `{entity}.{contentType}.{ext}`)
+4. **Nested depth** → topic hierarchy for lore organization
+
+This metadata becomes **filter criteria** during semantic search, enabling queries like:
+- "Retrieve NPC profiles related to magic"
+- "Find plot beats that reference betrayal"
+- "Get worldbuilding lore about the northern kingdom"
+
+##### Phase 3: Text Chunking & Tokenization
+
+All text content (`.txt`, `.json`, `.md`) undergoes intelligent chunking based on content type:
+
+**Prose Files** (`.txt`, `.md`):
+1. Split by double-newline (`\n\n`) to isolate paragraphs
+2. If paragraph exceeds 512 tokens, split on sentence boundaries (`. `, `! `, `? `)
+3. Each chunk stored with metadata: `{chunkIndex, paragraphId, tokenCount, chunkMethod}`
+
+**JSON Files**:
+1. Parse into structured object tree
+2. Chunk by **field context**: Each major field becomes a searchable unit
+   - NPC profile: separate chunks for `personality`, `motivations`, `speech_patterns`, `relationships`
+   - Plot beats: separate chunks per beat definition
+   - Stats: header fields + behavioral prose as distinct chunks
+3. Preserve JSON structure in metadata for reconstruction
+
+**Token Counting**: Uses `tiktoken` library with `cl100k_base` tokenizer (compatible with sentence-transformers).
+
+**Chunking Example:**
+
+```
+Input File: characters/npcs/leeory/profile.json
+{
+  "name": "Leory",
+  "role": "Protagonist - The Mysterious Wizard",
+  "personality": {
+    "traits": ["mysterious", "eccentric", "testing"],
+    "flaws": ["manipulative", "cryptic"]
+  },
+  "motivations": [
+    "Test adventurers to recognize true strength",
+    "Reveal limitations that must be overcome"
+  ]
+}
+
+Output Chunks:
+1. Chunk[0]: "Leory. Protagonist - The Mysterious Wizard."
+   - field: "name+role"
+   - tokens: 8
+   
+2. Chunk[1]: "Personality traits: mysterious, eccentric, testing. Flaws: manipulative, cryptic."
+   - field: "personality"
+   - tokens: 14
+   
+3. Chunk[2]: "Motivations: Test adventurers to recognize true strength. Reveal limitations that must be overcome."
+   - field: "motivations"
+   - tokens: 18
+```
+
+Each chunk retains references to:
+- Original file path
+- Parent entity ID (`leeory`)
+- Field context within JSON structure
+- Semantic role (`character_personality`, `character_motivations`)
+
+##### Phase 4: Semantic Embedding Generation
+
+Every chunk is processed through sentence-transformers to generate a 384-dimensional embedding vector:
+
+```
+for chunk in textChunks:
+    embedding = sentenceTransformers.encode(chunk.text)  # → float[384]
+    
+    chunk.embedding = embedding
+    chunk.embeddingModel = "sentence-transformers/all-MiniLM-L6-v2"
+    chunk.embeddingVersion = "v1"
+```
+
+**Embedding Performance**: ~10-50ms per chunk. Batch processing of 100 chunks: ~500ms-1000ms.
+
+**Total Embedding Time Estimates:**
+
+| Campaign Size | Text Chunks | Embedding Time |
+|---------------|-------------|----------------|
+| Minimal (5 files) | ~20 chunks | <1 second |
+| Small (20 files) | ~100 chunks | 1-2 seconds |
+| Medium (100 files) | ~500 chunks | 5-10 seconds |
+| Large (500 files) | ~2500 chunks | 25-50 seconds |
+
+##### Phase 5: Binary Asset Metadata Extraction
+
+Binary files (images, audio) remain on the filesystem but get metadata entries in ObjectBox:
+
+**Images** (`.png`, `.jpg`, `.webp`):
+- Extract dimensions, format, file size
+- Parse filename for keywords (`npc_wizard.png` → keywords: `["npc", "wizard"]`)
+- Check for `.keywords.txt` sidecar file
+- *Optional*: Generate visual embeddings using CLIP or similar (not in MVP; future enhancement)
+
+**Audio** (`.mp3`, `.ogg`, `.wav`, `.flac`):
+- Extract duration, bitrate, format
+- Parse filename for keywords (`ambient_forest.mp3` → keywords: `["ambient", "forest"]`)
+- Check for `.keywords.txt` sidecar
+
+**Metadata Storage:**
+
+```json
+{
+  "assetId": "art_characters_wizard_001",
+  "path": "art/characters/npc_wizard.png",
+  "type": "image",
+  "format": "png",
+  "dimensions": {"width": 512, "height": 512},
+  "sizeBytes": 145823,
+  "keywords": ["npc", "wizard", "archmage", "merlin"],
+  "generated": false,
+  "entityLinks": ["characters/npcs/leeory"],
+  "semanticRole": "character_portrait"
+}
+```
+
+##### Phase 6: ObjectBox Storage & Indexing
+
+All chunks and metadata are persisted to ObjectBox with optimized indexing:
+
+**Chunk Entity Schema:**
+
+```dart
+@Entity()
+class CampaignChunk {
+  @Id()
+  int id;
+  
+  String campaignId;
+  String filePath;           // Original source file
+  int chunkIndex;            // Position within file
+  String chunkMethod;        // "paragraph", "field", "sentence"
+  
+  String content;            // The actual text
+  int tokenCount;
+  
+  @HnswIndex(dimensions: 384, distanceType: HnswDistance.cosine)
+  List<double> embedding;    // 384-dim vector
+  
+  // Metadata for filtering
+  String category;           // "character", "plot", "lore", "mechanics"
+  String? entityType;        // "npc", "player", "beat", "stat"
+  String? entityId;          // "leeory", "health", "beat_001"
+  String? contentType;       // "profile", "premise", "backstory"
+  String semanticRole;       // "character_definition", "worldbuilding", etc.
+  
+  // JSON structure (if applicable)
+  String? jsonField;         // Field path within JSON: "personality.traits"
+  String? jsonParent;        // Parent object path
+  
+  DateTime indexedAt;
+}
+```
+
+**Binary Asset Entity Schema:**
+
+```dart
+@Entity()
+class CampaignAsset {
+  @Id()
+  int id;
+  
+  String campaignId;
+  String path;               // Absolute or relative filesystem path
+  String type;               // "image", "audio", "video"
+  String format;             // "png", "mp3", etc.
+  
+  int sizeBytes;
+  Map<String, dynamic>? dimensions;
+  
+  List<String> keywords;
+  List<String> entityLinks;  // References to related entities
+  
+  bool generated;
+  Map<String, dynamic>? provenance;
+  
+  String semanticRole;
+  DateTime indexedAt;
+}
+```
+
+**Index Strategy:**
+
+- **Vector index**: HNSW (Hierarchical Navigable Small World) for fast similarity search on embeddings
+- **Text index**: B-tree on `category`, `entityType`, `semanticRole` for filtered queries
+- **Entity index**: B-tree on `entityId` for direct entity lookups
+- **Composite index**: `(campaignId, category, entityType)` for complex queries
+
+##### Phase 7: Relationship Graph Construction
+
+After all content is indexed, the system builds a relationship graph connecting related entities:
+
+```
+Relationships:
+  "leeory" (NPC)
+    ├─ profile.json → character_definition
+    ├─ backstory.txt → character_lore
+    ├─ art/characters/leeory.png → character_portrait
+    └─ Referenced by: plot/beats.json (beat_002)
+
+  "betrayal" (plot beat)
+    ├─ Defined in: plot/beats.json
+    ├─ References: ["leeory", "player"]
+    └─ Related lore: lore/history/wizard_trials.txt
+```
+
+**Graph Construction**:
+1. Parse explicit references (JSON `references` fields, cross-file links)
+2. Compute semantic similarity between chunks (cosine similarity > 0.75 = related)
+3. Extract entity mentions using keyword matching
+4. Store as bidirectional edges in the graph
+
+**Graph Storage**: ObjectBox relations or embedded relationship arrays within entities.
+
+##### Phase 8: Query Interface Initialization
+
+The ingestion pipeline creates queryable indices that skills can access at runtime:
+
+**Semantic Search API:**
+
+```dart
+// Natural language query with filters
+List<CampaignChunk> query = await persistence.semanticSearch(
+  query: "mentors who test their students",
+  filters: {
+    'category': 'character',
+    'entityType': 'npc'
+  },
+  topK: 5,
+  minSimilarity: 0.7
+);
+```
+
+**Exact Lookup API:**
+
+```dart
+// Direct entity retrieval
+List<CampaignChunk> profile = await persistence.getEntity(
+  entityId: 'leeory',
+  contentType: 'profile'
+);
+```
+
+**Cross-Reference API:**
+
+```dart
+// Find related content
+List<CampaignChunk> related = await persistence.getRelated(
+  entityId: 'leeory',
+  relationTypes: ['lore', 'plot_beats']
+);
+```
+
+##### Phase 9: Manifest & Constraint Loading
+
+Special handling for campaign-level configuration:
+
+- `manifest.json` parsed and cached in memory (not chunked/embedded)
+- `world/setting.txt` loaded into LLM system context (also embedded for search)
+- `world/constraints.md` marked as absolute boundaries (max priority filter)
+
+These provide **global context** that modifies all Narrator AI generation.
+
+##### Phase 10: Validation & Completion
+
+Final validation ensures data integrity:
+
+1. Check all entity references resolve (no orphaned links)
+2. Verify provenance metadata for generated content
+3. Validate JSON schemas match expectations
+4. Confirm all binary assets exist on filesystem
+5. Log statistics: chunk count, embedding time, index size
+
+**Completion Signal**: Ingestion emits a completion event with metadata:
+
+```json
+{
+  "campaignId": "wizard_runner_v1",
+  "totalFiles": 7,
+  "textChunks": 45,
+  "binaryAssets": 3,
+  "embeddingTimeMs": 1847,
+  "totalIngestionMs": 2341,
+  "indexSizeMB": 0.8,
+  "status": "complete"
+}
+```
+
+##### Runtime Query Behavior
+
+During gameplay, when the Narrator AI or a skill needs campaign data:
+
+**Query Example 1: Generate narrative about a wizard**
+
+```
+Narrator AI generates plan:
+{
+  "toolId": "recall",
+  "input": {"query": "wizard mentor characteristics", "limit": 3}
+}
+
+Persistence layer executes semantic search:
+  embeds query → [0.23, -0.41, 0.57, ...]
+  computes cosine similarity against all campaign chunks
+  filters by relevance > 0.7
+  returns top 3 matches:
+    1. Leeory's personality (similarity: 0.89)
+    2. Leeory's motivations (similarity: 0.84)
+    3. Lore snippet about wizard trials (similarity: 0.76)
+
+Chunks injected into Narrator AI context → narration generated
+```
+
+**Query Example 2: Check available plot beats**
+
+```
+Plot progression skill queries:
+  filters: {category: 'plot', contentType: 'beats'}
+  
+Returns all plot beat definitions with conditions, priorities, outcomes
+
+Skill checks conditions against current session state:
+  beat "betrayal" conditions:
+    - scene_count between 10-20 ✓
+    - requires_beat "first_trial" ✓
+  → ELIGIBLE for triggering
+```
+
+**Query Example 3: Lookup NPC portrait**
+
+```
+UI needs to display Leeory's portrait:
+  query: {entityId: 'leeory', type: 'image', semanticRole: 'portrait'}
+  
+Returns: art/characters/leeory.png metadata with filesystem path
+
+UI loads image from disk, renders with character nameplate
+```
+
+##### Authoring Flexibility & Discovery
+
+This universal ingestion approach enables maximum authoring flexibility:
+
+**Authors can:**
+- Add files anywhere in the hierarchy (auto-discovered)
+- Use arbitrary subdirectories for organization (`lore/magic/schools/elemental/`)
+- Mix formats (`.txt` for prose, `.json` for structured data)
+- Omit sections entirely (sparse campaigns work, dense campaigns work)
+- Override with explicit metadata (`keywords.txt` sidecars)
+
+**The system ensures:**
+- Everything becomes searchable through semantic similarity
+- Metadata from paths provides filtering precision
+- Relationships discovered automatically through content analysis
+- Binary assets linked to entities via convention and keywords
+
+##### Performance Targets
+
+| Metric | Target | Notes |
+|--------|--------|-------|
+| Directory scan | <100ms | For campaigns with <1000 files |
+| Chunking | <500ms | Typical campaign (~50 files) |
+| Embedding generation | <10 seconds | Typical campaign (~100 chunks) |
+| ObjectBox storage | <1 second | Including index creation |
+| Total ingestion | <15 seconds | Cold start; <3 seconds if cached |
+| Memory usage during ingestion | <200MB | Peak, excluding models |
+| Indexed database size | ~1-2MB per 100 chunks | Compressed with embeddings |
+
+##### Cache & Incremental Updates
+
+- **First load**: Full ingestion pipeline (5-15 seconds)
+- **Subsequent loads**: Check file modification timestamps
+  - If no changes: Load cached index from ObjectBox (<1 second)
+  - If changes detected: Re-ingest only modified files (2-5 seconds)
+- **Incremental ingestion**: Authors can edit a single file, system re-indexes only that file
+
+##### Sparse Campaign Enrichment
+
+When a campaign contains fewer than 5 content files, the system offers optional AI enrichment:
+
+1. Detects sparse data during ingestion
+2. Prompts author: "Generate missing content with AI?"
+3. If accepted, invokes on-device LLM (Ollama Gemma 2B, Llama 3.2 3B)
+4. Generates: NPCs, plot beats, lore, world rules (marked `generated: true`)
+5. Enriched content goes through full ingestion pipeline
+6. Time to completion: ~10-30 seconds
+
+**Enrichment is optional** — authors can start with minimal campaigns and manually add content iteratively.
 
 #### 6.2.15 Campaign Validation
 
@@ -2705,7 +3136,7 @@ The narrative engine executes campaigns by managing the scene loop and orchestra
 
 1. **Player selects a choice** from the 3-4 displayed options
 2. **Plan Generator analyzes context**: player choice, session state, available skills, campaign constraints (world constraints, NPC profiles, plot beats), and retrieved memories
-3. **Plan JSON is generated**: Phi-3.5 Mini decides which skills to invoke, what parameters to pass, and what data to retrieve
+3. **Plan JSON is generated**: Phi-4 or Phi-4-mini decides which skills to invoke, what parameters to pass, and what data to retrieve
 4. **Plan Executor runs**: Skill scripts execute in dependency order; events are collected
 5. **Results aggregate**: State patches merge into session state; assets register; UI events dispatch
 6. **Scene renders**: Narrative prose (2-3 paragraphs) displays with character portraits, ambient music, and 3-4 new contextual choices
@@ -2791,7 +3222,7 @@ The key innovation is **skill disabling during replanning**: when a skill fails,
 
 ### 8.3 Why On-Device AI?
 
-**Decision**: Phi-3.5 Mini (3.8B) + sentence-transformers, both running locally.
+**Decision**: Phi-4 or Phi-4-mini (3.8B-14B) + sentence-transformers, both running locally. Phi-4 offers significant improvements in reasoning, instruction-following, and plan generation quality compared to Phi-3.5.
 
 **Alternatives Considered**: Cloud APIs (OpenAI, Claude), hybrid cloud/local, larger local models.
 
@@ -2899,7 +3330,7 @@ Tools currently have full filesystem access. For third-party skills downloaded f
 | ID | Metric | Target | Test Method |
 |----|--------|--------|-------------|
 | SC-013 | Choice generation speed | 3-4 options within 3 seconds for 95% of decision points | Automated timing |
-| SC-014 | Choice stat relevance | ≥70% of choices mention stat-relevant keywords | (1) Verify Phi-3.5 prompt template includes `{player_stats}` injection, (2) Automated keyword grep: 20+ choices with stat-variant inputs, verify ≥70% mention stat-relevant keywords, (3) Code review: confirm prompt structures stats for LLM. Pass if all three checks succeed. |
+| SC-014 | Choice stat relevance | ≥70% of choices mention stat-relevant keywords | (1) Verify Phi-4 prompt template includes `{player_stats}` injection, (2) Automated keyword grep: 20+ choices with stat-variant inputs, verify ≥70% mention stat-relevant keywords, (3) Code review: confirm prompt structures stats for LLM. Pass if all three checks succeed. |
 | SC-015 | Portrait generation speed | <15 seconds for 90% of requests (local generation) | Automated timing |
 | SC-016 | Portrait cache accuracy | Cached portrait retrieved in 95% of character reappearances | Semantic matching validation |
 | SC-017 | NPC perception init speed | <100ms, informed by faction reputation | Benchmark with new NPCs |
