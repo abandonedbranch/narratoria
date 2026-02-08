@@ -86,7 +86,9 @@ The Plan Generator (Phi-3.5 Mini) decides *contextually* what data to retrieve b
 
 | Metric | Target | Rationale |
 |--------|--------|-----------|
-| Scene transition latency | <3 seconds | Maintains narrative flow without perceived lag |
+| Plan generation latency | <2 seconds | Phi-3.5 Mini generates Plan JSON with skill selection |
+| Storyteller prose latency | <1.5 seconds (configurable) | Can use smaller model (0.3s with 1B model) for prose |
+| Scene transition latency | <3 seconds | Includes plan generation + all skills + UI render |
 | Semantic memory search | <500ms | Fast context retrieval for 1000+ stored events |
 | Plan execution timeout | 60 seconds | Prevents hung processes; triggers replan |
 | Per-skill timeout | 30 seconds | Isolates slow tools without blocking plan |
@@ -889,7 +891,11 @@ The system continues functioning when skills are unavailable:
 
 #### 4.1.1 Storyteller
 
-Rich narrative enhancement using the local LLM (Phi-3.5 Mini) or a configured hosted provider.
+The Storyteller skill is responsible for generating rich narrative prose (2-3 paragraphs) based on plan execution results. **This is DISTINCT from the Narrator AI (Phi-3.5 Mini)**, which orchestrates the entire scene pipeline.
+
+**Role Separation:**
+- **Narrator AI (Phi-3.5 Mini)**: Generates Plan JSON, selects skills, manages replanning, decides contextual data retrieval
+- **Storyteller Skill**: Invoked by plans to generate detailed narrative prose
 
 **Components:**
 - Behavioral prompt for evocative narration
@@ -900,10 +906,28 @@ Rich narrative enhancement using the local LLM (Phi-3.5 Mini) or a configured ho
 | Field | Type | Description |
 |-------|------|-------------|
 | `provider` | enum | `ollama`, `claude`, `openai` |
-| `model` | string | Model identifier |
+| `model` | string | Model identifier (can use smaller models than Phi-3.5 for prose-only generation) |
 | `apiKey` | string (sensitive) | API key for hosted providers |
 | `style` | enum | `terse`, `vivid`, `poetic` |
 | `fallbackProvider` | string | Provider to use when primary fails |
+
+**Model Sizing Guidance:**
+
+The Storyteller skill's prose generation workload is INDEPENDENT of the Narrator AI's orchestration workload:
+- **Narrator AI (fixed)**: Phi-3.5 Mini 3.8B required for plan generation and orchestration
+- **Storyteller prose (configurable)**: Can use 1-2B models, templates, or external APIs
+
+Example lightweight configuration using a smaller model:
+```json
+{
+  "provider": "ollama",
+  "model": "tinyllama:1.1b",
+  "style": "terse",
+  "fallbackProvider": "template"
+}
+```
+
+This reduces storyteller prose generation from ~1.5s to ~0.3s while maintaining plan orchestration quality.
 
 When the configured hosted API fails (network error, invalid key), the script gracefully falls back to the local model and logs the fallback. Fallback must complete within 10 seconds.
 

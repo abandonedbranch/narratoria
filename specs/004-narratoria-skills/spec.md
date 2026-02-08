@@ -146,16 +146,37 @@ A player who previously helped the town blacksmith returns to request a favor. T
 
 **FR-054**: System MUST ship with a `storyteller` skill for rich narrative enhancement
 
+**Role**: The Storyteller skill generates narrative prose (2-3 paragraphs) when invoked by plans. This is DISTINCT from the Narrator AI (Phi-3.5 Mini), which orchestrates the scene pipeline and generates Plan JSON.
+
 **Components**:
 - Behavioral prompt for evocative narration
 - `narrate.dart` script that calls LLM (local or hosted) for detailed prose
 
 **Configuration**:
 - `provider`: ollama | claude | openai
-- `model`: Model identifier
+- `model`: Model identifier (can be smaller than Phi-3.5 for prose-only generation)
 - `apiKey`: API key for hosted providers (sensitive)
 - `style`: terse | vivid | poetic
 - `fallbackProvider`: Provider to use when primary fails
+
+**Model Sizing Guidance**:
+
+The Storyteller skill's prose generation workload is INDEPENDENT of the Narrator AI's orchestration workload:
+
+- **Narrator AI (fixed)**: Phi-3.5 Mini 3.8B required for plan generation
+- **Storyteller prose (configurable)**: Can use 1-2B models or templates
+
+Example lightweight configuration:
+```json
+{
+  "provider": "ollama",
+  "model": "tinyllama:1.1b",
+  "style": "terse",
+  "fallbackProvider": "template"
+}
+```
+
+This reduces storyteller prose generation from ~1.5s to ~0.3s while maintaining plan orchestration quality.
 
 ### 4.2 Dice Roller Skill
 
