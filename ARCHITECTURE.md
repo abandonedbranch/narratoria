@@ -166,7 +166,7 @@ These principles ensure the system remains maintainable, extensible, and reliabl
 - **Specification Phase**: Complete architecture defined across 8 interconnected specifications
 - **Implementation Status**: Early development; core protocol and execution engine defined
 - **Target Platforms**: macOS, Windows, Linux (desktop); iOS 17+, Android (mobile)
-- **License**: Open source (license TBD)
+- **License**: Open source (GNU GENERAL PUBLIC LICENSE v3.0)
 - **Repository**: github.com/abandonedbranch/narratoria
 
 This living document serves as the authoritative reference for system design, capturing architectural decisions, rationale, and open questions. It evolves alongside the implementation.
@@ -240,7 +240,7 @@ The fundamental data flow in Narratoria follows a cycle:
                     ┌──────────────────────┐
                     │   Scene Renderer     │  Displays:
                     │                      │  - Narrative prose (2-3 paragraphs)
-                    │                      │  - Character portraits
+                    │                      │  - Character portraits + background art
                     │                      │  - Ambient music
                     │                      │  - 3-4 contextual choices
                     └──────────┬───────────┘
@@ -764,7 +764,180 @@ result: {"a": 1}
 | Max replan attempts | 5 | No | Hard limit per Constitution |
 | Max retries per tool | 3 (default) | Yes | Via retryPolicy in plan |
 
-### 2.6 Analytics Logging
+### 2.6 Session State and UI Binding
+
+#### 2.6.1 State Structure
+
+Session state is a single JSON object that accumulates throughout a play session via `state_patch` events from skills. The state structure is **not rigidly enforced**, allowing skills flexibility, but conventional paths enable deterministic UI rendering.
+
+**State Lifecycle:**
+
+```
+Session Start → Initial State (empty or loaded from save)
+       ↓
+Skill Execution → state_patch events
+       ↓
+Deep Merge → Updated Session State
+       ↓
+UI Subscription → Reactive Rendering
+       ↓
+Player Action → New Plan → Skill Execution (loop)
+```
+
+#### 2.6.2 Conventional State Paths
+
+The following top-level keys establish conventions for common game data:
+
+| Path | Type | Purpose | UI Binding Examples |
+|------|------|---------|---------------------|
+| `player.*` | object | Player character data | Character sheet, status icons |
+| `player.stats.*` | object | Campaign-defined stats (from `stats/*.stat.txt`) | Stat gauges grouped by category |
+| `player.stats.{id}` | number | Individual stat value (e.g., health, mana, chemistry) | Bar, hearts, pips, ring, number |
+| `player.inventory` | object | Item data keyed by item ID | Inventory grid, equipment slots |
+| `player.status` | array | Active status effects | Status effect icons with tooltips |
+| `world.*` | object | World state | Location header, environmental indicators |
+| `world.location` | string | Current location name | Location display |
+| `world.time` | string | Time of day | Time indicator, day/night styling |
+| `npcs.*` | object | NPC data keyed by NPC ID | Relationship meters, dialogue indicators |
+| `npcs.<id>.stats.*` | object | NPC-scoped stats (from `stats/npc.{id}.*.stat.txt`) | NPC relationship gauges |
+| `npcs.<id>.perception` | number | NPC opinion (-100 to +100) | Relationship meter, dialogue tone |
+| `quest.*` | object | Quest tracking | Quest log, objective markers |
+| `flags.*` | object | Binary story flags | Conditional content unlocking |
+| `combat.*` | object | Combat state (when active) | Combat UI, turn order, action buttons |
+
+**Example State Evolution:**
+
+```json
+// Initial state (session start)
+{}
+
+// After character creation skill (stats initialized from *.stat.txt defaults)
+{
+  "player": {
+    "name": "Aria",
+    "class": "rogue",
+    "stats": {
+      "health": 100,
+      "mana": 50,
+      "stamina": 80
+    }
+  }
+}
+
+// After combat encounter (damage taken, item gained)
+{
+  "player": {
+    "name": "Aria",
+    "class": "rogue",
+    "stats": {
+      "health": 72,   // updated via state_patch
+      "mana": 50,
+      "stamina": 65   // updated
+    },
+    "inventory": {  // added
+      "rusty_dagger": {"name": "Rusty Dagger", "type": "weapon", "damage": "1d4", "equipped": true}
+    }
+  },
+  "world": {  // added
+    "location": "Darkwood Forest Clearing"
+  }
+}
+```
+
+#### 2.6.3 UI Reactive Rendering
+
+The Flutter UI layer uses the **Provider** pattern with `ChangeNotifier` to subscribe to session state changes:
+
+```dart
+// Conceptual (not strict implementation)
+class SessionStateNotifier extends ChangeNotifier {
+  Map<String, dynamic> _state = {};
+  
+  void applyPatch(Map<String, dynamic> patch) {
+    _state = deepMerge(_state, patch);
+    notifyListeners();  // Triggers UI rebuild
+  }
+  
+  Map<String, dynamic> get state => _state;
+}
+```
+
+Widgets rebuild automatically when state changes:
+
+```dart
+// Health bar widget
+Consumer<SessionStateNotifier>(builder: (context, state, child) {
+  final health = state.state['player']?['stats']?['health'] ?? 0;
+  final healthDef = campaignStats['health'];  // From stat definition
+  final maxHealth = healthDef?.rangeMax ?? 100;
+  return HealthBar(current: health, max: maxHealth);
+})
+```
+
+**Key Properties:**
+
+1. **Deterministic**: Given the same sequence of `state_patch` events, the UI always renders identically.
+2. **Real-time**: State updates occur during plan execution, not just at the end.
+3. **Granular**: Skills can update specific nested paths without replacing entire subtrees.
+4. **Extensible**: Custom skills can introduce new state paths; the UI gracefully ignores unknown paths.
+
+#### 2.6.4 Skill Output Examples
+
+**Example 1: Dice Roller Skill**
+
+```json
+// Input: Roll 2d6 for damage
+// Output events:
+{"version":"0","type":"log","level":"info","message":"Rolling 2d6"}
+{"version":"0","type":"state_patch","patch":{"lastRoll":{"dice":"2d6","result":9,"rolls":[4,5]}}}
+{"version":"0","type":"done","ok":true,"summary":"Rolled 9"}
+```
+
+**Example 2: Combat Skill**
+
+```json
+// After player attacks goblin
+{"version":"0","type":"state_patch","patch":{
+  "combat": {
+    "active": true,
+    "enemies": {
+      "goblin_1": {"hp": 3, "maxHp": 12, "status": ["wounded"]}
+    }
+  }
+}}
+{"version":"0","type":"ui_event","event":"combat_log","payload":{
+  "message":"Your dagger strikes the goblin for 9 damage!"
+}}
+{"version":"0","type":"done","ok":true}
+```
+
+**Example 3: Reputation Skill**
+
+```json
+// After helping NPC
+{"version":"0","type":"state_patch","patch":{
+  "npcs": {
+    "blacksmith_gareth": {
+      "perception": 45,  // increased from 25
+      "relationshipTier": "friendly"
+    }
+  }
+}}
+{"version":"0","type":"done","ok":true,"summary":"Gareth's opinion improved"}
+```
+
+#### 2.6.5 Handling Missing or Invalid State Data
+
+The UI must handle missing, null, or invalid state values gracefully:
+
+- **Missing `player.hp`**: Display "—" or hide health bar
+- **Invalid number (string "abc" for hp)**: Log warning, display placeholder
+- **Empty arrays**: Render empty state UI ("No active quests")
+- **Unknown state paths**: Ignore silently; do not crash
+
+Skills should emit well-formed state patches, but the UI must be defensive against malformed data to maintain system reliability.
+
+### 2.7 Analytics Logging
 
 The system must log all plan generation and execution attempts with timestamps, plan IDs, skill selections, and outcomes for debugging and analytics.
 
@@ -1315,6 +1488,14 @@ campaign_name/
 │   ├── history/
 │   ├── magic/
 │   └── locations/
+├── stats/                           # Stat definitions (*.stat.txt)
+│   ├── health.stat.txt              # Player stat: health gauge
+│   ├── mana.stat.txt                # Player stat: magic resource
+│   └── hidden/                      # Hidden stats (not shown to player)
+│       └── suspicion.stat.txt
+├── items/                           # Item definitions (*.item.txt)
+│   ├── weapon.short_sword.item.txt
+│   └── potion.healing.item.txt
 ├── art/                             # Images (PNG, JPEG, WebP)
 │   ├── characters/
 │   ├── locations/
@@ -1440,7 +1621,349 @@ Character creation can be `freeform`, `guided`, or `preset` mode:
 }
 ```
 
-#### 6.2.7 Lore System
+#### 6.2.7 Stats System
+
+Stats are **named numeric gauges that constrain what the narrative can do**. Every RPG system — tabletop, CRPG, visual novel, dating sim — uses stats for three purposes:
+
+1. **Gate**: Determine what options are available ("You need 14 Strength to force the door")
+2. **Modify**: Shift probability of outcomes ("Roll + Dexterity modifier")
+3. **Resource**: Deplete and replenish to create tension ("You have 3 HP left")
+
+Whether a stat is called "HP," "Hull Integrity," "Composure," "Chemistry," or "Favor with the Empress," it's always a named number with a range that gates, modifies, or depletes. Narratoria treats stats generically — the system doesn't need to know what "health" means in advance. It knows there are N stats, each has a range, and each gets a UI gauge.
+
+**Core Principle**: *Convention over configuration.* Authors define stats by creating files in a `stats/` directory. The filename, extension, and a simple header block carry all the semantics the runtime needs.
+
+##### Stat File Convention
+
+**Location**: `campaign_name/stats/`
+**Filename pattern**: `{stat_id}.stat.txt`
+**Hidden stats**: `campaign_name/stats/hidden/` (or `hidden: yes` in header)
+
+**File format**: A key-value header block (lines before the first blank line), followed by freeform behavioral prose.
+
+**Example: Fantasy RPG — `stats/health.stat.txt`**
+
+```
+range: 0-100
+default: 100
+display: bar
+label: Health
+category: vital
+
+Health represents physical well-being. When health reaches 0,
+the character is incapacitated. Combat damage, poison, and
+exhaustion reduce health. Rest, potions, and healing magic
+restore it.
+
+The narrator should describe declining health through
+increasingly vivid physical symptoms — heavy breathing at 70,
+visible wounds at 40, barely standing at 15.
+```
+
+**Example: Dating Sim — `stats/chemistry.stat.txt`**
+
+```
+range: 0-10
+default: 0
+display: hearts
+label: Chemistry
+category: relationship
+
+Chemistry measures romantic tension between the player and
+a love interest. It rises through flirting, shared vulnerability,
+and meaningful gifts. It drops through insensitivity, betrayal,
+or prolonged absence.
+
+At 8+, the love interest initiates romantic dialogue unprompted.
+At 3 or below, they become distant and formal.
+```
+
+**Example: Sci-Fi — `stats/hull_integrity.stat.txt`**
+
+```
+range: 0-1000
+default: 1000
+display: bar
+label: Hull Integrity
+category: ship
+
+Hull integrity represents the structural health of the player's
+starship. Asteroid impacts, weapons fire, and hard landings
+reduce it. Repair drones, spacedock maintenance, and emergency
+patches restore it.
+
+Below 200, the narrator should describe sparking conduits,
+flickering lights, and hull breach warnings.
+```
+
+**Example: Hidden Stat — `stats/hidden/suspicion.stat.txt`**
+
+```
+range: 0-100
+default: 0
+display: bar
+label: Suspicion
+category: social
+hidden: yes
+
+Suspicion tracks how much the town guard suspects the player
+of criminal activity. Witnessing theft, finding contraband,
+or receiving tips from informants raises suspicion. Bribes,
+good deeds, and time passing lower it.
+
+The narrator should reveal suspicion indirectly — guards
+watching more closely at 30, being followed at 60, an
+arrest warrant at 90.
+```
+
+##### Header Fields
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `range` | string | Yes | — | Numeric bounds as `{min}-{max}` (e.g., `0-100`, `1-20`, `-50-50`) |
+| `default` | number | No | `min` value | Starting value for new playthroughs |
+| `display` | enum | No | `bar` | UI rendering hint: `bar`, `number`, `hearts`, `pips`, `ring`, `hidden` |
+| `label` | string | No | Filename stem, title-cased | Human-readable display name |
+| `category` | string | No | `general` | Grouping key for UI layout (e.g., `vital`, `resource`, `relationship`, `ship`, `social`) |
+| `hidden` | boolean | No | `false` | If `yes`, the system tracks but does not display to the player |
+
+**Parsing Rules:**
+
+1. Header lines are `key: value` pairs (colon-space separated)
+2. First blank line ends the header
+3. Everything after the blank line is **behavioral prose** — injected into the Narrator AI's context alongside skill `prompt.md` files
+4. Lines starting with `#` in the header are comments (ignored)
+5. Unknown header keys are stored as metadata but not interpreted by the runtime
+
+##### Ingestion and State Binding
+
+On campaign load, the ingestion pipeline processes `stats/`:
+
+```
+For each *.stat.txt in stats/ (including stats/hidden/):
+  1. Parse filename stem → stat ID ("health", "chemistry")
+  2. Parse header → range, default, display, label, category, hidden
+  3. Parse prose body → behavioral prompt text
+  4. Store stat definition in ObjectBox:
+     - Stat ID, range bounds, default, display mode, category
+     - Behavioral prose stored as embedding + raw text
+     - Hidden flag
+  5. Register state path: player.stats.{stat_id}
+  6. Initialize session state: player.stats.{stat_id} = default
+  7. Check for UI asset: ui/state/player.stats.{stat_id}.{ext}
+  8. Inject behavioral prose into Narrator AI system context
+```
+
+**Resulting Session State:**
+
+```json
+{
+  "player": {
+    "stats": {
+      "health": 100,
+      "mana": 50,
+      "chemistry": 0
+    }
+  }
+}
+```
+
+Skills update stats via standard `state_patch` events:
+
+```json
+{"version":"0","type":"state_patch","patch":{"player":{"stats":{"health":72}}}}
+```
+
+The runtime enforces range bounds — a patch setting `health` to `-5` is clamped to `0`; setting it to `150` is clamped to `100`.
+
+##### NPC Stats
+
+NPC definitions can include their own stats. An author has two options:
+
+**Option 1: Inline in NPC profile**
+
+NPC stats defined within `characters/npcs/{name}/profile.json`:
+
+```json
+{
+  "name": "Owen",
+  "role": "Love Interest",
+  "stats": {
+    "chemistry": {"value": 0, "range": "0-10"},
+    "trust": {"value": 3, "range": "0-10"}
+  }
+}
+```
+
+**Option 2: Dedicated stat files**
+
+Authors can create stat files scoped to specific NPCs for richer behavioral prose:
+
+```
+stats/npc.owen.chemistry.stat.txt
+stats/npc.owen.trust.stat.txt
+```
+
+**`stats/npc.owen.chemistry.stat.txt`:**
+
+```
+range: 0-10
+default: 0
+display: hearts
+label: Chemistry with Owen
+category: relationship
+
+Owen is guarded after a past betrayal. Chemistry builds slowly
+through consistent kindness and shared creative pursuits.
+Grand gestures make him uncomfortable — he values quiet moments.
+
+At 7+, Owen begins sharing personal stories unprompted.
+At 2 or below, he avoids being alone with the player.
+```
+
+**NPC stat state path**: `npcs.{npc_id}.stats.{stat_id}`
+
+```json
+{
+  "npcs": {
+    "owen": {
+      "stats": {
+        "chemistry": 4,
+        "trust": 6
+      }
+    }
+  }
+}
+```
+
+When both an inline stat and a dedicated file exist for the same NPC stat, the dedicated file takes precedence (richer behavioral guidance).
+
+##### Items with Stat-Relevant Data
+
+Items are defined in `items/` using `.item.txt` files with the same header-plus-prose convention:
+
+**`items/weapon.short_sword.item.txt`:**
+
+```
+type: weapon
+damage: 1d6
+weight: 3
+label: Short Sword
+category: melee
+
+A reliable sidearm favored by scouts and rogues. Its short
+blade excels in tight quarters — corridors, ship decks,
+and tavern brawls.
+
+The narrator should describe its use as quick, precise strikes
+rather than heavy cleaving blows.
+```
+
+**`items/potion.healing.item.txt`:**
+
+```
+type: consumable
+effect: health +25
+uses: 1
+weight: 0.5
+label: Healing Potion
+category: consumable
+
+A small glass vial containing a warm crimson liquid. When
+consumed, it rapidly mends wounds and restores vitality.
+
+The narrator should describe a spreading warmth, the taste
+of honey and copper, and the visible closure of minor wounds.
+```
+
+On ingestion, item headers are tokenized and stored in ObjectBox with semantic embeddings. When the Narrator AI generates a plan involving a dice roll or stat check, it can look up the relevant item's properties:
+
+```json
+{
+  "toolId": "dice_roll",
+  "toolPath": "skills/dice-roller/roll.dart",
+  "input": {
+    "formula": "1d20 + player.stats.dexterity",
+    "item_context": "weapon.short_sword"
+  }
+}
+```
+
+The dice roller skill queries ObjectBox for `weapon.short_sword`, retrieves `damage: 1d6`, and factors it into the result.
+
+##### UI Rendering
+
+The UI renders stats deterministically based on definition metadata:
+
+1. **Discovery**: Query all stat definitions from ObjectBox where `hidden = false`
+2. **Grouping**: Group by `category` field
+3. **Ordering**: Within each category, alphabetical by label (or author-specified order if present)
+4. **Rendering**: Apply `display` mode:
+
+| Display Mode | Rendering | Best For |
+|-------------|-----------|----------|
+| `bar` | Horizontal fill bar with current/max | HP, mana, hull integrity |
+| `number` | Plain numeric display | Strength, intelligence |
+| `hearts` | Row of filled/empty heart icons | Relationship stats |
+| `pips` | Discrete filled circles | Skill levels (1-5 scale) |
+| `ring` | Circular progress indicator | Single prominent stat |
+| `hidden` | Not rendered (equivalent to `hidden: yes`) | Behind-the-scenes trackers |
+
+5. **Asset binding**: Check `ui/state/player.stats.{stat_id}.{ext}` for a custom icon
+6. **Fallback**: No custom icon → use generic icon based on `category` (heart for vital, star for resource, etc.)
+
+**Category-based UI layout:**
+
+```
+┌─────────────────────────────────────┐
+│ VITAL                               │
+│ ❤️ Health  ████████░░░  72/100      │
+│ 💧 Mana    ██████░░░░░  30/50      │
+├─────────────────────────────────────┤
+│ RELATIONSHIP                        │
+│ 💕 Chemistry with Owen  ♥♥♥♥♡♡♡♡♡♡ │
+│ 🤝 Trust with Owen      ♥♥♥♥♥♥♡♡♡♡ │
+├─────────────────────────────────────┤
+│ RESOURCE                            │
+│ 💰 Gold    247                      │
+└─────────────────────────────────────┘
+```
+
+##### Narrator AI Integration
+
+Stat definitions are injected into the Narrator AI's system context during plan generation:
+
+```
+CAMPAIGN STATS:
+- health (vital): 0-100, currently 72. "Health represents physical 
+  well-being. The narrator should describe declining health through 
+  increasingly vivid physical symptoms..."
+- chemistry (relationship, NPC: Owen): 0-10, currently 4. "Owen is 
+  guarded after a past betrayal. Chemistry builds slowly through 
+  consistent kindness..."
+```
+
+This enables the AI to:
+- Reference stats when generating narrative prose
+- Select appropriate skills for stat-modifying actions
+- Generate choices that reflect current stat values
+- Respect hidden stats without revealing them to the player
+
+##### Stat Change Narration
+
+When a stat changes, the behavioral prose guides how the narrator describes it. The system does not require the narrator to announce stat changes numerically — instead, the prose teaches the narrator to weave stat effects into the story naturally.
+
+**Example flow:**
+
+1. Player drinks healing potion
+2. Dice roller resolves: health +25 (72 → 97)
+3. State patch applied: `{"player": {"stats": {"health": 97}}}`
+4. Storyteller skill receives updated state + behavioral prose for health
+5. Narrator generates: *"Warmth spreads through your chest as the crimson liquid does its work. The throbbing in your shoulder fades to a dull ache, and you can finally draw a full breath."*
+
+The player sees health bar update from 72 to 97. The narrative describes the *experience* of healing, not the number.
+
+#### 6.2.8 Lore System
 
 All files in `lore/` are indexed for semantic search (RAG retrieval):
 
@@ -1451,7 +1974,7 @@ All files in `lore/` are indexed for semantic search (RAG retrieval):
 - Token counts must be computed using the `tiktoken` library with the `cl100k_base` tokenizer (compatible with the sentence-transformers embedding model)
 - Nested directories within `lore/` are supported for organization
 
-#### 6.2.8 Creative Assets
+#### 6.2.9 Creative Assets
 
 **Image assets** (`art/`): Supported formats are PNG, JPEG, and WebP. Nested subdirectories are supported (e.g., `art/characters/`, `art/locations/`, `art/items/`).
 
@@ -1459,7 +1982,96 @@ All files in `lore/` are indexed for semantic search (RAG retrieval):
 
 File naming conventions enable semantic linking: `art/characters/npc_wizard.png` is indexed alongside `characters/npcs/wizard/profile.json`.
 
-#### 6.2.9 Asset Metadata Structure
+##### Asset-Driven Narration Constraints
+
+The system enforces a **grounding principle**: *Provided campaign content takes absolute precedence over AI generation.*
+
+When the Narrator AI generates narrative prose or makes planning decisions, it **must prioritize** campaign-provided data:
+
+1. **Character Descriptions**: If an NPC has a `profile.json`, the AI uses those exact personality traits, motivations, and speech patterns. It does not invent new traits.
+
+2. **World Details**: If `world/setting.md` specifies "magic is forbidden in the Northern Kingdom," the AI never generates scenes where Northern guards use spellcasting.
+
+3. **Visual Consistency**: If `art/characters/npc_wizard.png` shows a young woman in blue robes, the AI describes her as young and wearing blue—not elderly with a staff.
+
+4. **Lore Authority**: If `lore/history/founding.md` states "The kingdom was founded 200 years ago," the AI uses that timeline. It does not hallucinate "ancient origins dating back millennia."
+
+5. **Item Properties**: If `world/rules.md` defines healing potions as single-use with exact HP restoration, the AI honors those mechanics rather than inventing gradual regeneration.
+
+**Implementation Mechanism:**
+
+- During plan generation, the Narrator AI receives campaign constraints in its system prompt:
+  ```
+  CAMPAIGN CONSTRAINTS:
+  - Setting: [contents of world/setting.md]
+  - Tone: [from manifest.json]
+  - Custom Rules: [world/rules.md if present]
+  - Active NPCs: [list of NPC names with profile summaries]
+  - Available Items: [items defined in lore/ or world/rules.md]
+  ```
+
+- Memory and lore retrieval skills inject grounding facts into the context:
+  ```json
+  {
+    "toolId": "recall",
+    "toolPath": "skills/memory/recall.dart",
+    "input": {
+      "query": "wizard appearance",
+      "sources": ["characters/npcs/wizard/profile.json", "art/characters/npc_wizard.png.keywords.txt"]
+    }
+  }
+  ```
+
+- The Storyteller skill's behavioral prompt (`prompt.md`) includes explicit instructions:
+  ```markdown
+  When describing characters, locations, or items:
+  1. Check if campaign data exists for this entity
+  2. If YES: Use provided details verbatim; do not embellish or contradict
+  3. If NO: Generate details consistent with campaign tone and constraints
+  ```
+
+**Grounding Hierarchy:**
+
+| Priority | Source | Behavior |
+|----------|--------|----------|
+| 1 | Structured data (JSON profiles, manifest) | Use exactly as written; no modifications |
+| 2 | Prose data (markdown files in lore/, world/) | Paraphrase naturally but preserve all facts |
+| 3 | Asset metadata (keywords, alt text) | Use as hints for visual consistency |
+| 4 | AI generation with campaign tone constraint | Generate only when no data exists; match tone |
+| 5 | Fallback generic narration | Last resort when plan+skills fail entirely |
+
+**Example Scenario:**
+
+Campaign provides:
+- `characters/npcs/blacksmith/profile.json`: Name "Gareth", gruff, secretly kind
+- `art/characters/blacksmith.png.keywords.txt`: muscular, scarred, leather apron
+- `lore/locations/forge.md`: "The forge has been in Gareth's family for three generations"
+
+Player action: "I approach the blacksmith"
+
+Narrator AI generates plan invoking memory skill to retrieve Gareth's profile and forge lore. Storyteller skill produces:
+
+> "You approach the forge, its heat radiating even from the threshold. Gareth, a muscular man with old scars crossing his forearms, looks up from his work. His leather apron is stained dark with soot. 'What do you want?' he grumbles, though there's no real malice in his tone. The forge has been in his family for three generations—the pride evident in how meticulously he maintains every tool."
+
+**What the AI did NOT do:**
+- ❌ Invent that Gareth has a friendly demeanor (profile says "gruff")
+- ❌ Describe him as elderly (keywords say "muscular")
+- ❌ Add details like "he wears a gold ring" (not in provided data)
+- ❌ Make up family history beyond what lore provides
+
+**Debugging Content Grounding:**
+
+Skills can emit verification logs showing grounding evidence:
+
+```json
+{"version":"0","type":"log","level":"debug","message":"Grounded 'blacksmith' from characters/npcs/blacksmith/profile.json"}
+{"version":"0","type":"log","level":"debug","message":"Grounded 'forge history' from lore/locations/forge.md"}
+{"version":"0","type":"log","level":"warning","message":"No data for 'number of anvils'—generated detail"}
+```
+
+The system logs show what was grounded vs. generated, enabling authors to identify gaps and add missing content in subsequent campaign versions.
+
+#### 6.2.10 Asset Metadata Structure
 
 All ingested assets follow a consistent metadata schema in the persistence layer:
 
@@ -1505,7 +2117,7 @@ All ingested assets follow a consistent metadata schema in the persistence layer
 }
 ```
 
-#### 6.2.10 Keyword Sidecar Files
+#### 6.2.11 Keyword Sidecar Files
 
 Authors can override auto-extracted keywords by creating `.keywords.txt` sidecar files alongside assets:
 
@@ -1521,7 +2133,541 @@ magic_user
 
 Format: plain text, one keyword per line, comments with `#` prefix. When a sidecar exists, the system uses its keywords instead of auto-extracting from filename or content.
 
-#### 6.2.11 Provenance Validation
+#### 6.2.12 State-Bound UI Assets
+
+Campaign authors can provide custom artwork and icons that bind to specific session state paths, enabling rich visual customization of UI elements. This feature allows authors to replace generic UI elements with thematic artwork that matches their campaign's aesthetic.
+
+**Core Principle**: *The more UI assets a campaign provides, the less the system uses generic placeholders.*
+
+##### State Asset Directory Structure
+
+```
+campaign_name/
+├── ui/
+│   ├── state/
+│   │   ├── player.hp.webp                    # Icon for health stat
+│   │   ├── player.maxHp.webp                 # Optional: max health icon
+│   │   ├── player.attributes.strength.webp   # Strength attribute icon
+│   │   ├── player.attributes.dexterity.webp  # Dexterity attribute icon
+│   │   ├── player.inventory.webp             # Inventory container icon
+│   │   ├── world.location.webp               # Location marker icon
+│   │   ├── world.time.webp                   # Time indicator icon (e.g., clock)
+│   │   ├── quest.active.webp                 # Active quest icon
+│   │   └── combat.active.webp                # Combat mode indicator
+│   └── items/                                 # Item-specific icons
+│       ├── rusty_dagger.webp
+│       ├── torch.webp
+│       └── healing_potion.webp
+```
+
+**Naming Convention**: State-bound asset filenames follow the pattern `{state.path}.{extension}` where:
+- `state.path` is the dot-notation path from session state (e.g., `player.hp`, `world.time`)
+- Nested paths use dots as separators (e.g., `player.attributes.strength`)
+- Supported formats: WebP (preferred), PNG, SVG
+
+**Recommended Dimensions**:
+- **State icons** (hp, attributes, etc.): 48×48px to 128×128px
+- **Item icons**: 64×64px to 256×256px
+- **Location/world icons**: 64×64px to 128×128px
+
+Assets should be optimized for file size. WebP is preferred for raster images; SVG for vector graphics.
+
+##### State Asset Metadata Schema
+
+State-bound assets include additional metadata fields:
+
+```json
+{
+  "path": "ui/state/player.hp.webp",
+  "type": "state_icon",
+  "state_binding": {
+    "path": "player.hp",
+    "display_mode": "icon_with_value",
+    "value_format": "{current} / {max}",
+    "fallback": "heart_generic"
+  },
+  "dimensions": {"width": 64, "height": 64},
+  "generated": false,
+  "keywords": ["health", "hit points", "player stat"]
+}
+```
+
+**`state_binding` Fields**:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `path` | string | Session state path this asset represents (e.g., `player.hp`) |
+| `display_mode` | enum | How UI renders: `icon_only`, `icon_with_value`, `icon_with_label`, `icon_with_bar` |
+| `value_format` | string | Template for displaying numeric values (e.g., `"{current} / {max}"`, `"{value}%"`) |
+| `fallback` | string | Generic icon ID to use if this asset fails to load |
+| `interactive` | boolean | Whether tapping/clicking shows detailed view (default: `true`) |
+| `tooltip` | string | Optional tooltip text override |
+
+##### UI Rendering Behavior
+
+When the UI needs to display a state value, the rendering logic follows this sequence:
+
+1. **Check for state-bound asset**: Look for `ui/state/{state.path}.{ext}` in campaign
+2. **Apply display mode**:
+   - `icon_only`: Show icon; value appears on tap/hover
+   - `icon_with_value`: Show icon + formatted value inline
+   - `icon_with_label`: Show icon + custom label
+   - `icon_with_bar`: Show icon + progress bar (for numeric ranges)
+3. **Handle interaction**:
+   - Tapping icon opens detailed view with full state data
+   - For `player.inventory`, opens inventory grid
+   - For `player.hp`, shows health details (current, max, status effects)
+   - For `world.location`, shows location description and available actions
+4. **Fallback on missing asset**: Use generic themed icon (heart for hp, clock for time, etc.)
+
+##### Item-Specific Icons
+
+Campaign authors can provide icons for individual inventory items:
+
+```
+ui/items/rusty_dagger.webp
+ui/items/torch.webp
+ui/items/healing_potion.webp
+```
+
+Items are matched by:
+1. **Item ID match**: `state.player.inventory.{item_id}` → `ui/items/{item_id}.webp`
+2. **Item type match**: `state.player.inventory.{id}.type` → `ui/items/{type}.webp`
+3. **Keyword match**: Item keywords → asset keywords via semantic similarity
+4. **Generic fallback**: Use placeholder icon with item name label
+
+##### Skill Integration
+
+Skills can reference state-bound assets when emitting state patches:
+
+```json
+{
+  "version": "0",
+  "type": "state_patch",
+  "patch": {
+    "player": {
+      "inventory": {
+        "rusty_dagger": {
+          "name": "Rusty Dagger",
+          "type": "weapon",
+          "damage": "1d4",
+          "icon": "ui/items/rusty_dagger.webp",  // Optional: explicit reference
+          "equipped": true
+        }
+      }
+    }
+  }
+}
+```
+
+If `icon` field is provided, the UI uses that path directly. If omitted, the UI uses the item ID matching logic described above.
+
+##### Campaign Manifest Configuration
+
+Authors can configure state asset behavior in `manifest.json`:
+
+```json
+{
+  "title": "Chronicles of Merlin",
+  "version": "2.1.0",
+  "ui_customization": {
+    "state_icons": {
+      "enabled": true,
+      "theme": "medieval_fantasy",
+      "fallback_style": "themed",  // "themed" or "generic"
+      "icon_size": "medium"        // "small", "medium", "large"
+    },
+    "item_display": {
+      "mode": "grid",               // "grid" or "list"
+      "columns": 4,
+      "show_quantity": true,
+      "show_weight": false
+    }
+  }
+}
+```
+
+##### Runtime Asset Resolution
+
+The system uses a deterministic lookup algorithm to resolve state-bound assets at runtime. Asset resolution happens in two phases: **campaign load** (indexing) and **runtime lookup** (retrieval).
+
+**Phase 1: Campaign Load Indexing**
+
+When a campaign loads, the ingestion pipeline scans `ui/state/` and `ui/items/` directories and builds an in-memory index:
+
+```dart
+// Conceptual data structure
+class StateAssetIndex {
+  // Exact path matches
+  Map<String, AssetMetadata> exactMatches;
+  
+  // Pattern matches (wildcards)
+  List<PatternMatch> patternMatches;
+  
+  // Type-based fallbacks
+  Map<String, AssetMetadata> typeFallbacks;
+  
+  // Category-level fallbacks
+  Map<String, AssetMetadata> categoryFallbacks;
+}
+```
+
+**Indexing Rules:**
+
+1. **Exact paths**: `player.hp.webp` → indexed as `"player.hp"`
+2. **Wildcard paths**: `world.locations.*.marker.webp` → pattern `world.locations.{id}.marker`
+3. **Type fallbacks**: `ui/items/weapon.webp` → fallback for all items with `type: "weapon"`
+4. **Category fallbacks**: `ui/state/player.attributes.*.webp` → pattern for any attribute
+
+The index is built once per campaign load and cached in memory. Index construction completes in <100ms for campaigns with up to 1000 assets.
+
+**Phase 2: Runtime Lookup Algorithm**
+
+When the UI needs to render a state value, it queries the asset index using this resolution chain:
+
+```
+function resolveStateAsset(statePath: String) -> AssetMetadata? {
+  // Step 1: Exact match
+  if (exactMatches.containsKey(statePath)) {
+    return exactMatches[statePath];
+  }
+  
+  // Step 2: Pattern match (wildcards)
+  for (pattern in patternMatches) {
+    if (pattern.matches(statePath)) {
+      return pattern.asset;
+    }
+  }
+  
+  // Step 3: Type-based fallback
+  stateValue = sessionState.get(statePath);
+  if (stateValue.hasType()) {
+    typePath = stateValue.type;
+    if (typeFallbacks.containsKey(typePath)) {
+      return typeFallbacks[typePath];
+    }
+  }
+  
+  // Step 4: Category-based fallback
+  category = extractCategory(statePath);  // e.g., "player", "world", "combat"
+  if (categoryFallbacks.containsKey(category)) {
+    return categoryFallbacks[category];
+  }
+  
+  // Step 5: System default
+  return getSystemDefault(statePath);
+}
+```
+
+**Lookup Performance:**
+
+- **Exact match**: O(1) hash lookup, <1ms
+- **Pattern match**: O(n) where n = number of wildcard patterns, typically <5ms
+- **Fallback chain**: O(1) per fallback level, <2ms total
+- **Cache hit rate**: >95% for typical campaigns with good asset coverage
+
+**Dynamic State Paths with IDs**
+
+For state paths containing dynamic identifiers (e.g., location IDs, NPC IDs, item IDs), campaign authors use wildcard notation:
+
+**Example: World Map Location Markers**
+
+```
+# Campaign structure
+ui/state/
+├── world.locations.*.marker.webp           # Wildcard: matches any location ID
+├── world.locations.capital_city.marker.webp # Specific override for capital
+└── world.locations.dungeon.marker.webp      # Specific override for dungeon
+```
+
+**Session State:**
+```json
+{
+  "world": {
+    "locations": {
+      "capital_city": {"name": "Camelot", "discovered": true},
+      "forest_grove": {"name": "Darkwood", "discovered": true},
+      "dungeon": {"name": "Crypt of Sorrows", "discovered": false}
+    }
+  }
+}
+```
+
+**Resolution Examples:**
+
+| State Path | Lookup Result | Explanation |
+|------------|---------------|-------------|
+| `world.locations.capital_city.marker` | `ui/state/world.locations.capital_city.marker.webp` | Exact match wins |
+| `world.locations.forest_grove.marker` | `ui/state/world.locations.*.marker.webp` | Wildcard match |
+| `world.locations.dungeon.marker` | `ui/state/world.locations.dungeon.marker.webp` | Exact match (even if undiscovered) |
+
+**Wildcard Syntax:**
+
+- `*` matches any single path segment (alphanumeric + underscore)
+- `**` matches any number of path segments (for deep hierarchies)
+- Exact matches always take precedence over wildcards
+- Multiple wildcards are matched in order of specificity (more specific patterns first)
+
+**World Map with Fog of War Example:**
+
+```dart
+// UI rendering logic for world map
+class WorldMapWidget extends StatelessWidget {
+  Widget build(BuildContext context) {
+    final locations = sessionState['world']['locations'];
+    
+    return Stack(
+      children: [
+        // Base map image
+        Image.asset('ui/maps/world_map.webp'),
+        
+        // Location markers (only discovered locations)
+        ...locations.entries
+          .where((entry) => entry.value['discovered'] == true)
+          .map((entry) {
+            final locationId = entry.key;
+            final statePath = 'world.locations.$locationId.marker';
+            
+            // Deterministic asset lookup
+            final markerAsset = assetIndex.resolve(statePath);
+            
+            // Position from state or campaign data
+            final position = entry.value['map_position'] ?? 
+                             campaignData.getLocationPosition(locationId);
+            
+            return Positioned(
+              left: position.x,
+              top: position.y,
+              child: GestureDetector(
+                onTap: () => showLocationDetails(locationId),
+                child: Image(image: markerAsset.image),
+              ),
+            );
+          }).toList(),
+      ],
+    );
+  }
+}
+```
+
+**Key Behaviors:**
+
+1. **Undiscovered locations**: No marker rendered (filtered by `discovered: true`)
+2. **Discovered locations**: Marker asset resolved via `assetIndex.resolve()`
+3. **Asset not found**: Falls back to `categoryFallbacks['world.locations']` or system default
+4. **Position data**: Derived from state (`map_position`) or campaign data
+5. **Interaction**: Tapping marker opens location details view
+
+**Asset Metadata Extensions for Maps:**
+
+```json
+{
+  "path": "ui/state/world.locations.capital_city.marker.webp",
+  "type": "state_icon",
+  "state_binding": {
+    "path": "world.locations.capital_city.marker",
+    "display_mode": "icon_only",
+    "anchor_point": "center_bottom",  // Where to position relative to coordinates
+    "scale_with_zoom": true,
+    "tooltip": "Camelot - Capital City"
+  },
+  "dimensions": {"width": 64, "height": 64}
+}
+```
+
+**Performance Optimization:**
+
+- **Asset preloading**: All discovered location markers pre-loaded on map view open
+- **Lazy loading**: Undiscovered location markers not loaded until revealed
+- **Texture atlas**: Small icons packed into sprite sheets for GPU efficiency
+- **Cache warm-up**: Common state paths (hp, inventory, time) pre-resolved on app start
+
+##### Index Persistence and Memory Strategy
+
+**Memory Footprint Analysis:**
+
+The in-memory asset index is deliberately chosen for performance despite minimum hardware constraints (8GB RAM on target devices). Footprint calculations:
+
+| Campaign Size | Asset Count | Index Size | Percentage of Available RAM |
+|---------------|-------------|------------|---------------------------|
+| Small | 50 assets | ~12.5 KB | 0.00023% of 5.5GB headroom |
+| Medium | 500 assets | ~125 KB | 0.0023% |
+| Large | 2,000 assets | ~500 KB | 0.009% |
+| Very Large | 10,000 assets | ~2.5 MB | 0.045% |
+
+**Per-asset overhead**: ~250 bytes (state path string ~50 bytes, metadata reference ~100 bytes, hash map overhead ~100 bytes)
+
+**Total memory budget context:**
+
+```
+Target Device: 8GB RAM
+├── Phi-3.5 Mini model: 2.5GB (31%)
+├── sentence-transformers: 60MB (0.75%)
+├── ObjectBox + Flutter + OS: ~500MB (6%)
+├── Available headroom: ~5GB (62%)
+└── Asset index (10K assets): 2.5MB (0.03% of total)
+```
+
+The asset index is **negligible** compared to model sizes and UI framework overhead. Even very large campaigns stay well under 5MB for index data.
+
+**Persistence Strategy:**
+
+The system uses a **three-tier caching strategy** balancing speed, memory, and disk usage:
+
+**Tier 1: In-Memory (Active Session)**
+- Primary lookup location during gameplay
+- Built on campaign load; retained for session lifetime
+- Zero disk I/O during lookups
+- Invalidated on campaign reload or app restart
+
+**Tier 2: ObjectBox Cache (Cross-Session Persistence)**
+- Index serialized to ObjectBox during campaign ingestion
+- Includes campaign version checksum for invalidation
+- Rebuilt only when campaign files change (detected via SHA-256 hash)
+- Load time: <50ms for large campaigns
+
+**Tier 3: Campaign Directory (No Cache)**
+- Fallback if ObjectBox cache is missing or invalidated
+- Full directory scan + metadata parsing
+- Build time: <100ms for 1000 assets, <500ms for 10,000 assets
+
+**Indexing Lifecycle:**
+
+```
+Campaign Load
+    ↓
+Check ObjectBox for cached index
+    ↓
+    ├─ Cache Hit (version matches)
+    │    ↓
+    │  Deserialize to in-memory (50ms)
+    │    ↓
+    │  Ready for lookups
+    │
+    └─ Cache Miss or Stale
+         ↓
+       Scan ui/state/ and ui/items/ directories
+         ↓
+       Build index (100-500ms depending on size)
+         ↓
+       Serialize to ObjectBox with version hash
+         ↓
+       Ready for lookups
+```
+
+**ObjectBox Schema for Cached Index:**
+
+```dart
+@Entity()
+class CampaignAssetIndexCache {
+  @Id()
+  int id = 0;
+  
+  String campaignId;           // Unique campaign identifier
+  String campaignVersion;      // Semver from manifest.json
+  String contentHash;          // SHA-256 of ui/ directory tree
+  DateTime indexedAt;          // When index was built
+  
+  // Serialized index data (JSON or MessagePack)
+  @Property(type: PropertyType.byteVector)
+  List<int> indexData;
+  
+  int assetCount;              // For metadata/debugging
+  int sizeBytes;               // Serialized size
+}
+```
+
+**Cache Invalidation Rules:**
+
+1. **Campaign version changes**: `manifest.json` version field updated → rebuild
+2. **Asset files modified**: SHA-256 hash of `ui/` directory differs → rebuild
+3. **Schema version upgrade**: App updates index schema version → rebuild all
+4. **Manual clear**: User clears app cache → rebuild on next launch
+5. **Corruption detected**: Deserialization fails → rebuild + log error
+
+**Very Large Campaign Handling (10,000+ assets):**
+
+For campaigns exceeding 5,000 assets, additional optimizations activate:
+
+1. **Incremental Indexing**: Index built in chunks; UI remains responsive
+2. **Demand-based Loading**: Wildcard patterns indexed lazily on first match
+3. **Bloom Filter Pre-check**: Fast negative lookups before hash map queries
+4. **Compressed Storage**: Index data compressed with zstd in ObjectBox (2-3x reduction)
+
+**Memory vs. Disk Trade-off Decision:**
+
+| Strategy | Lookup Speed | Memory Usage | Disk I/O | Cache Warmup |
+|----------|--------------|--------------|----------|--------------|
+| In-memory only | <1ms | 2.5MB (10K) | 0 during play | 100-500ms |
+| ObjectBox only | 5-10ms | ~500KB | Every lookup | 0ms |
+| Hybrid (chosen) | <1ms | 2.5MB | 0 during play | 50ms (cached) |
+
+**Why Hybrid Wins:**
+
+- **Speed**: In-memory lookups are 10-20x faster than disk queries
+- **Negligible RAM**: Even 10K assets use <0.05% of available memory
+- **Fast Startup**: ObjectBox cache reduces cold-start from 500ms → 50ms
+- **Offline Friendly**: No external dependencies; fully local
+
+**Alternative Rejected:**
+
+Writing a `cache/` directory to the campaign folder was considered but rejected:
+
+**Cons:**
+1. **Campaign directory pollution**: Campaigns ship as clean content; cache files clutter authoring
+2. **Permissions**: Read-only campaign installs (iOS app bundles) can't write cache
+3. **Versioning conflicts**: Git tracking of campaigns includes generated cache files
+4. **Multi-user**: Shared campaigns need per-user cache; filesystem location unclear
+
+**Pros:**
+- Simple implementation
+- Fast cache loading (direct file I/O)
+
+**Decision**: ObjectBox-based caching provides the speed benefits without filesystem complexity or campaign directory pollution.
+
+**Monitoring and Telemetry:**
+
+The system logs index performance metrics:
+
+```dart
+// Logged on campaign load
+{
+  "event": "asset_index_built",
+  "campaign_id": "chronicles_of_merlin",
+  "asset_count": 1247,
+  "index_build_time_ms": 142,
+  "cache_hit": true,
+  "index_size_bytes": 311750,
+  "memory_allocated_mb": 0.297
+}
+```
+
+These metrics enable authors to optimize asset organization and detect performance regressions.
+
+**Error Handling:**
+
+- **Asset not found**: Log warning, use fallback, continue rendering
+- **Asset load failure**: Display placeholder, retry once, fall back to text label
+- **Invalid state path**: Log error, return null asset, render without icon
+- **Malformed metadata**: Use file directly, ignore metadata, log warning
+
+##### Example: Complete State UI Customization
+
+**Minimal Campaign** (no custom icons):
+- UI uses generic themed icons (heart for hp, clock for time, bag for inventory)
+- Inventory items show as text labels
+- Functional but not visually distinctive
+
+**Fully Customized Campaign**:
+- Custom ominous grandfather clock icon for `world.time`
+- Blood-red heart with crack pattern for `player.hp` (horror theme)
+- Ornate leather satchel for `player.inventory`
+- Individual icons for 50+ items (weapons, potions, quest items)
+- Distinctive visual identity reinforcing campaign tone
+
+**Impact**: Authors control the visual language of their story without modifying code. The same UI framework adapts to whimsical pixel art, photorealistic renders, or minimalist line drawings based purely on campaign assets.
+
+#### 6.2.13 Provenance Validation
 
 Provenance rules are enforced mechanically at the campaign ingestion layer / ObjectBox persistence adapter. The adapter must reject assets that violate provenance requirements and must not write them to ObjectBox:
 
@@ -1530,7 +2676,7 @@ Provenance rules are enforced mechanically at the campaign ingestion layer / Obj
 - `generated_at` must be a valid ISO 8601 datetime. Non-conforming timestamps are rejected.
 - On campaign load, a warning is displayed: "Campaign contains [N] AI-generated asset(s). Review generated flags and provenance metadata to verify correctness."
 
-#### 6.2.12 Ingestion Enrichment Pipeline
+#### 6.2.14 Ingestion Enrichment Pipeline
 
 When a campaign contains sparse data (fewer than 3 content files), the system invokes an on-device LLM to enrich it:
 
@@ -1549,7 +2695,7 @@ A campaign with only 3 files (`manifest.json`, `world/setting.md`, `plot/premise
 
 A campaign with 20+ content files (defined NPCs with profiles, plot beats with conditions, lore, artwork with keyword sidecars, music) requires no enrichment. The AI executes faithfully. Time to play: ~5 seconds.
 
-#### 6.2.13 Campaign Validation
+#### 6.2.15 Campaign Validation
 
 - Campaign structure is validated on load; errors are reported clearly with file paths and line numbers
 - JSON files are validated against their schemas
