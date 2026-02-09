@@ -1,3 +1,5 @@
+This file does not fall under the LICENSE; [copyright to agentskills.io](https://agentskills.io/home) 
+
 > ## Documentation Index
 > Fetch the complete documentation index at: https://agentskills.io/llms.txt
 > Use this file to discover all available pages before exploring further.
