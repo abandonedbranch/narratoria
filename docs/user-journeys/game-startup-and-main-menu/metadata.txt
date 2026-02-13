@@ -1,0 +1,77 @@
+Journey: Game Startup and Main Menu
+====================
+
+Architecture References
+- Layer 5: UI Implementation (Story View, Asset Gallery, Settings)
+- Layer 6: Skill State Persistence (Session state, memories, reputation)
+- Layer 7: Campaign Format (Manifest, allowed_classes, allowed_races, content warnings)
+- Section 6.2: Campaign Format (directory structure, manifest schema, character templates)
+- Section 6.2.6: Player Character Template (template structure and filtering)
+- Section 6.3: Campaign Storage and Distribution (discovery algorithm, platform-specific storage)
+
+Involved Layers
+- Layer 5: UI Implementation
+- Layer 6: Skill State Persistence (session initialization)
+- Layer 7: Campaign Format (manifest loading, constraint checking)
+- Layer 8: Narrative Engine (scene pipeline entry point)
+
+Key Contracts from Architecture
+- Campaign manifest includes `allowed_classes` and `allowed_races` arrays (Section 6.2)
+- Character templates filtered by campaign constraints before display
+- Content warnings array defined in campaign manifest (Section 6.2)
+- Persistence layer initializes empty session state or from character template defaults
+- Campaign discovery scans multiple locations per Section 6.3.6 (built-in, downloaded, iCloud, previous playthroughs)
+
+Consistency Requirements
+- All states use UPPER_SNAKE_CASE naming (e.g., APP_LAUNCHING, CAMPAIGN_DETAIL)
+- State transitions documented bidirectionally (forward and back button behavior)
+- Error states defined: network_timeout, missing_campaign, model_download_failure, insufficient_storage
+- Duration estimates provided for all states (used in performance contracts)
+- Back button always returns to previous state data (e.g., back from warnings returns to campaign list, not character selection)
+- Content warnings must be visible at a glance (no scrolling required to find them)
+- Character filtering enforced before display (no option to select unavailable archetypes)
+
+Error Handling Patterns
+- Model download failures: Show retry dialog with manual download link
+- Missing campaigns: Display "No campaigns found" with documentation link
+- Insufficient storage for models: Show device storage requirements and exit
+- Campaign loading failures: Return to campaign selection, show error message
+- Network timeouts (iOS iCloud sync): Gracefully fall back to local campaigns, notify user
+
+Performance Targets (from Architecture Section: Performance Targets)
+- Scene transition latency: <3 seconds (applies to campaign loading phase)
+- Model initialization: 2-30 seconds (depends on cache availability)
+- Campaign discovery: <2 seconds (for discovered campaigns list to display)
+- Character filtering: <500ms (filtered templates load after campaign selection)
+
+Data Shapes (from Architecture)
+- Campaign manifest (JSON): required fields are title, description, manifest_version, allowed_classes, allowed_races, content_warnings
+- Character template: { name, class, race, starting_stats, portrait_path, description }
+- Content warning: { type: string, description: string, severity: "mild"|"moderate"|"severe" }
+- Session state: { character: {...}, campaign: {...}, timestamp, experience_points, inventory, relationships }
+
+Failure Modes
+- Plan generation timeout during campaign load: Trigger replan loop (max 5 attempts), fallback to template narration
+- Missing character template file: Show error, return to character selection
+- Corrupt campaign manifest: Show error message, return to campaign discovery
+- Database initialization failure: Retry up to 3 times with exponential backoff
+
+UI Pattern References
+- Warning badges: Color-coded, tappable, display prominent in campaign detail view
+- Back button state management: Preserve selection state when navigating back (unless explicitly cleared)
+- Loading indicators: Show progress percentage for model downloads, spinner for discoveries
+- Modal dialogs: Content warnings use modal with checkbox acknowledgment requirement if campaign mandates it
+
+Testing Checkpoints
+- All 11 UI states defined with clear entry/exit conditions
+- 5 primary decision points have complete workflow documentation
+- Alternative flows (Load Game, Options, Exit) documented with error cases
+- State transitions verified against architecture constraints
+- Campaign filtering logic matches Section 6.2.6 contract
+- Back button behavior consistent across all states
+
+Cross-References for Implementation
+- Specification 008: UI Layer Implementation (to be created) should reference this journey
+- States.md is authoritative for UI state machine structure
+- Step definitions in steps.md map directly to implementation checkpoints
+- Interactions.md defines accessibility and input handling requirements
