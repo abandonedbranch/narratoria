@@ -3114,7 +3114,333 @@ When a campaign contains fewer than 5 content files, the system offers optional 
 - Orphaned asset references (files referenced but missing) generate warnings
 - Validation completes within 2 seconds
 
-### 6.3 Session State Management
+### 6.3 Campaign Storage and Distribution
+
+Campaigns are self-contained, portable directory structures that must persist across sessions and be shareable between devices. Narratoria implements platform-specific storage strategies while maintaining a unified campaign format that works everywhere.
+
+#### 6.3.1 Storage Strategy Overview
+
+**Core Principle**: *Campaigns are files, not cloud-locked data. Players own their stories.*
+
+The application must:
+1. Discover campaigns from multiple sources (built-in, downloaded, cloud-synced)
+2. Load campaigns quickly on all platforms (desktop and mobile)
+3. Enable sharing and backup without vendor lock-in
+4. Respect platform-specific file system conventions
+5. Support offline access after initial download
+
+#### 6.3.2 Platform-Specific Storage Locations
+
+**macOS / Windows / Linux (Desktop)**
+
+Campaigns reside in a platform-standard location:
+
+```
+macOS:
+  ~/Library/Application Support/Narratoria/campaigns/
+
+Windows:
+  %APPDATA%\Narratoria\campaigns\
+
+Linux:
+  ~/.local/share/narratoria/campaigns/
+```
+
+Structure within the campaigns directory:
+
+```
+campaigns/
+├── builtin/                          # Shipped with app
+│   ├── wizard_runner/
+│   └── ancient_ruins/
+├── downloaded/                       # User-downloaded campaigns
+│   ├── campaign_by_author.zip        # Auto-extracted on first launch
+│   └── another_campaign/
+└── saves/                            # Session playthroughs
+    ├── wizard_runner__playthrough_1/
+    │   ├── manifest.json             # Links to source campaign
+    │   ├── saves/
+    │   │   ├── session_001.json
+    │   │   └── session_002.json
+    │   └── persistent_data/          # Memory, reputation, portraits
+    │       ├── memories.db
+    │       └── npc_state.json
+    └── ancient_ruins__playthrough_1/
+```
+
+**iOS 17+**
+
+iOS restricts file system access to app-specific directories. Narratoria uses:
+
+```
+iOS:
+  App-Specific Directory:
+    /var/mobile/Containers/Data/VolatileGroupContainer/
+    {app_bundle_id}/Library/Caches/campaigns/  (temporary)
+    
+  iCloud Drive (opt-in):
+    /var/mobile/Library/Mobile Documents/
+    {cloud_container_id}/Documents/Narratoria/campaigns/
+    (synced automatically when enabled)
+    
+  File Sharing (if enabled in Info.plist):
+    Files app → [Your App Name] → Uploaded files
+    (accessible via UIDocumentPickerViewController)
+```
+
+The app opens campaigns via the Files app:
+1. User downloads `.narratoria` file or `.zip` archive
+2. User opens with Narratoria (typically via Files app or email)
+3. On launch, the app prompts: "Import this campaign?" with options:
+   - **Import to App** (copies to app-specific directory; always available)
+   - **Link to iCloud** (symbolic link pointing to iCloud Drive; synced automatically)
+   - **Use via File Sharing** (reference to Files app location; requires file picker each time)
+
+**Android**
+
+Android 10+ enforces scoped storage. Narratoria uses:
+
+```
+Android:
+  App-Specific Directory:
+    /sdcard/Android/data/com.narratoria.app/files/campaigns/
+    (Auto-cleaned on uninstall; no permissions required)
+    
+  Shared Downloads:
+    /sdcard/Download/Narratoria/          (Common for user downloads)
+    (Requires READ/WRITE_EXTERNAL_STORAGE permission on < Android 10)
+    
+  Storage Access Framework (Users choose location):
+    getExternalFilesDir() API bypasses scoped storage for app-specific dirs
+    Use Intent.ACTION_OPEN_DOCUMENT_TREE for user-chosen directories
+```
+
+The app discovers campaigns via:
+1. **Automatic scan**: App-specific directory (no permissions)
+2. **User import**: Storage Access Framework file picker
+3. **Download handler**: Downloads app stores `.narratoria` files in app directory
+
+#### 6.3.3 Campaign File Format and Portability
+
+Campaigns ship as `.narratoria` packages (ZIP archives with a specific structure):
+
+```
+campaign_name.narratoria
+├── campaign/                        # Extracted to campaigns/ on import
+│   ├── manifest.json
+│   ├── README.md
+│   ├── world/
+│   ├── characters/
+│   ├── plot/
+│   ├── lore/
+│   ├── stats/
+│   ├── items/
+│   ├── art/
+│   └── music/
+└── version.txt                      # metadata: format_version, app_version_min
+```
+
+**Portability:** Native campaign directories (uncompressed) are also supported. A user can:
+- Download a `.zip` file from anywhere
+- Rename it to `.narratoria`
+- Open it with Narratoria
+- The app automatically extracts and validates
+
+#### 6.3.4 iCloud Synchronization (iOS Only)
+
+**When enabled by user** (via settings), Narratoria automatically syncs campaigns and save data to iCloud Drive:
+
+1. **Campaign Sync**:
+   - Campaigns stored in iCloud Drive are automatically downloaded to device when needed
+   - Modifications are uploaded asynchronously
+   - Conflict resolution: Last-write-wins with user notification
+
+2. **Save Data Sync**:
+   - Session saves (playthroughs) in iCloud are synced across all user devices
+   - Player can resume on iPhone where they left off on iPad
+   - Uses CloudKit or File Provider APIs (depending on iOS version)
+
+3. **Data Structure**:
+   ```
+   iCloud Drive/Narratoria/
+   ├── campaigns/                    # Synced across devices
+   │   ├── campaign_1/
+   │   └── campaign_2/
+   └── saves/                        # Synced across devices
+       ├── playthrough_1/
+       └── playthrough_2/
+   ```
+
+**Implementation Details:**
+- Use `FileManager.url(forUbiquityContainerIdentifier:)` to get iCloud container
+- Use `NSFileCoordinator` for atomic file operations
+- Monitor `NSUbiquityIdentityDidChangeNotification` to handle account changes
+- Graceful fallback: If iCloud unavailable, continue with local storage
+
+#### 6.3.5 Google Play Games Backup (Android Only)
+
+For Android, optional cloud backup integrates with Google Play Games Services:
+
+1. **Automated Backup** (if user enables):
+   - Session saves uploaded to Google Play Games after each scene save (async)
+   - Playthrough metadata cached locally for quick access
+   - Automatic restoration on app reinstall
+
+2. **Data Structure**:
+   - `GameData`: JSON serialization of session saves (max 1MB per snapshot)
+   - `SaveGame`: Binary or textual snapshot (up to 3MB per entry)
+
+3. **Conflict Resolution**:
+   - Server timestamp wins if conflicts occur
+   - Local save takes precedence if offline and later synced
+
+#### 6.3.6 Campaign Discovery and Loading
+
+##### Campaign Sources
+
+The application discovers playable campaigns from:
+
+1. **Built-in Campaigns** (App Bundle)
+   - Shipped with application binary
+   - Always available, never deleted
+   - Appear first in campaign list with "Official" badge
+
+2. **Downloaded Campaigns** (App-specific directory)
+   - User downloaded or imported via file picker
+   - Extraction happens transparently on first import
+   - Appear as "User Imported" in campaign list
+   - Can be deleted (uninstall-safe); persistent across app updates
+
+3. **iCloud Synced Campaigns** (iOS only)
+   - User opted-in to iCloud sync
+   - Only appear on device if file-provider has downloaded them (check via `isUbiquitousItem`)
+   - Download on-demand with progress indicator
+   - Appear as "Cloud" in campaign list with sync status badge
+
+4. **Playthrough Saves** (Campaign instances)
+   - Previous playthroughs grouped by source campaign
+   - Display as "Resume" entries in campaign list
+   - Include thumbnail preview and play time
+
+##### Discovery Algorithm
+
+```
+function discoverCampaigns():
+    campaigns = []
+    
+    # Tier 1: Built-in campaigns (app bundle)
+    for campaign_dir in bundled_campaigns/:
+        if validate(manifest):
+            campaigns.append({
+                source: "builtin",
+                path: campaign_dir,
+                badge: "Official"
+            })
+    
+    # Tier 2: Downloaded/imported campaigns (app-specific directory)
+    for campaign_dir in app_documents/campaigns/:
+        if validate(manifest):
+            campaigns.append({
+                source: "downloaded",
+                path: campaign_dir,
+                badge: "User Imported"
+            })
+    
+    # Tier 3: iCloud campaigns (iOS only)
+    if icloud_enabled():
+        for campaign_dir in icloud_drive/campaigns/:
+            if isUbiquitousItem(campaign_dir):
+                campaigns.append({
+                    source: "icloud",
+                    path: campaign_dir,
+                    status: "downloaded" | "downloading" | "not_downloaded",
+                    badge: "☁️ Cloud"
+                })
+    
+    # Tier 4: Recent playthroughs (grouped by campaign)
+    for playthrough in saves/:
+        source_campaign = load_manifest(playthrough/manifest.json)
+        campaigns.append({
+            source: "playthrough",
+            parent_campaign: source_campaign.id,
+            path: playthrough,
+            type: "resume",
+            last_played: playthrough.timestamp
+        })
+    
+    return sort_by_last_played(campaigns)
+```
+
+##### Campaign Loading Performance
+
+| Operation | Target | Platform | Notes |
+|-----------|--------|----------|-------|
+| Discover campaigns | <500ms | All | Scan directories + validate manifests |
+| Load campaign metadata | <100ms | All | Parse manifest.json only |
+| Full campaign ingestion | <15s | All | All files chunked + embedded |
+| iCloud download | <5s/MB | iOS | Depends on connection; shows progress |
+| Resume playthrough | <2s | All | Load cached index from session save |
+
+#### 6.3.7 Campaign Sharing and Export
+
+Users can export playthroughs and campaigns to share with others:
+
+```
+Campaign Export Options:
+├─ Minimal (Campaign only)
+│  ├── manifest.json + content files
+│  ├── Size: 1-500MB (depending on art/music)
+│  └── Format: .narratorio (single ZIP)
+│
+├─ Full (Campaign + Playthrough)
+│  ├── Campaign + session saves + progress
+│  ├── Size: 1-1000MB
+│  └── Format: .narratorio-full
+│
+└─ Shareable Link (Cloud-hosted)
+   ├── Campaign uploaded to server
+   ├── Short URL generated (one-time or permanent)
+   └── Recipients click link → download + import
+```
+
+This is implemented via:
+- **macOS/Windows/Linux**: Share via Files app or drag-and-drop
+- **iOS**: Share via Files app, AirDrop, or iCloud Drive link
+- **Android**: Share via Android Share sheet, Drive, or email attachment
+
+#### 6.3.8 Offline Capability
+
+After initial download, campaigns operate entirely offline:
+
+✓ Campaign loading — Local storage only, no network required
+✓ Save/resume — Local database, no cloud sync required
+✓ New scenes — Phi-4 inference on-device, no API calls
+✓ Memory retrieval — Embedded database queries, no server needed
+✓ Asset display — Cached images, no re-downloads
+
+**iCloud sync is fully optional** — disable it in settings to guarantee offline-only operation.
+
+#### 6.3.9 Migration Strategy (Desktop to Mobile)
+
+Users can move campaigns and playthroughs from a desktop to mobile device:
+
+**Desktop to iOS:**
+1. Export playthrough as `.narratorio-full` from macOS/Windows/Linux
+2. AirDrop to iPad, or upload to iCloud Drive, or email
+3. Open in Narratoria app → "Import Campaign" confirmation
+4. Session resumes on iPad with all progress intact
+
+**Desktop to Android:**
+1. Export playthrough as `.narratorio-full`
+2. Upload to Google Drive or download link
+3. Open on Android device → Narratoria app handles import
+4. Or use Android File Transfer to drag directly into app directory
+
+**Reverse migration:** iOS/Android playthroughs can export and sync to desktop for backup or continuation.
+
+---
+
+### 6.4 Session State Management
 
 Session state is maintained as an in-memory JSON structure updated by `state_patch` events through deep merge semantics. State supports dot-notation path access (e.g., `"inventory.torch.lit"`) for convenient querying. A copy mechanism enables snapshot-based undo or branching.
 
