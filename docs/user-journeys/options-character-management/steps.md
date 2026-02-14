@@ -26,7 +26,7 @@
 **Step 2.1: View Character Gallery**
 - Player action: Scroll through character cards in grid layout
 - System response:
-  - Each card displays: portrait (or placeholder), name, class/race, campaign count
+  - Each card displays: portrait, description snippet (first ~50 chars), status badge (Fresh/Used), campaign realization count
   - Cards are tappable to view details
   - "New Character" button visible at top
 - Duration: 5-30 seconds (user browsing)
@@ -36,15 +36,16 @@
 - Player action: Tap character card
 - System response:
   - Detail view opens (full-screen or modal)
-  - Displays: full portrait, name, archetype (race/class/subclass), personality traits, backstory (scrollable), campaign history list
+  - Displays: full portrait, full description text (scrollable), status badge (Fresh/Used), campaign realization history
   - Action buttons visible: Edit, Delete, Export, Back
 - Next step: Step 2.3 (tap action button) or return to gallery (tap Back)
 
-**Step 2.3: View Campaign History**
-- Player action: Scroll campaign history section in character details
+**Step 2.3: View Campaign Realization History**
+- Player action: Scroll realization history section in character details
 - System response:
-  - Each campaign entry shows: campaign title, completion status (✓/in progress), playtime hours, ending reached (if completed)
-  - Example: "Chronicles of Merlin - Completed (8.5 hours) - Redemption ending"
+  - Each entry shows: campaign title, realized name (e.g., "Sir Eredin"), completion status (✓/in progress), playtime hours
+  - Example: "Chronicles of Merlin - as Sir Eredin - Completed (8.5 hours)"
+  - If no realizations: "Not yet used in any campaigns"
 - Next step: Return to character details (scroll back up) or tap Back to gallery
 
 ---
@@ -135,19 +136,19 @@
 **Step 5.1: Initiate Character Deletion**
 - Player action: From character detail view, tap `Delete` button
 - System response:
-  - Confirmation dialog appears: "Delete [Name]?" with warning text
-  - Warning: "This character has been used in [N] campaign(s). Deleting will not affect saved games, but this character profile will be permanently removed."
+  - Confirmation dialog appears: "Delete this character?" with warning text
+  - Warning: "This character has been used in [N] campaign(s). Deleting will not affect saved games, but this character template will be permanently removed."
   - Buttons: Cancel, Delete (destructive style, typically red)
 - Next step: Step 5.2 (tap Delete) or cancel (returns to detail view)
 
 **Step 5.2: Confirm Deletion**
 - Player action: Tap `Delete` in confirmation dialog
 - System response:
-  - Character profile JSON deleted from local storage
-  - Portrait file deleted (if exists)
+  - Character JSON deleted from local storage
+  - Portrait file deleted
   - Character card removed from gallery (fade-out animation)
   - Returns to gallery view
-  - Brief toast message: "[Name] deleted"
+  - Brief toast message: "Character deleted"
 - Duration: <300ms
 - Next step: Return to Phase 2 (gallery browsing)
 
@@ -159,8 +160,8 @@
 - Player action: From character detail view, tap `Export` button
 - System response:
   - Platform-specific file save dialog opens
-  - Suggested filename: `{character_name}_{date}.json` (e.g., `knight_eredin_2026-02-13.json`)
-  - JSON file written to chosen location
+  - Suggested filename: `character_{id_prefix}_{date}.json` (e.g., `character_a1b2c3_2026-02-13.json`)
+  - JSON file written to chosen location (includes description and portrait_path reference)
   - Portrait **not** included (only JSON; user must manually copy portrait if desired)
 - Duration: <1 second
 - Next step: Return to detail view
@@ -171,14 +172,14 @@
   - Platform-specific file picker opens (filter: `.json` files)
   - Selected file validated:
     - Must be valid JSON
-    - Must contain required fields (`name`, `version`, `created_at`)
-    - If `id` exists and conflicts with existing character, new UUID generated
-    - If `name` conflicts, user prompted to rename or skip
-  - Character profile created in local storage
+    - Must contain required fields (`id`, `status`, `description`, `portrait_path`, `created_at`)
+    - If `id` conflicts with existing character, new UUID generated
+  - Character JSON created in local storage
+  - User prompted to provide portrait if referenced file not found
   - New card appears in gallery
 - Error cases:
   - Invalid JSON: "Could not read character file (invalid format)"
-  - Missing required fields: "Character file is incomplete (missing: name, version)"
+  - Missing required fields: "Character file is incomplete (missing: description, portrait_path)"
 - Duration: 1-3 seconds
 - Next step: Return to gallery (Step 2.1)
 

@@ -71,34 +71,65 @@ This document outlines the critical decision points, user inputs, and system res
 
 ---
 
-### Decision 3: Character Selection (Campaign-Filtered)
-**User Choice**: Which character template to select for this playthrough?
+### Decision 3: Character Selection (Unified Campaign + Player Characters)
+**User Choice**: Which character to play in this campaign?
 
 **Options**:
-- Character templates filtered by campaign's `allowed_classes` or `allowed_races` (from Section 6.2.6)
-- Example: If campaign is "Medieval Knight's Quest", only Warrior, Knight, Paladin templates shown
-- Campaign may restrict: "Only humans allowed" or "No mages in this world"
+- **Campaign-provided character templates**: Predefined characters from campaign content files (from [Architecture Section 6.2.6](../../../architecture.md#6.2.6-player-character-constraints))
+- **Player's fresh characters**: Gallery of characters created in Options → Characters journey (see [Architecture Section 6.2.7](../../../architecture.md#6.2.7-player-character-profiles))
+  - Accessed via "Yours" tile in character selection grid
+  - Filtered for constraint violations (warning shown if character incompatible with campaign)
 
 **System Response**:
+
+*If selecting campaign template:*
 - Selected character portrait highlights with visual feedback (shadow, scale, border color)
 - "Continue" button becomes active
-- Session state captures: `campaign.selected_id`, `player.character_template_id`, `player.base_stats`
+- Session state captures: `campaign.selected_id`, `player.character_template_id`, `player.base_stats`, `player.character_source: "campaign_template"`
+
+*If selecting player character:*
+- Player taps "Yours" tile (special tile in character grid)
+- CHARACTER_GALLERY overlay slides in showing fresh character gallery
+- Player taps a fresh character to select
+- **Constraint advisory** occurs:
+  - If fresh character was previously realized for this exact campaign: Check existing realization's constraint status from ObjectBox
+  - If this is a new character for this campaign: Show advisory note ("Character will be adapted to fit campaign world at start")
+  - If campaign defines hard constraints that clearly conflict with character description:
+    - **Hard constraint conflict** (e.g., "No mages allowed" but description says "powerful sorceress"): Warning dialog displays
+      - Message: "This character may conflict with campaign constraints: {constraint_details}. Campaign may feel less tailored to your character. Accept?"
+      - [Accept] → Character selected, overlay closes, "Continue" becomes active
+      - [Decline] → Stay in gallery, select different character
+    - **No obvious conflict**: Character selected normally; full constraint validation deferred to realization at campaign start
+- Session state captures: `campaign.selected_id`, `player.character_id` (source fresh character UUID), `player.base_stats`, `player.character_source: "player"`
 
 **Player Actions**:
-- Tap character card to select
-- Swipe/scroll to view more characters (if list longer than screen)
-- Tap "Back" to return to campaign selection (abandoning campaign choice)
+- Tap campaign character card to select (instant selection)
+- Tap "Yours" tile to open fresh character gallery
+- In gallery overlay:
+  - Scroll/swipe to browse fresh characters
+  - Tap character to select (with constraint warning if applicable)
+  - Tap Back/Close to return to main character selection without selecting
+- Back button on main view returns to campaign selection (abandoning character choice)
 
-**Important Difference from Old Flow**:
-- Character selection is now FILTERED by campaign choice
-- Not all campaigns support all character types
-- Going back returns to campaign discovery (not character templates), so player can select different campaign
+**Important Distinction from Old Flow**:
+- Character selection now shows **both campaign templates AND player characters in one unified interface**
+- Campaign character templates appear at top; "Yours" tile at bottom links to player gallery
+- Fresh characters are **realized at campaign start** (see [Architecture Section 6.2.7](../../../architecture.md#6.2.7-player-character-profiles)), not during creation
+- Player character shown with original portrait + description, which gets evaluated and transformed by LLM during campaign load
+- Constraint warnings appear **before campaign load**, preventing surprises
+
+**Edge Cases**:
+- **No campaign-provided templates**: Character selection shows only "Yours" tile (player must use their own character)
+- **Player has no fresh characters**: "Yours" tile shows message "Create a character in Options → Characters first"
+- **Player character violates all hard constraints**: Warning shown before campaign load; player can accept or decline
+- **Campaign requires specific archetype**: Only compatible fresh characters are suggested (but player can still force selection with warning)
 
 **Accessibility Notes**:
 - Character descriptions must be readable (large font option)
 - Voice-over support: Read character name, role, stats aloud
 - Color should not be the only indicator of selection; use text labels
-- Indicate which character archetypes are unavailable due to campaign constraints
+- Constraint warning dialog must clearly explain violation in plain language
+- Gallery overlay must be dismissible (not a trapped state)
 
 ---
 
@@ -208,7 +239,7 @@ This document outlines the critical decision points, user inputs, and system res
 - **Model download in progress**: "Downloading AI models... 45%" (shows percentage and file name)
 - **Campaign discovery**: "Scanning for campaigns..." (might take 2-5 seconds; show indeterminate spinner)
 - **Campaign loading**: "Preparing your story... Step 2 of 4" (shows progress through ingestion, plan generation, etc.)
-- **Error feedback**: "Campaign failed to load. Cause: [specific reason, e.g., 'Missing required file: manifest.json']. [Retry] [Return to Selection]"
+- **Error feedback**: "Campaign failed to load. Cause: [specific reason, e.g., 'Missing required file: campaign.yml']. [Retry] [Return to Selection]"
 
 ### Confirmation Dialogs
 - **Exit without saving**: "You have unsaved progress. Close anyway?" (only if accessed from gameplay, not main menu)

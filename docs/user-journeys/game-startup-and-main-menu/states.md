@@ -22,9 +22,12 @@ MAIN_MENU
   │   ├─ Transitions to: CAMPAIGN_DISCOVERY, CHARACTER_SELECTION
   │   └─ Active: Campaign info display with "Select Character" button
   │
-  ├→ CHARACTER_SELECTION (filtered by campaign)
+  ├→ CHARACTER_SELECTION (campaign-provided templates + player character gallery)
+  │   ├─ Substate: CHARACTER_GALLERY (overlay showing player's fresh characters)
+  │   │   └─ Transitions: CHARACTER_SELECTION ↔ CHARACTER_GALLERY (toggle in/out)
+  │   │
   │   ├─ Transitions to: CAMPAIGN_DISCOVERY, CONTENT_WARNINGS, CAMPAIGN_LOADING
-  │   └─ Active: Character card selection (only templates allowed by campaign)
+  │   └─ Active: Character card selection (templates + link to "Yours" gallery)
   │
   ├→ CONTENT_WARNINGS (if campaign defines warnings)
   │   ├─ Transitions to: CAMPAIGN_DISCOVERY, CAMPAIGN_LOADING
@@ -68,7 +71,7 @@ MAIN_MENU
 **Data Loaded**:
 - Phi-4 or Phi-4-mini language model (from cache or HuggingFace Hub)
 - sentence-transformers embedding model (from cache)
-- Built-in campaign manifests
+- Built-in campaign metadata (from `campaign.yml` files)
 - User-downloaded campaign list
 - iCloud campaign metadata (iOS only)
 
@@ -117,12 +120,12 @@ MAIN_MENU
 - Featured/Recent campaigns section (optional)
 
 **Data Loaded**:
-- Campaign manifests from all sources:
+- Campaign metadata (`campaign.yml`) from all sources:
   - Built-in campaigns (always displayed first)
   - Downloaded campaigns from app-specific directory
   - iCloud campaigns (if iOS and enabled)
   - Previous playthroughs (grouped separately)
-- Campaign artwork thumbnails (if ingestion found them)
+- Campaign artwork thumbnails (from `art/` directories)
 
 **Transitions**:
 - → `MAIN_MENU` (tap Back)
@@ -155,9 +158,9 @@ MAIN_MENU
 - Select Character button
 
 **Data Loaded**:
-- Full campaign manifest
+- Full campaign metadata (from `campaign.yml`)
 - Campaign artwork (character portraits, location art, etc.)
-- Content warnings list
+- Content warnings list (from `campaign.yml`)
 
 **Transitions**:
 - → `CAMPAIGN_DISCOVERY` (tap Back)
@@ -174,34 +177,59 @@ MAIN_MENU
 **UI Elements**:
 - "Select Your Character" heading
 - Campaign name displayed in subheading (showing which campaign they're playing)
-- Character cards (grid or list) showing:
-  - Portrait image
-  - Name
-  - Class/Role badge
-  - Brief description (1-2 lines)
-  - Starting stats preview (optional)
-  - Selection highlight when tapped
+- Character cards (grid or list) showing both:
+  - **Campaign-provided templates** (top section):
+    - Portrait image, Name, Class/Role badge, Brief description (1-2 lines), Starting stats preview (optional)
+    - Selection highlight when tapped
+  - **Player's fresh characters** (bottom section with "Yours" tile):
+    - "Yours" special tile opens character gallery overlay
+    - Clicking "Yours" → transitions to CHARACTER_GALLERY substate
 - Back button (returns to campaign selection to choose different campaign)
 - Continue button (active only when character selected)
 
-**Data Loaded**:
-- Character templates filtered by campaign's `allowed_classes` or `allowed_races` from [Campaign Format Section 6.2.6](../../../architecture.md#6.2.6-player-character-template)
-- Only character sheets matching campaign constraints displayed
-- Character artwork (from template library or campaign-specific overrides)
+**Substate: CHARACTER_GALLERY (Overlay)**
+**Duration**: 5-20 seconds (user browsing fresh characters)
+**UI Elements**:
+- Modal/overlay slide-in effect
+- "Your Characters" heading
+- Gallery of fresh characters:
+  - Thumbnail cards showing: portrait, character name, brief description snippet, status badge
+  - Scrollable/swipeable list
+- Back/Close button to return to main character selection
+- Tap any fresh character to select it
 
-**Session State Updated**:
+**Selection Logic**:
+- If fresh character is compatible with campaign constraints: Select immediately, overlay closes
+- If fresh character violates hard constraints: Show warning dialog before selecting
+  - Warning message: e.g., "This character violates campaign constraints (No mages allowed). Campaign may feel less tailored. Accept?"
+  - [Accept] → Select character, overlay closes
+  - [Decline] → Stay in gallery, allow different selection
+- Once selected, main character selection view shows selected character highlighted
+- Continue button becomes active
+
+**Data Loaded**:
+- Campaign's allowed_classes, allowed_races, and constraint definitions (from manifest)
+- Player's fresh characters from application user data directory
+- Character portraits and descriptions
+- Character constraint validation status (for warning determination)
+
+**Session State Updated** (when character confirmed in Step 3.3):
 - `campaign.selected_id` = selected campaign ID
-- `player.character_template_id` = selected character ID
-- `player.base_stats` = character's starting stats merged with campaign defaults
+- `player.character_id` = source fresh character ID (if player character selected)
+- `player.character_template_id` = template ID (if campaign template selected)
+- `player.base_stats` = character's starting stats
+- `player.character_source` = "player" | "campaign_template"
 
 **Transitions**:
-- → `CAMPAIGN_DISCOVERY` (tap Back; deselects campaign, returns to campaign list)
-- → `CONTENT_WARNINGS` (if campaign defines warnings) OR `CAMPAIGN_LOADING` (if no warnings)
+- CHARACTER_SELECTION ↔ CHARACTER_GALLERY (overlay in/out)
+- CHARACTER_GALLERY → CONTENT_WARNINGS (if campaign defines warnings) OR CAMPAIGN_LOADING (if no warnings)
+- CHARACTER_SELECTION → CAMPAIGN_DISCOVERY (tap Back; deselects campaign, returns to campaign list)
 
 **Notes**:
-- Character selection is now filtered based on the campaign chosen
+- CHARACTER_GALLERY is a transient overlay state; player can toggle in/out multiple times before confirming
+- Character constraint validation happens in real-time as player selects character
 - Not all campaigns support all character types
-- Going back returns to campaign selection (character choice is lost)
+- Player can see available/unavailable campaign templates at a glance
 
 ### CONTENT_WARNINGS
 **Duration**: 3-15 seconds (user reading warnings)
@@ -216,8 +244,8 @@ MAIN_MENU
 - Proceed button (disabled until checkbox ticked, if required)
 
 **Data Loaded**:
-- Content warnings from campaign manifest
-- Warning descriptions from campaign manifest
+- Content warnings from `campaign.yml`
+- Warning descriptions from `campaign.yml`
 
 **Transitions**:
 - → `CAMPAIGN_DISCOVERY` (tap Back; returns to campaign list, losing character and campaign selections)
@@ -242,9 +270,9 @@ MAIN_MENU
 **Data Loaded** (Backend Operations):
 1. Campaign ingestion:
    - Filesystem scan of campaign directory
-   - Semantic chunking and embedding of all `.txt` files (lore, world descriptions, etc.)
-   - Metadata extraction from JSON files
-   - Asset path validation
+   - YAML frontmatter extraction from all text files
+   - Semantic chunking and embedding of all content files (characters, lore, world, plot, etc.)
+   - Asset reference resolution (portrait paths, music paths)
 2. Session state initialization:
    - Empty session state created
    - Character template stats injected

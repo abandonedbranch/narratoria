@@ -3,27 +3,25 @@ Journey: Options → Character Management
 
 Architecture References
 - Layer 5: UI Implementation (Character gallery, creation/edit forms, detail views)
-- Layer 6: Skill State Persistence (Character profile storage in local embedded database)
-- Section 6.2.7: Player Character Profiles (character schema, storage location, merging algorithm)
-- Section 6.2.6: Player Character Template (campaign constraints, allowed_classes, allowed_races)
-- Section 2.4: Deep Merge Algorithm (used when merging character with campaign constraints)
+- Layer 6: Skill State Persistence (Fresh character profile storage in local filesystem)
+- Section 6.2.7: Player Character Profiles (fresh→realized lifecycle, ObjectBox integration, realization schema)
+- Section 6.2.6: Player Character Constraints (campaign constraints file, advisory validation)
 
 Involved Layers
 - Layer 5: UI Implementation (all character management screens)
-- Layer 6: Skill State Persistence (character profile CRUD operations)
+- Layer 6: Skill State Persistence (fresh character CRUD operations)
 
 Key Contracts from Architecture
 - **Fresh characters** stored in platform-specific user data directory (not in campaign folders)
-- **Fresh character JSON schema** requires: id, status ("fresh" or "used"), created_at, description (10-5000 chars freeform text), portrait_path
-- Optional fields: realizations (array of campaign usage records, populated after first use in campaign)
+- **Fresh character JSON schema** requires: id (UUID), status ("fresh" or "used"), created_at, description (10-5000 chars freeform text), portrait_path
+- Optional fields: realizations[] (array of campaign usage records, populated after first use in campaign)
 - Portrait files stored alongside character JSON: <user_data>/characters/{id}_portrait.{ext}
 - Supported portrait formats: PNG, JPEG, WebP (max 5MB, resized to 512×512px)
 - **Portrait is required** during creation (in-process models cannot generate images)
-- **No LLM generation at creation time** - fresh characters save instantly (<500ms)
-- **Character Realization**: When campaign starts with selected fresh character, LLM (Phi-4/Phi-4-mini) generates complete character.json from description, tailored to campaign world/tone/constraints (2-5 seconds)
-- **Realized characters**: Live within campaign data as semantic chunks in ObjectBox, not as standalone JSON files
+- **No LLM generation at creation time** — fresh characters save instantly (<500ms)
+- **Character Realization**: When campaign starts with selected fresh character, LLM (Phi-4/Phi-4-mini) generates complete character.json from description, tailored to campaign world/tone/constraints (5-8 seconds)
+- **Realized characters**: Ephemeral JSON → chunked → embedded → stored as semantic chunks in ObjectBox (not as standalone JSON files)
 - **Campaign-Specific Interpretation**: Same fresh character can realize differently across campaigns (wizard in fantasy, detective in noir)
-- **Character Ingestion**: Realized character JSON chunked (personality, background, goals, speech_patterns) and embedded for semantic retrieval during campaign ingestion pipeline
 - **Reusable Templates**: Fresh characters remain unchanged; each campaign realization is independent
 
 Consistency Requirements
@@ -31,70 +29,52 @@ Consistency Requirements
 - State transitions documented bidirectionally (forward and back button behavior)
 - Back button behavior: Always returns to previous state (gallery → detail → edit → detail → gallery)
 - Destructive actions (delete, discard changes) require confirmation dialogs
-- Form validation: Name uniqueness checked in real-time, validated against existing character names
+- Form validation: Description must be 10-5000 characters; portrait must be uploaded
 - Error messages: Inline for form validation, toast for brief confirmations, modal for critical errors
 - File operations: Import/export use platform-specific file pickers (iOS document picker, Android intent, desktop native dialogs)
-- Character card sorting: last_used descending (most recent first), then alphabetical by name
+- Character card sorting: Most recently created/used first, then by creation date
 
 Error Handling Patterns
 - File system errors (save/delete failure): Show error dialog with retry option, log error details
 - Portrait validation errors: Inline error message, prevent save until corrected
 - Import validation errors: Modal error dialog, return to gallery
-- Name conflict on import: Show rename dialog with text input, allow skip/cancel
+- ID conflict on import: Auto-generate new UUID, notify user
 - Character deletion failure: Error dialog, return to detail view without deleting
+- Portrait missing during save: Show error "Portrait required", disable Save button until portrait uploaded
+- Import failure (invalid JSON): Show error "Could not read character file (invalid format)", return to gallery
+- Export failure (no write permission): Show error "Could not export character (permission denied)", return to detail view
+- Gallery load failure (corrupted files): Show empty gallery with "No characters found" and offer to scan for recoverable files
+- **Character realization failure** (during campaign load): Show error "Could not realize player character", prevent campaign start
 
 Performance Targets (from Architecture Section: Performance Targets)
 - Character gallery load: <500ms for 50 characters
 - Character detail view load: <200ms (description + portrait load)
 - **Character creation** (fresh): <500ms (instant save, no LLM generation)
-- **Character realization** (LLM): 2-5 seconds (Phi-4/Phi-4-mini generates structured JSON at campaign start)
+- **Character realization** (LLM at campaign start): 5-8 seconds (Phi-4/Phi-4-mini generates structured JSON)
 - Character save (create/edit fresh character): <300ms (JSON write + portrait write if changed)
 - Character delete: <300ms (JSON + portrait delete)
 - Character import validation: <1 second (JSON parse + schema validation)
 - Portrait upload: Resize to 512×512px in <2 seconds (required before save)
 - Gallery scroll: 60fps smooth scrolling with lazy-loaded portrait thumbnails
-- **Campaign ingestion** (character realization + chunking/embedding): 2-5s LLM generation + ~100-500ms chunking/embedding added to campaign load time
+- **Campaign ingestion** (character realization + chunking/embedding): 5-8s LLM generation + ~100-500ms chunking/embedding added to campaign load time
 
 Data Shapes (from Architecture Section 6.2.7)
-- Character profile JSON:
-  {generated by LLM or user-edited)",
-    "version": "string (semver, required)",
+- Fresh character JSON:
+  {
+    "id": "UUID (required, auto-generated)",
+    "status": "fresh | used (required)",
     "created_at": "datetime ISO 8601 (required)",
-    "last_used": "datetime ISO 8601 (optional)",
-    "is_player_character": true (required, distinguishes from NPCs during ingestion),
-    "creation_prompt": "string (optional, stores original freeform text for LLM-generated characters, enables regeneration)",
-    "archetype": {
-      "race": "string (optional, LLM-generated or user-edited)",
-      "class": "string (optional, LLM-generated or user-edited)",
-      "subclass": "string (optional, LLM-generated or user-edited)"
-    },
-    "personality": {
-      "traits": ["string"],
-      "flaws": ["string"],
-      "virtues": ["string"]
-    },
-    "background": "string (optional, multiline, LLM-generated from prompt or user-edited)",
-    "goals": ["string (LLM-generated or user-edited)"],
-    "speech_patterns": "string (prose, LLM-generated or user-edited)",
-    "preferences": {
-      "moral_alignment": "string (optional)",
-      "play_style": "string (optional)",
-      "romance_interest": "string (optional)"
-    },
-    "starting_stats": {
-      "stat_name": number (flexible keys, campaign-specific)
-    },
-    "portrait": "string (relative or absolute path, REQUIRED for creation)",
-    "campaign_history": [
+    "description": "string (10-5000 chars, required, freeform text)",
+    "portrait_path": "string (relative path to portrait file, required)",
+    "realizations": [
       {
-        "campaign_id": "string",
+        "campaign_id": "string (UUID)",
         "campaign_title": "string",
+        "realized_name": "string (LLM-generated at campaign start)",
         "started_at": "datetime ISO 8601",
         "last_played": "datetime ISO 8601",
-        "completed": boolean,
-        "playtime_hours": number,
-        "ending_reached": "string (optional)",
-        "final_stats": {}
+        "completed": "boolean",
+        "playtime_hours": "number"
       }
     ]
   }
@@ -103,94 +83,66 @@ Data Shapes (from Architecture Section 6.2.7)
   - Format: PNG, JPEG, or WebP
   - Max file size: 5MB
   - Stored dimensions: 512×512px (resized if necessary)
-  - Storage path: <user_data>/characters/{character_id}_portrait.{ext}
-  - **Required**: User must upload portrait before character generation (in-process models cannot generate images)
-**Portrait missing during generation**: Show error "Portrait required before generating character", disable Generate button until portrait uploaded
-- **LLM generation failure** (model unavailable, timeout): Show error "Could not generate character (please try again)", return to CHARACTER_CREATE
-- Import failure (invalid JSON): Show error "Could not read character file (invalid format)", return to gallery
-- Export failure (no write permission): Show error "Could not export character (permission denied)", return to detail view
-- Character delete failure (file locked): Show error "Could not delete character (file in use)", return to detail view
-- Gallery load failure (corrupted database): Show empty gallery with "No characters found" and offer to repair database
-- **Character ingestion failure** (during campaign load): Show error "Could not load player character (ingestion failed)", prevent campaign start
-  - Output: Structured JSON profile with name, archetype, personality, background, goals, speech_patterns
-  - Duration: 2-5 seconds (device-dependent)
-  - Original prompt stored in `creation_prompt` field for future regeneration
-  - User can regenerate with same prompt to get different interpretation (names, traits vary)
+  - Storage path: <user_data>/characters/{id}_portrait.{ext}
+  - **Required**: User must upload portrait before saving (in-process models cannot generate images)
+
+- Character Realization (during campaign start, NOT during character management):
+  - Input: Fresh character description + campaign context (world, tone, constraints)
+  - Output: Ephemeral character.json (name, archetype, personality, background, goals, speech_patterns)
+  - Duration: 5-8 seconds (Phi-4/Phi-4-mini, device-dependent)
+  - Ephemeral JSON is chunked and embedded, then discarded — chunks stored in ObjectBox
 
 - Character Chunking (during campaign ingestion, Section 6.2.15 Phase 3):
   - Separate chunks created for: personality, background, goals, speech_patterns
   - Each chunk embedded via sentence-transformers/all-MiniLM-L6-v2 (384-dim vectors)
-  - Chunks stored in ObjectBox with `is_player_character: true` metadata
+  - Chunks stored in ObjectBox with composite key (campaignId, sourceCharacterId)
   - Runtime retrieval via semantic search (not full JSON context injection)
-  - Stored dimensions: 512×512px (resized if necessary)
-  - Storage path: <user_data>/characters/{character_id}_portrait.{ext}
 
-Failur**Character creation opens with freeform text area and portrait upload (not form fields)**
-- [ ] **Portrait upload required before Generate button enabled**
-- [ ] **LLM generates character from freeform text in 2-5 seconds**
-- [ ] **Generated character preview displays name, archetype, personality, background, goals, speech_patterns**
-- [ ] **User can regenerate with same prompt to get different interpretation**
-- [ ] **User can edit generated character before saving**
-- [ ] **Original prompt stored in creation_prompt field**
-- [ ] Character save creates JSON file and portrait file at correct paths
-- [ ] Character edit preserves existing data when form opens
-- [ ] **Character edit supports "Regenerate from Prompt" option for LLM-generated characters**
+Testing Checkpoints
+- [ ] Character gallery loads all fresh character JSON from local storage within 500ms
+- [ ] Character creation opens with freeform text area and portrait upload (description + portrait only)
+- [ ] Save button disabled until description ≥10 chars AND portrait uploaded
+- [ ] Character save creates JSON file and portrait file at correct paths (<500ms)
+- [ ] Fresh character JSON contains correct fields: id, status, created_at, description, portrait_path
+- [ ] Character edit preserves existing description and portrait when form opens
+- [ ] Character edit updates description and/or portrait without affecting existing realizations
 - [ ] Character delete removes both JSON and portrait files
-- [ ] Delete confirmation displays campaign count correctly
-- [ ] Cancel during create/edit shows unsaved changes dialog if data modified
+- [ ] Delete confirmation displays realization count correctly
+- [ ] Cancel during create/edit shows unsaved changes dialog if description or portrait modified
 - [ ] Portrait upload validates format (PNG/JPEG/WebP) and size (<5MB)
 - [ ] Portrait upload resizes images to 512×512px
-- [ ] Import validates JSON schema and shows appropriate errors
-- [ ] Import handles name conflicts with rename dialog
-- [ ] Export saves JSON file with suggested filename
-- [ ] Campaign history section displays correct campaign titles and completion status
-- [ ] **Character ingestion occurs during campaign load (not during character management)**
+- [ ] Import validates JSON schema and shows appropriate errors for missing required fields
+- [ ] Import auto-generates new UUID on ID conflict
+- [ ] Export saves JSON file with suggested filename (character_{id_prefix}_{date}.json)
+- [ ] Realization history section displays correct campaign titles and realized names
+- [ ] **Character realization occurs during campaign load (not during character management)**
 - [ ] **Character chunking/embedding completes within 100-500ms during campaign ingestion**
 - [ ] **Player character retrievable via semantic search in ObjectBox after ingestion**
 - [ ] **Session state includes character_id reference after campaign start**
 - [ ] Back button returns to correct previous state in all cases
 - [ ] All buttons meet minimum touch target size (44×44pt / 48×48dp)
-- [ ] Screen reader announces all buttons, form fields, validation errors, and LLM generation progress
-- [ ] Keyboard navigation works in logical tab order (create/edit forms)
-- [ ] Destructive button (Delete) uses red/destructive styling
-- [ ] Character cards display placeholder icon when no portrait exists (should not happen if portrait required)CAG 2.1 AA contrast ratios
-
-Testing Checkpoints
-- [ ] Character gallery loads all profiles from local storage within 500ms
-- [ ] New character form validates name uniqueness in real-time
-- [ ] Character save creates JSON file and portrait file at correct paths
-- [ ] Character edit preserves existing data when form opens
-- [ ] Character delete removes both JSON and portrait files
-- [ ] Delete confirmation displays campaign count correctly
-- [ ] Cancel during create/edit shows unsaved changes dialog if data modified
-- [ ] Portrait upload validates format (PNG/JPEG/WebP) and size (<5MB)
-- [ ] Portrait upload resizes images to 512×512px
-- [ ] Import validates JSON schema and shows appropriate errors
-- [ ] Import handles name conflicts with rename dialog
-- [ ] Export saves JSON file with suggested filename
-- [ ] Campaign history section displays correct campaign titles and completion status
-- [ ] Back button returns to correct previous state in all cases
-- [ ] All buttons meet minimum touch target size (44×44pt / 48×48dp)
 - [ ] Screen reader announces all buttons, form fields, and validation errors
 - [ ] Keyboard navigation works in logical tab order (create/edit forms)
 - [ ] Destructive button (Delete) uses red/destructive styling
-- [ ] Character cards display placeholder icon when no portrait exists
+- [ ] All characters have portraits (required field — no placeholder state)
 - [ ] Gallery empty state appears when no characters exist
-- [ ] Gallery so (LLM-generated or user-edited), unique across all characters, max 50 characters, trimmed
-- ID: Required, UUID format or player-chosen (alphanumeric + underscore/hyphen), max 100 characters
-- Version: Required, semver format (e.g., "1.0.0")
+- [ ] Gallery scroll maintains 60fps with 50+ characters
+- [ ] All text/backgrounds meet WCAG 2.1 AA contrast ratios
+
+Validation Rules
+- ID: Required, UUID format, auto-generated
+- Status: Required, enum ("fresh" | "used")
 - Created_at: Required, ISO 8601 datetime
-- is_player_character: Required, boolean true (distinguishes from NPCs)
-- creation_prompt: Optional (only for LLM-generated characters), string max 5000 characters
-- Portrait: **Required** during creation (PNG/JPEG/WebP, max 5MB, resized to 512×512px on upload), in-process models cannot generate images
-- Archetype fields: Optional (LLM-generated or user-edited), max 50 characters each
-- Personality traits/flaws/virtues: Optional, arrays of strings (LLM-generated or user-edited), max 10 items per array, max 30 characters per item
-- Background: Optional (LLM-generated or user-edited), max 5000 characters
-- Goals: Optional, array of strings (LLM-generated or user-edited), max 10 items, max 100 characters per item
-- Speech_patterns: Optional (LLM-generated or user-edited), string max 5 Section 6.2.7 is authoritative for JSON structure
-- Campaign constraint merging algorithm (Section 6.2.7) is applied at campaign start, not during character management
+- Description: Required, 10-5000 characters, freeform text
+- Portrait: **Required** during creation (PNG/JPEG/WebP, max 5MB, resized to 512×512px on upload)
+- Realizations: Optional, array of objects matching schema above (populated by campaign system, not user-editable)
+
+Cross-Journey References
+- Section 6.2.7 is authoritative for fresh character JSON structure
+- Campaign constraint validation is advisory only for fresh characters (no archetype to validate against)
+- Full constraint validation deferred to realization at campaign start
 - Character management is independent of campaign selection (can be accessed before or after campaign selection)
-- Character profiles are not validated against campaign constraints until campaign start (CHARACTER_SELECTION state in game-startup journey)
+- Fresh characters are not validated against campaign constraints until realization (CHARACTER_SELECTION state in game-startup journey shows advisory note)
 
 Storage Implementation Notes
 - Platform-specific paths:
@@ -198,34 +150,23 @@ Storage Implementation Notes
   - Android: <App Data>/narratoria/characters/
   - Desktop: ~/.narratoria/characters/
 - Character files named by ID: {id}.json and {id}_portrait.{ext}
-- Persistence layer should use embedded database (ObjectBox or similar) for character metadata indexing (name, last_used, campaign_count) to enable fast gallery queries
+- Fresh character JSON files read directly from filesystem (no database indexing needed for small collections)
 - Portrait files stored on filesystem (not in database) to avoid BLOB overhead
-- Database query for gallery: SELECT id, name, archetype.class, archetype.race, campaign_history.length AS campaign_count, last_used FROM characters ORDER BY last_used DESC, name ASC
+- Gallery query: Read all .json files from characters/ directory, sort by created_at descending
 
-Campaign History Update Logic
-- Character's campaign_history array is appended to when:
+Realization History Update Logic
+- Character's realizations[] array is appended to when:
   - Player selects character during campaign start (CHARACTER_SELECTION state in game-startup journey)
-  - Entry includes: campaign_id, campaign_title, started_at timestamp
-- Character's campaign_history entry is updated when:
-  - Player completes campaign: completed = true, ending_reached = {ending_id}, final_stats = {session_state.player.stats}
+  - Entry includes: campaign_id, campaign_title, realized_name, started_at timestamp
+  - Character status updated from "fresh" to "used" on first realization
+- Character's realizations[] entry is updated when:
+  - Player completes campaign: completed = true
   - Player plays campaign: last_played = current timestamp, playtime_hours += session_duration
-- Campaign history updates are triggered by the gameplay layer (Layer 8), not by character management UI
-
-Validation Rules
-- Name: Required, unique across all characters, max 50 characters, trimmed
-- ID: Required, UUID format or player-chosen (alphanumeric + underscore/hyphen), max 100 characters
-- Version: Required, semver format (e.g., "1.0.0")
-- Created_at: Required, ISO 8601 datetime
-- Portrait: Optional, PNG/JPEG/WebP, max 5MB, resized to 512×512px on upload
-- Archetype fields: Optional, max 50 characters each
-- Personality traits/flaws/virtues: Optional, arrays of strings, max 10 items per array, max 30 characters per item
-- Backstory: Optional, max 5000 characters
-- Starting_stats: Optional, object with string keys and number values, no validation on stat names (flexible)
-- Campaign_history: Optional, array of objects matching schema above
+- Realization updates are triggered by the gameplay layer (Layer 8), not by character management UI
 
 Security Considerations
 - Character files stored in app-private directory (not accessible to other apps)
 - No network transmission of character data (local-only)
 - Import validation prevents malicious JSON (schema validation, size limits)
 - Portrait files sanitized (re-encoded during resize to strip metadata and potential exploits)
-- File paths constructed safely to prevent directory traversal attacks (validate ID format before constructing path)
+- File paths constructed safely to prevent directory traversal attacks (validate UUID format before constructing path)

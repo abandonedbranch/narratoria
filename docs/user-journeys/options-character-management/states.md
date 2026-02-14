@@ -50,18 +50,17 @@ CHARACTER_GALLERY
 - Heading: "Characters"
 - Grid layout of character cards (2-3 columns depending on screen width)
 - Each card displays:
-  - Portrait thumbnail (or placeholder icon)
-  - Character name
-  - Class/race badge (e.g., "Knight • Human")
-  - Campaign count badge (e.g., "3 campaigns")
+  - Portrait thumbnail (required for all characters)
+  - First 50 characters of description (with ellipsis)
+  - Status badge: "Fresh" (never used) or campaign usage list (e.g., "Used in: Fantasy Quest, Noir Mystery")
 - "New Character" button (prominent, typically top-right or floating action button)
 - Back button (returns to Options panel or Main Menu)
 - Menu icon (⋮) for import action
 
 **Data Loaded**:
-- All character profile JSON files from `<user_data>/characters/` directory
+- All fresh character JSON files from `<user_data>/characters/` directory
 - Portrait thumbnails (lazy-loaded as user scrolls)
-- Campaign count for each character (computed from `campaign_history` array)
+- Realization count for each character (computed from `realizations` array)
 
 **Transitions**:
 - → `OPTIONS_PANEL` or `MAIN_MENU` (tap Back)
@@ -71,7 +70,7 @@ CHARACTER_GALLERY
 
 **Notes**:
 - Empty state: If no characters exist, show placeholder with "Create Your First Character" button
-- Sorting: Characters ordered by `last_used` descending (most recently used first), then alphabetically by name
+- Sorting: Characters ordered by most recently created or used first, then by creation date
 
 ---
 
@@ -80,18 +79,12 @@ CHARACTER_GALLERY
 
 **UI Elements**:
 - Full-screen or modal view (depending on platform)
-- Large portrait at top (or placeholder)
-- Character name (heading)
-- Archetype section: Race, Class, Subclass (if defined)
-- Personality section:
-  - Traits: list of trait tags
-  - Flaws: list of flaw tags
-  - Virtues: list of virtue tags
-  - Voice description: prose text
-- Backstory section: scrollable multiline text (if defined)
-- Campaign History section:
-  - Scrollable list of campaigns this character has been used in
-  - Each entry: campaign title, completion status, playtime, ending reached
+- Large portrait at top
+- Full description text (scrollable)
+- Status badge: "Fresh" or "Used"
+- Campaign Realization History section:
+  - Scrollable list of campaigns where this character has been realized
+  - Each entry: campaign title, realized name (e.g., "Sir Eredin"), completion status, playtime hours
   - If empty: "Not yet used in any campaigns"
 - Action buttons (bottom or toolbar):
   - Edit (pencil icon)
@@ -100,9 +93,9 @@ CHARACTER_GALLERY
   - Back (return to gallery)
 
 **Data Loaded**:
-- Full character profile JSON
+- Full fresh character JSON (id, status, description, portrait_path, realizations array)
 - Full resolution portrait
-- Campaign history with titles (requires lookup to campaign manifests for titles)
+- Campaign realization history with titles
 
 **Transitions**:
 - → `CHARACTER_GALLERY` (tap Back)
@@ -187,18 +180,18 @@ CHARACTER_GALLERY
 
 **UI Elements**:
 - Modal dialog
-- Heading: "Delete [Character Name]?"
+- Heading: "Delete this character?"
 - Warning text:
-  - "This character has been used in [N] campaign(s)." (if N > 0)
-  - "Deleting will not affect saved games, but this character profile will be permanently removed."
+  - "This character has been used in [N] campaign(s)." (if realizations array not empty)
+  - "Deleting will not affect saved games, but this character template will be permanently removed."
   - "This action cannot be undone."
 - Action buttons:
   - Cancel (secondary style, dismisses dialog)
   - Delete (destructive style, typically red)
 
 **Data Loaded**:
-- Character name
-- Campaign count (from `campaign_history` array length)
+- Character description snippet (first 50 chars)
+- Realization count (from `realizations` array length)
 
 **Transitions**:
 - → `CHARACTER_DETAIL` (tap Cancel)

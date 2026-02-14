@@ -12,15 +12,15 @@
 4. `Return to Main Menu` → Tap Back button
 
 **System Response**:
-- Option 1: Character creation form slides in with empty fields, Save disabled until name entered
-- Option 2: Character detail view opens with full profile and campaign history
+- Option 1: Character creation form slides in with empty fields, Save disabled until description entered AND portrait uploaded
+- Option 2: Character detail view opens with description, portrait, and realization history
 - Option 3: Platform file picker opens filtered to `.json` files
 - Option 4: Returns to OPTIONS_PANEL or MAIN_MENU
 
 **Accessibility Notes**:
 - New Character button: Min 44×44pt touch target (iOS), 48×48dp (Android)
 - Keyboard navigation: Tab order should be New Character → Character Cards → Menu → Back
-- Screen reader: "Create new character" button, character cards announced as "Character: [Name], [Class], [N] campaigns"
+- Screen reader: "Create new character" button, character cards announced as "Character: [description snippet], [status], [N] campaigns"
 
 ---
 
@@ -64,8 +64,8 @@
 
 **System Response**:
 - Option 1: Edit form opens (CHARACTER_EDIT state), all fields editable
-- Option 2: Confirmation dialog: "Delete [Name]? This action cannot be undone." → On confirm, character deleted and gallery updated
-- Option 3: File save dialog with suggested name `{character_name}_{date}.json`
+- Option 2: Confirmation dialog: "Delete this character? This action cannot be undone." → On confirm, character deleted and gallery updated
+- Option 3: File save dialog with suggested name `character_{id_prefix}_{date}.json`
 - Option 4: Detail view scrolls to campaign history section
 - Option 5: Returns to CHARACTER_GALLERY
 
@@ -90,7 +90,7 @@
    - `Keep Editing` → Returns to form with data preserved
 
 **System Response**:
-- Delete → Character files deleted, card removed from gallery with fade-out animation, toast message "[Name] deleted"
+- Delete → Character files deleted (JSON + portrait), card removed from gallery with fade-out animation, toast message "Character deleted"
 - Cancel/Keep Editing → Dialog dismissed, user returns to previous state
 - Discard → Form closed, unsaved data discarded, returns to previous state
 
@@ -108,11 +108,11 @@
 **Options**:
 1. `Upload Custom Portrait` → Tap upload button → Platform file picker → Select PNG/JPEG/WebP (max 5MB)
 2. `Use Existing Image` → Select from device photo library or files
-3. `Skip (Not Allowed)` → Generate button remains disabled; system displays "Portrait required: System cannot generate images"
+3. `Skip (Not Allowed)` → Save button remains disabled; system displays "Portrait required: System cannot generate images"
 
 **System Response**:
-- Option 1 & 2: Selected image validated (format + size), cropped/resized to 512×512px, preview displayed, Generate button enabled
-- Option 3: User cannot proceed without portrait (Generate button disabled)
+- Option 1 & 2: Selected image validated (format + size), cropped/resized to 512×512px, preview displayed, Save button enabled (if description also meets minimum)
+- Option 3: User cannot proceed without portrait (Save button disabled)
 
 **Validation Errors**:
 - Invalid format: "Portrait must be PNG, JPEG, or WebP"
@@ -122,13 +122,13 @@
 **Accessibility Notes**:
 - Upload button: Large touch target (80×80pt minimum for portrait tap area)
 - Screen reader: "Add portrait, required, button", "Portrait preview: [filename or 'not set']"
-- Alternative text: After upload, character name (or "Character portrait") used as alt text for image
+- Alternative text: After upload, "Character portrait" used as alt text for image
 - Error messages announced immediately by screen reader
 
 **Design Note**:
-- Portrait is **required** before character generation (in-process LLM cannot generate images)
+- Portrait is **required** before saving (in-process LLM cannot generate images)
 - Future enhancement: If image generation capability added (external API or future model), make portrait optional with "Generate Portrait" button
-- Portrait upload precedes character generation (Step 3.3 before Step 3.4 in steps.md)
+- Portrait upload and description entry can happen in any order; both required before Save
 
 ---
 
@@ -136,8 +136,8 @@
 
 ### Scrolling and Navigation
 - **Character Gallery**: Vertical scrolling for large character lists (50+ cards), smooth scroll with momentum
-- **Character Detail**: Vertical scrolling for long backstories and campaign history lists
-- **Form Fields**: Multiline text areas (backstory, voice description) should auto-expand as user types or support scrolling within field
+- **Character Detail**: Vertical scrolling for long descriptions and campaign realization history lists
+- **Form Fields**: Description text area should auto-expand as user types or support scrolling within field
 
 ### Long-Press Actions (Optional Enhancement)
 - **Character Card Long-Press**: Quick action menu appears with Edit, Delete, Export options (skips detail view)
@@ -151,8 +151,8 @@
 
 ### Unsaved Changes Warning
 - Trigger: User taps Cancel or Back button in CHARACTER_CREATE or CHARACTER_EDIT with modified data
-- Dialog: "Discard changes? [Character Name or 'Your new character'] will not be saved."
-- Detection: Form tracks whether any field has been modified since opening
+- Dialog: "Discard changes? Your character will not be saved."
+- Detection: Form tracks whether description or portrait has been modified since opening
 
 ---
 
@@ -164,25 +164,25 @@ Track these user behaviors for product insights:
    - How many players create characters before starting first campaign?
    - Average number of characters per player
 
-2. **Form Completion**:
-   - Which fields are most commonly filled vs left empty?
-   - Do players who fill backstories play campaigns longer?
+2. **Description Depth**:
+   - Average description length (characters and words)
+   - Do players who write longer descriptions have better realization outcomes?
 
 3. **Character Reuse**:
-   - How many campaigns does average character participate in?
+   - How many campaigns does average character participate in (via realizations array)?
    - Do players prefer creating new characters or reusing existing ones?
 
-4. **Portrait Usage**:
-   - What percentage of characters have custom portraits?
-   - How many players use generated portraits vs upload custom images?
+4. **Portrait Upload**:
+   - Average time from form open to portrait upload
+   - Common portrait file formats (PNG vs JPEG vs WebP)
 
 5. **Import/Export Usage**:
    - How many players export characters (for backup or sharing)?
    - How many players import characters (from friends or online)?
 
 6. **Edit Frequency**:
-   - How often do players edit characters after creation?
-   - Which fields are most commonly edited?
+   - How often do players edit character descriptions after creation?
+   - Do players update portraits more or less often than descriptions?
 
 7. **Deletion Patterns**:
    - How long (on average) between character creation and deletion?
@@ -226,8 +226,8 @@ Track these user behaviors for product insights:
 
 3. **Screen Reader Support**:
    - All buttons labeled with purpose: "Edit character", "Delete character", "New character"
-   - Form fields have associated labels (name, race, class, etc.)
-   - Character cards announce: "Character: [Name], [Class], [Race], [N] campaigns. Double-tap to view details."
+   - Form fields have associated labels (description text area, portrait upload)
+   - Character cards announce: "Character: [description snippet], [status], [N] campaigns. Double-tap to view details."
    - Validation errors announced immediately when triggered
 
 4. **Touch Target Size**:
@@ -255,10 +255,10 @@ Track these user behaviors for product insights:
 
 ## Usability Heuristics
 
-1. **Visibility of System Status**: Form validation provides real-time feedback (✓ for valid name, ✗ for conflict)
+1. **Visibility of System Status**: Form validation provides real-time feedback (character count indicator, portrait status)
 2. **User Control**: Cancel buttons always available, no autosave (explicit user control)
 3. **Consistency**: Same form layout for create and edit (reduces learning curve)
 4. **Error Prevention**: Confirm dialogs for destructive actions (delete, discard changes)
 5. **Recognition over Recall**: Recent characters appear first in gallery, campaign history visible in detail view
-6. **Flexibility**: Optional fields allow players to create minimal or detailed characters based on preference
-7. **Aesthetic and Minimalist Design**: Only essential fields shown, optional fields grouped or collapsible
+6. **Flexibility**: Description field accepts minimal (10 chars) or detailed (5000 chars) input based on player preference
+7. **Aesthetic and Minimalist Design**: Minimal creation form (description + portrait only) reduces friction

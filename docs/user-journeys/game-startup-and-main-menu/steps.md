@@ -57,25 +57,52 @@
 **Step 2.4: Player taps "Select Character"**
 - Detail view closes
 - Character selection screen animates in
-- Backend loads character templates allowed by this specific campaign (from [Architecture Section 6.2.6](../../../architecture.md#6.2.6-player-character-template))
+- Backend loads character data for this campaign:
+  - Campaign-provided character templates from content files (from [Architecture Section 6.2.6](../../../architecture.md#6.2.6-player-character-constraints))
+  - Player's fresh characters from application user data directory
 
 ---
 
 ### Phase 3: Character Selection
 
-**Step 3.1: Campaign-filtered character templates load**
-- System retrieves campaign's `allowed_classes` or `allowed_races` from campaign manifest
-- Only templates matching campaign constraints are displayed
+**Step 3.1: Campaign character templates and player characters load**
+- System retrieves two data sources:
+  1. Campaign's `allowed_classes` or `allowed_races` from campaign manifest (filters available templates)
+  2. Player's fresh characters from application user data (Options → Characters gallery)
 - "Select Your Character" heading displays
-- Character sheets display as a scrollable list or grid
-- Each character card shows: portrait, name, class/role, brief description, starting stats (merged with campaign defaults if applicable)
+- Character cards display as a unified grid showing:
+  - Campaign-provided character templates (top section)
+  - Player's fresh characters (bottom section with a "Yours" tile)
+- Each character card shows: portrait, name, class/role, brief description, starting stats
+- Special tile: "Yours" (opens player character gallery overlay to select from fresh characters)
 - "Back" button available to return to campaign selection
 
-**Step 3.2: Player selects a character**
-- Player taps a character card
+**Note on Realization**: When player selects a fresh character from their gallery, the campaign will realize that character at the start of gameplay. See [Architecture Section 6.2.7](../../../architecture.md#6.2.7-player-character-profiles) for realization timing and LLM generation details.
+
+**Step 3.2: Player selects a character (template or fresh)**
+
+*Option A: Campaign-provided template*
+- Player taps a campaign character card
 - Selected character highlights or animates
 - Brief confirmation shows selected character details
 - "Continue" button becomes active
+- Proceed to Step 3.3
+
+*Option B: Player's own character*
+- Player taps "Yours" tile
+- Overlay slides in showing player's fresh character gallery:
+  - Fresh character thumbnails (portrait + name)
+  - Each card shows portrait, description snippet, status badge
+  - Can scroll/swipe to browse fresh characters
+- Player taps a fresh character to select it
+- Campaign performs **constraint advisory**:
+  - If this fresh character has been previously realized for this campaign: Check existing realization's constraint status from ObjectBox
+  - If this is a new character for this campaign: Show advisory note: "This character will be interpreted for this campaign's world at start. Some details may be adapted to fit."
+  - If campaign defines hard constraints (e.g., `must_be_humanoid: true`) that clearly conflict with character description: Show warning dialog: "This character may not fit this campaign's constraints. The campaign may feel less tailored to your character. Accept?" with [Accept] [Decline] buttons
+    - Accept: Character selected, overlay closes, "Continue" becomes active
+    - Decline: Character deselected, user remains in gallery to select different character
+- Once character selected (from gallery), return to main character selection view showing selected character highlighted
+- Proceed to Step 3.3
 
 **Step 3.3: Player confirms character selection and campaign choice**
 - Player taps "Continue"
@@ -107,10 +134,11 @@
 **Step 5.1: Campaign initialization**
 - Loading screen displays: Campaign title, "Preparing your story..." message, progress bar
 - Backend performs:
-  1. Campaign ingestion (filesystem scan, semantic embedding of content)
-  2. Session state initialization (empty or from character template)
-  3. Persistence database setup (memories, reputation tracking)
-  4. Initial scene plan generation via Phi-4/Phi-4-mini
+  1. Campaign ingestion (extract campaign files, YAML frontmatter parsing, semantic embedding of all content)
+  2. Player character realization via LLM (if fresh character selected; 5-8 seconds)
+  3. Session state initialization (from realized character or campaign template)
+  4. Persistence database setup (memories, reputation tracking)
+  5. Initial scene plan generation via Phi-4/Phi-4-mini
 
 **Step 5.2: First scene renders**
 - Loading screen fades
