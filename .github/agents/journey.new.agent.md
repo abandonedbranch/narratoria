@@ -1,5 +1,4 @@
 ---
-name: journey.new
 description: Creates a new user journey with deterministic structure and consistent documentation
 argument-hint: "Journey name and description (e.g., 'Gameplay - Scene Rendering: The player reads a scene and makes choices')"
 tools: ['read', 'edit', 'search', 'vscode']
