@@ -18,17 +18,13 @@ CHARACTER_GALLERY
   │   ├─ Transitions to: CHARACTER_GALLERY, CHARACTER_EDIT, CHARACTER_DELETE_CONFIRM, EXPORT_CHARACTER
   │   └─ Active: Viewing character details and campaign history
   │
-  ├→ CHARACTER_CREATE
-  │   ├─ Transitions to: CHARACTER_GALLERY, CHARACTER_CREATE_CANCEL_CONFIRM, CHARACTER_GENERATE_PREVIEW
-  │   └─ Active: Entering freeform character description and uploading portrait
-  │
-  ├→ CHARACTER_GENERATE_PREVIEW
-  │   ├─ Transitions to: CHARACTER_GALLERY, CHARACTER_EDIT, CHARACTER_GENERATE_PREVIEW (regenerate)
-  │   └─ Active: Reviewing LLM-generated character profile (2-5s generation + user review)
+  ├ CHARACTER_CREATE
+  │   ├─ Transitions to: CHARACTER_GALLERY, CHARACTER_CREATE_CANCEL_CONFIRM
+  │   └─ Active: Entering freeform character description and uploading portrait (no LLM generation)
   │
   ├→ CHARACTER_EDIT
-  │   ├─ Transitions to: CHARACTER_DETAIL, CHARACTER_EDIT_CANCEL_CONFIRM, CHARACTER_GENERATE_PREVIEW (regenerate)
-  │   └─ Active: Modifying character data manually or regenerating from prompt
+  │   ├─ Transitions to: CHARACTER_DETAIL, CHARACTER_EDIT_CANCEL_CONFIRM
+  │   └─ Active: Modifying description or replacing portrait (no LLM generation)
   │
   ├→ CHARACTER_DELETE_CONFIRM (modal)
   │   ├─ Transitions to: CHARACTER_DETAIL, CHARACTER_GALLERY (after delete)
@@ -120,126 +116,69 @@ CHARACTER_GALLERY
 ---
 
 ### CHARACTER_CREATE
-**Duration**: 1-5 minutes (user composing description + LLM generation)
+**Duration**: 1-5 minutes (user composing description and uploading portrait)
 
 **UI Elements**:
 - Heading: "Create Character"
 - **Freeform Description Input**:
   - Large multiline text area with prompt: "Describe your character..."
-  - Character count indicator (recommendation: 50-500 words for best results)
-  - Example prompt (collapsible): "Try: 'A grizzled veteran warrior haunted by past battles, seeking redemption through mentoring young adventurers...'"
+  - Character count indicator (10-5000 characters)
+  - Example prompt (collapsible): "Try: 'A gruff, battle-scarred knight who secretly loves poetry...'"
 - **Portrait Upload** (required):
   - Upload button → platform file picker (PNG/JPEG/WebP, max 5MB) → displays thumbnail preview
   - Required indicator: "Required: System cannot generate images"
-  - Inline error if not uploaded: "Portrait required before generating character"
+  - Inline error if not uploaded: "Portrait required before saving"
 - **Action buttons**:
   - Cancel (top-left or inline)
-  - Generate (bottom-right, enabled only when text area has ~25+ words and portrait uploaded)
+  - Save (bottom-right, enabled only when text area has 10+ characters AND portrait uploaded)
 - Validation messages: 
-  - "Add a portrait to continue" (if Generate tapped without portrait)
-  - "Describe your character to continue" (if Generate tapped with insufficient text)
+  - "Add a portrait to continue" (if Save tapped without portrait)
+  - "Description must be at least 10 characters" (if Save tapped with insufficient text)
 
 **Data Loaded**:
 - None (fresh creation flow)
 
-**State Progression**:
-1. User enters freeform text description
-2. User uploads portrait (required)
-3. User taps Generate → transition to `CHARACTER_GENERATE_PREVIEW`
-
 **Transitions**:
+- → `CHARACTER_GALLERY` (tap Save, after successful save)
 - → `CHARACTER_GALLERY` (tap Cancel, with unsaved changes prompt if text entered)
-- → `CHARACTER_GENERATE_PREVIEW` (tap Generate, after validation passes)
 - → `CHARACTER_CREATE_CANCEL_CONFIRM` (tap Cancel with text entered)
 
 **Notes**:
-- No form fields: Character data derived entirely from LLM generation
+- No LLM generation: Character saves instantly (<500ms)
+- Fresh character has status "fresh" with no structured data
+- Character realization happens at campaign start when character is selected
 - Keyboard should auto-focus on text area when view opens
-- Portrait required before generation (in-process model cannot generate images)
-
----
-
-### CHARACTER_GENERATE_PREVIEW
-**Duration**: 2-5 seconds (LLM generation) + 10-60 seconds (user review)
-
-**UI Elements**:
-- **Generation Phase** (2-5 seconds):
-  - Progress indicator: "Creating character..." with spinner
-  - LLM (Phi-4/Phi-4-mini) generates structured JSON from freeform text
-- **Preview Phase** (after generation):
-  - Heading: "Review Character"
-  - Display generated profile:
-    - Portrait (uploaded by user)
-    - Generated name (editable inline)
-    - Generated archetype: Race, Class, Subclass (editable inline)
-    - Personality section:
-      - Traits: list of trait tags (editable)
-      - Flaws: list of flaw tags (editable)
-      - Virtues: list of virtue tags (editable)
-      - Speech patterns: prose text (editable)
-    - Background: scrollable multiline text (editable)
-    - Goals: list (editable)
-  - Original prompt displayed (collapsible section at bottom)
-  - Action buttons:
-    - Cancel (returns to gallery, discards character)
-    - Regenerate (re-run LLM with same prompt, creates new interpretation)
-    - Edit (opens full edit form for manual adjustment)
-    - Save (saves generated character to profile)
-
-**Data Loaded**:
-- LLM-generated character JSON (stored in memory, not yet saved to disk)
-- Uploaded portrait (temporary, not yet saved to disk)
-- Original freeform description (stored in `creation_prompt` field)
-
-**Transitions**:
-- → `CHARACTER_GALLERY` (tap Cancel)
-- → `CHARACTER_GENERATE_PREVIEW` (tap Regenerate, re-runs LLM generation)
-- → `CHARACTER_EDIT` (tap Edit, opens manual edit form with generated data pre-filled)
-- → `CHARACTER_GALLERY` (tap Save, after successful save)
-
-**Notes**:
-- Inline editing: User can click any field to edit directly in preview (without opening full edit form)
-- Regenerate creates new interpretation from same prompt (useful if user wants different name/traits)
-- LLM generation time: typically 2-5 seconds on device
+- Portrait required (in-process model cannot generate images)
 
 ---
 
 ### CHARACTER_EDIT
-**Duration**: 30 seconds to 5 minutes (user modifying character or regenerating)
+**Duration**: 30 seconds to 5 minutes (user modifying description or portrait)
 
 **UI Elements**:
-- Heading: "Edit [Character Name]"
-- **Edit Mode Selection** (presented as tabs or buttons):
-  1. **Edit Fields** (manual adjustment):
-     - Same form fields as preview mode (name, archetype, personality, background, goals, speech patterns)
-     - All fields pre-populated with existing data
-     - Portrait upload button (can replace existing portrait)
-  2. **Regenerate from Prompt** (only available for LLM-generated characters):
-     - Text area displays original `creation_prompt` (editable)
-     - User can modify prompt before regenerating
-     - Generate button → re-runs LLM generation (same as Step 3.4 in steps.md)
-     - Transition to `CHARACTER_GENERATE_PREVIEW` with new generation
+- Heading: "Edit [First 20 chars of description or 'Character']"
+- **Edit Form**:
+  - Freeform text area with existing description (editable)
+  - Character count indicator (10-5000 characters)
+  - Portrait preview with "Change Portrait" button
 - Action buttons:
   - Cancel (reverts changes, returns to detail view)
-  - Save (updates character profile, only in Edit Fields mode)
-- Validation messages: Name uniqueness (if name changed), portrait file type
+  - Save (updates fresh character profile)
 
 **Data Loaded**:
-- Full character profile JSON (pre-populated in form)
-- Existing portrait (displayed in upload button preview)
-- Original `creation_prompt` (if character was LLM-generated; otherwise Regenerate option not shown)
-- Other character names (for uniqueness validation if name changed)
+- Full fresh character JSON (description, portrait path)
+- Existing portrait (displayed in preview)
 
 **Transitions**:
 - → `CHARACTER_DETAIL` (tap Cancel, with unsaved changes prompt if modified)
-- → `CHARACTER_DETAIL` (tap Save, after successful update in Edit Fields mode)
-- → `CHARACTER_GENERATE_PREVIEW` (tap Generate in Regenerate mode, re-runs LLM generation)
+- → `CHARACTER_DETAIL` (tap Save, after successful update)
 - → `CHARACTER_EDIT_CANCEL_CONFIRM` (tap Cancel with unsaved changes)
 
 **Notes**:
-- Portrait replacement: Tapping upload button replaces existing portrait
-- Name change: If name is changed, uniqueness validation runs
-- Regenerate preserves portrait: Only character data is regenerated; portrait remains unchanged
+- Portrait replacement: Tapping "Change Portrait" opens file picker to replace existing portrait
+- Description editing: Full text editing without LLM assistance
+- Editing fresh character does not affect existing realizations in campaigns
+- No LLM generation: Updates save instantly (<300ms)
 
 ---
 

@@ -24,57 +24,31 @@
 
 ---
 
-### Decision 2: Describe Character and Generate Profile
-**User Choice**: How should I create my character?
+### Decision 2: Describe Character and Save
+**User Choice**: How should I describe my character?
 
 **Options**:
-1. `Freeform Description` → Enter natural language description in text area, upload portrait, tap Generate
-2. `Minimal Description` → Brief 1-2 sentence description (e.g., "A brave knight"), upload portrait, tap Generate
-3. `Detailed Description` → 50-500 word description with personality, background, goals, upload portrait, tap Generate
-4. `Cancel` → Tap Cancel button without generating
+1. `Brief Description` → Enter 1-2 sentence description (e.g., "A brave knight"), upload portrait, tap Save
+2. `Detailed Description` → 50-500 word description with personality, background, goals, upload portrait, tap Save
+3. `Minimal Description` → Very short description (10+ characters minimum), upload portrait, tap Save
+4. `Cancel` → Tap Cancel button without saving
 
 **System Response**:
-- Options 1-3: LLM (Phi-4/Phi-4-mini) generates structured character profile (2-5 seconds) → Preview displays generated name, archetype, personality, background, goals, speech patterns → User can Save, Regenerate, or Edit
-- Option 4: If no text entered, returns to gallery immediately; if text entered, shows "Discard changes?" confirmation
+- Options 1-3: Fresh character JSON created instantly (<500ms) with description + portrait, gallery displays character with "Fresh" badge
+- Option 4: If no text entered, returns to gallery immediately; if text/portrait added, shows "Discard changes?" confirmation
 
 **Accessibility Notes**:
 - Text area announced by screen reader: "Describe your character, text area, multiline"
-- Character count indicator announced: "250 characters entered. Recommendation: 50 to 500 words for best results"
-- Generate button: Min 44×44pt/48×48dp, visually distinct enabled vs disabled state
-- During generation: Screen reader announces "Creating character, please wait. Estimated time: 2 to 5 seconds"
+- Character count indicator announced: "25 characters entered. 10 character minimum required"
+- Save button: Min 44×44pt/48×48dp, visually distinct enabled vs disabled state
+- Portrait upload required: Screen reader announces "Portrait required, upload button"
 
 **Design Note**:
-- Portrait is **required** before generation (system cannot generate images with in-process models)
-- Text area has example prompt (collapsible): "Try: 'A grizzled veteran warrior haunted by past battles...'"
-- Minimum ~25 words recommended for meaningful generation
-- User can regenerate with same prompt to get different interpretation (names, traits vary)
-
----
-
-### Decision 2.1: Review Generated Character
-**User Choice**: What should I do with the LLM-generated character profile?
-
-**Options**:
-1. `Save As-Is` → Accept generated profile, tap Save → Character saved to local storage
-2. `Regenerate` → Tap Regenerate with same prompt → LLM creates new interpretation (2-5 seconds)
-3. `Edit Before Saving` → Tap Edit → Opens edit form with generated data pre-filled → Make changes → Save
-4. `Discard` → Tap Cancel → Returns to gallery, character not saved
-
-**System Response**:
-- Option 1: Character profile JSON created with UUID, saved to `<user_data>/characters/{id}.json`, returns to gallery
-- Option 2: LLM re-runs generation with same prompt, new preview displayed (different name/traits/details possible)
-- Option 3: Edit form opens (CHARACTER_EDIT state) with all generated fields editable, user can refine before saving
-- Option 4: Returns to gallery, generated data discarded
-
-**Accessibility Notes**:
-- Preview fields: All generated data announced by screen reader ("Name: [generated name]", "Race: [race]", etc.)
-- Action buttons clearly labeled: "Save character", "Regenerate character", "Edit character", "Cancel"
-- Regenerate status: "Regenerating character, please wait" announced during generation
-
-**Design Note**:
-- Inline editing: User can click any field in preview to edit directly (without opening full edit form)
-- Original freeform description stored in `creation_prompt` field for future regeneration
-- Regeneration preserves portrait (only character data regenerated)
+- Portrait is **required** before saving (system cannot generate images with in-process models)
+- Text area has example prompt (collapsible): "Try: 'A gruff, battle-scarred knight who secretly loves poetry...'"
+- Minimum 10 characters required for meaningful character description
+- Character realization (LLM generation of name, archetype, personality) happens at campaign start, not during creation
+- Same fresh character can be realized differently across campaigns (wizard in fantasy, detective in noir)
 
 ---
 

@@ -13,17 +13,18 @@ Involved Layers
 - Layer 6: Skill State Persistence (character profile CRUD operations)
 
 Key Contracts from Architecture
-- Character profiles stored in platform-specific user data directory (not in campaign folders)
-- Character profile JSON schema requires: id, name, version, created_at, is_player_character (per Section 6.2.7)
-- Optional fields: archetype (race/class/subclass), personality (traits/flaws/virtues/voice), background, goals, speech_patterns, preferences, starting_stats, portrait (required for creation), campaign_history, creation_prompt (stores original freeform description for LLM-generated characters)
+- **Fresh characters** stored in platform-specific user data directory (not in campaign folders)
+- **Fresh character JSON schema** requires: id, status ("fresh" or "used"), created_at, description (10-5000 chars freeform text), portrait_path
+- Optional fields: realizations (array of campaign usage records, populated after first use in campaign)
 - Portrait files stored alongside character JSON: <user_data>/characters/{id}_portrait.{ext}
 - Supported portrait formats: PNG, JPEG, WebP (max 5MB, resized to 512×512px)
 - **Portrait is required** during creation (in-process models cannot generate images)
-- Character profiles persist across app restarts and are tied to the device/account
-- UUID-based character IDs ensure uniqueness when importing/exporting
-- Campaign constraints (Section 6.2.6) override character archetypes at campaign start (not during character management)
-- **Character Ingestion**: When campaign starts with selected player character, character JSON is ingested into campaign's ObjectBox database using Campaign Ingestion Pipeline (Section 6.2.15). Character is chunked (personality, background, goals, speech_patterns) and embedded for semantic retrieval, reducing LLM context memory footprint vs full JSON injection.
-- **LLM-Based Creation**: Characters created via freeform text description → in-process LLM (Phi-4/Phi-4-mini) generates structured JSON profile (2-5 seconds). Original prompt stored in `creation_prompt` field for future regeneration.
+- **No LLM generation at creation time** - fresh characters save instantly (<500ms)
+- **Character Realization**: When campaign starts with selected fresh character, LLM (Phi-4/Phi-4-mini) generates complete character.json from description, tailored to campaign world/tone/constraints (2-5 seconds)
+- **Realized characters**: Live within campaign data as semantic chunks in ObjectBox, not as standalone JSON files
+- **Campaign-Specific Interpretation**: Same fresh character can realize differently across campaigns (wizard in fantasy, detective in noir)
+- **Character Ingestion**: Realized character JSON chunked (personality, background, goals, speech_patterns) and embedded for semantic retrieval during campaign ingestion pipeline
+- **Reusable Templates**: Fresh characters remain unchanged; each campaign realization is independent
 
 Consistency Requirements
 - All states use UPPER_SNAKE_CASE naming (e.g., CHARACTER_GALLERY, CHARACTER_CREATE)
@@ -44,14 +45,15 @@ Error Handling Patterns
 
 Performance Targets (from Architecture Section: Performance Targets)
 - Character gallery load: <500ms for 50 characters
-- Character detail view load: <200ms (single profile + portrait load)
-- **Character generation** (LLM): 2-5 seconds (Phi-4/Phi-4-mini in-process generation from freeform text)
-- Character save (create/edit): <300ms (JSON write + portrait write if changed)
+- Character detail view load: <200ms (description + portrait load)
+- **Character creation** (fresh): <500ms (instant save, no LLM generation)
+- **Character realization** (LLM): 2-5 seconds (Phi-4/Phi-4-mini generates structured JSON at campaign start)
+- Character save (create/edit fresh character): <300ms (JSON write + portrait write if changed)
 - Character delete: <300ms (JSON + portrait delete)
 - Character import validation: <1 second (JSON parse + schema validation)
-- Portrait upload: Resize to 512×512px in <2 seconds (required before generation)
+- Portrait upload: Resize to 512×512px in <2 seconds (required before save)
 - Gallery scroll: 60fps smooth scrolling with lazy-loaded portrait thumbnails
-- **Campaign ingestion** (character chunking/embedding): ~100-500ms added to campaign load time per character (Phase 3 of Campaign Ingestion Pipeline)
+- **Campaign ingestion** (character realization + chunking/embedding): 2-5s LLM generation + ~100-500ms chunking/embedding added to campaign load time
 
 Data Shapes (from Architecture Section 6.2.7)
 - Character profile JSON:

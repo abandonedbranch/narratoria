@@ -49,103 +49,84 @@
 
 ---
 
-### Phase 3: Creating New Character
+### Phase 3: Creating Fresh Character
 
 **Step 3.1: Initiate Character Creation**
 - Player action: Tap `New Character` button in gallery view
 - System response:
   - Character creation interface slides in
-  - Interface displays: Large freeform text area with prompt "Describe your character..." (multiline, expandable), Portrait upload button (required - user must provide portrait), Generate button (enabled when text entered)
+  - Interface displays: Large freeform text area with prompt "Describe your character..." (multiline, expandable), Portrait upload button (required - user must provide portrait), Save button (disabled until text and portrait provided)
   - Cancel button visible
 - Next step: Step 3.2
 
 **Step 3.2: Enter Character Description**
 - Player action: Type freeform character description in text area
 - System response:
-  - Text area accepts natural language description (e.g., "A grizzled veteran warrior haunted by past battles, seeking redemption through mentoring young adventurers")
-  - Character count indicator shown (recommendation: 50-500 words for best results)
-  - Generate button enables once minimum text entered (~25 words)
+  - Text area accepts natural language description (e.g., "A gruff, battle-scarred knight who secretly loves poetry. Failed to save his king and now seeks redemption.")
+  - Character count indicator shown (10-5000 characters)
+  - Save button enables once minimum text entered (10 characters) AND portrait uploaded
 - Duration: 1-5 minutes (user composing description)
-- Next step: Step 3.3 (tap Generate) or cancel (returns to gallery)
+- Next step: Step 3.3 (upload portrait) or cancel (returns to gallery)
 
 **Step 3.3: Upload Portrait (Required)**
 - Player action: Tap portrait upload button → select image from device
 - System response:
   - File picker opens (platform-specific)
   - Selected image validated: must be PNG, JPEG, or WebP; max 5MB
-  - Image cropped/resized to 512x512px
+  - Image cropped/resized to 512×512px
   - Preview displayed in interface
+  - Save button enables if description also provided
 - Error case: If invalid format/size, show error: "Portrait must be PNG, JPEG, or WebP under 5MB"
-- Note: Portrait is required before generation (system cannot generate images in-process)
-- Next step: Continue to Step 3.4 (tap Generate)
+- Note: Portrait is required (system cannot generate images in-process)
+- Next step: Step 3.4 (tap Save)
 
-**Step 3.4: Generate Character Profile**
-- Player action: Tap `Generate` button
+**Step 3.4: Save Fresh Character**
+- Player action: Tap `Save` button
 - System response:
-  - Progress indicator shows: "Creating character... (~2-5 seconds)"
-  - In-process LLM (Phi-4/Phi-4-mini) generates structured JSON profile from freeform text
-  - Generated profile includes: name, archetype (race/class/subclass), personality (traits/flaws/virtues), background (expanded from user description), goals, speech patterns
-  - Preview screen displays generated character with all fields visible
-  - Action buttons: Regenerate (create new interpretation), Edit (manual adjustment), Save, Cancel
-- Duration: 2-5 seconds (LLM generation)
-- Next step: Step 3.5 (review and save) or Step 3.4 (regenerate with same prompt)
-
-**Step 3.5: Review and Save Generated Character**
-- Player action: Review generated profile, optionally tap `Edit` to adjust fields, then tap `Save`
-- System response:
-  - If editing: form opens with all generated fields editable (name, archetype, personality, background, goals, speech patterns)
-  - On Save: Character profile JSON created with UUID-based ID
+  - Fresh character JSON created with UUID-based ID
   - File saved to local storage: `<user_data>/characters/{id}.json`
   - Portrait saved: `<user_data>/characters/{id}_portrait.{ext}`
-  - Original freeform description stored in `creation_prompt` field for future regeneration
-  - Character card appears in gallery with visual confirmation (slide-in animation)
+  - Fresh character has status "fresh" (never used in campaign)
+  - Character card appears in gallery with "Fresh" badge and visual confirmation (slide-in animation)
   - Returns to gallery view
-- Duration: <500ms (save operation)
+- Duration: <500ms (no LLM generation—instant save)
 - Next step: Return to Phase 2 (gallery browsing)
+
+**Note on Character Realization**: Fresh characters do not have names, archetypes, or structured data until used in a campaign. At campaign start, the LLM generates a complete character profile from the description, tailored to the campaign's world and tone. The same fresh character can be realized differently in different campaigns (wizard in fantasy, detective in noir, pilot in sci-fi). See architecture.md Section 6.2.7 for realization details.
 
 ---
 
-### Phase 4: Editing Existing Character
+### Phase 4: Editing Fresh Character
 
 **Step 4.1: Initiate Character Edit**
 - Player action: From character detail view, tap `Edit` button
 - System response:
-  - Edit interface opens with two options:
-    - **Edit Fields**: Manual adjustment of character data (name, archetype, personality, background, goals, speech patterns, portrait)
-    - **Regenerate from Prompt**: Re-run LLM generation using stored `creation_prompt` (available only if character was LLM-generated)
-  - Cancel button visible
-- Next step: Step 4.2 (manual edit) or Step 4.3 (regenerate)
+  - Edit form opens showing:
+    - Freeform text area with existing description (editable)
+    - Portrait preview with "Change Portrait" button
+  - Save and Cancel buttons visible
+- Next step: Step 4.2
 
-**Step 4.2: Modify Character Data (Manual Edit)**
-- Player action: Tap "Edit Fields" → change any field
+**Step 4.2: Modify Character Description or Portrait**
+- Player action: Edit description text and/or tap "Change Portrait" to upload new image
 - System response:
-  - Form displays all character fields as editable
-  - Changes validated in real-time (e.g., name uniqueness check if name changed)
-  - Can also change portrait by tapping portrait upload button
-  - Save button enabled if all validations pass
+  - Text area allows full editing of description
+  - Portrait upload follows same validation as creation (PNG/JPEG/WebP, <5MB, resized to 512×512px)
+  - Save button enabled (no validation beyond text length 10-5000 chars)
 - Duration: 30 seconds to 5 minutes
-- Next step: Step 4.4 (tap Save) or cancel (reverts changes, returns to detail view)
+- Next step: Step 4.3 (tap Save) or cancel (reverts changes, returns to detail view)
 
-**Step 4.3: Regenerate from Original Prompt**
-- Player action: Tap "Regenerate from Prompt" (only available for LLM-generated characters)
-- System response:
-  - Text area displays original `creation_prompt` (editable)
-  - User can modify prompt before regenerating
-  - Generate button visible
-  - On tap Generate: Same workflow as Step 3.4 (LLM re-generates character profile)
-  - Preview shows new generated profile with Save/Cancel/Regenerate buttons
-- Duration: 2-5 seconds (LLM generation)
-- Next step: Step 4.4 (save regenerated profile) or cancel (keep existing profile)
-
-**Step 4.4: Save Changes**
+**Step 4.3: Save Changes**
 - Player action: Tap `Save` button
 - System response:
-  - Character profile JSON updated with new data
-  - `last_used` timestamp **not** updated (only updated when character used in campaign)
+  - Fresh character JSON updated with new description/portrait
+  - Existing realizations (campaign usages) are **not** affected (they have their own realized character data)
   - Visual confirmation: brief toast message "Character updated"
   - Returns to detail view with updated data
 - Duration: <300ms
 - Next step: Return to detail view (Step 2.2) or back to gallery
+
+**Note on Realized Characters**: Editing a fresh character does not change any existing realizations in campaigns. Each campaign has its own generated character data based on the description at the time of campaign start. To change a character within a campaign, the player must modify campaign-specific data (not implemented in this journey).
 
 ---
 
