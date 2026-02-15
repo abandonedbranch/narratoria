@@ -52,7 +52,8 @@ CHARACTER_GALLERY
 - Each card displays:
   - Portrait thumbnail (required for all characters)
   - First 50 characters of description (with ellipsis)
-  - Status badge: "Fresh" (never used) or campaign usage list (e.g., "Used in: Fantasy Quest, Noir Mystery")
+  - Status badge: "Fresh" (never used) or "Used"
+  - Campaign usage list only when realizations exist (e.g., "Used in: Fantasy Quest, Noir Mystery")
 - "New Character" button (prominent, typically top-right or floating action button)
 - Back button (returns to Options panel or Main Menu)
 - Menu icon (⋮) for import action
