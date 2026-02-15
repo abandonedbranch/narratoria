@@ -4,6 +4,7 @@ Journey: Options → Character Management
 Architecture References
 - Layer 5: UI Implementation (Character gallery, creation/edit forms, detail views)
 - Layer 6: Skill State Persistence (Fresh character profile storage in local filesystem)
+- Section 5.3.1: Context Precedence Hierarchy (realized player characters are Tier 2, isPlayer flag, player-agency constraint)
 - Section 6.2.7: Player Character Profiles (fresh→realized lifecycle, ObjectBox integration, realization schema)
 - Section 6.2.6: Player Character Constraints (campaign constraints file, advisory validation)
 
@@ -20,7 +21,8 @@ Key Contracts from Architecture
 - **Portrait is required** during creation (in-process models cannot generate images)
 - **No LLM generation at creation time** — fresh characters save instantly (<500ms)
 - **Character Realization**: When campaign starts with selected fresh character, LLM (Phi-4/Phi-4-mini) generates complete character.json from description, tailored to campaign world/tone/constraints (5-8 seconds)
-- **Realized characters**: Ephemeral JSON → chunked → embedded → stored as semantic chunks in ObjectBox (not as standalone JSON files)
+- **Realized characters**: Ephemeral JSON → chunked → embedded → stored as semantic chunks in ObjectBox (not as standalone JSON files). Chunks carry `isPlayer: true` and `weightTier: 2` (immediate) per Section 5.3.1
+- **Player-agency constraint**: When `isPlayer: true` chunks appear in Phi-4's context, the Narrator AI must never generate dialogue or decisions for the player character without player-initiated action (Section 5.1)
 - **Campaign-Specific Interpretation**: Same fresh character can realize differently across campaigns (wizard in fantasy, detective in noir)
 - **Reusable Templates**: Fresh characters remain unchanged; each campaign realization is independent
 
@@ -96,6 +98,7 @@ Data Shapes (from Architecture Section 6.2.7)
   - Separate chunks created for: personality, background, goals, speech_patterns
   - Each chunk embedded via sentence-transformers/all-MiniLM-L6-v2 (384-dim vectors)
   - Chunks stored in ObjectBox with composite key (campaignId, sourceCharacterId)
+  - Chunk metadata includes: `isPlayer: true`, `sourceType: prose`, `weightTier: 2`, `fileOrigin` (per Section 5.3.1 / 6.1.1)
   - Runtime retrieval via semantic search (not full JSON context injection)
 
 Testing Checkpoints
@@ -118,6 +121,8 @@ Testing Checkpoints
 - [ ] **Character realization occurs during campaign load (not during character management)**
 - [ ] **Character chunking/embedding completes within 100-500ms during campaign ingestion**
 - [ ] **Player character retrievable via semantic search in ObjectBox after ingestion**
+- [ ] **Realized player character chunks have `isPlayer: true` and `weightTier: 2` in ObjectBox**
+- [ ] **Realized player character chunks have `sourceType: prose` (generated content, not frontmatter)**
 - [ ] **Session state includes character_id reference after campaign start**
 - [ ] Back button returns to correct previous state in all cases
 - [ ] All buttons meet minimum touch target size (44×44pt / 48×48dp)

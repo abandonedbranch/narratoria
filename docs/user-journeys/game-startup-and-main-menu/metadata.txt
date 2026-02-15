@@ -5,6 +5,7 @@ Architecture References
 - Layer 5: UI Implementation (Story View, Asset Gallery, Settings)
 - Layer 6: Skill State Persistence (Session state, memories, reputation)
 - Layer 7: Campaign Format (campaign.yml metadata, semantic files, content warnings)
+- Section 5.3.1: Context Precedence Hierarchy (frontmatter vs prose weight tiers, No-Shadow Rule, context assembly algorithm)
 - Section 6.2: Campaign Format (semantic file structure, campaign.yml schema, player character constraints)
 - Section 6.2.6: Player Character Constraints (constraints file format, advisory validation)
 - Section 6.3: Campaign Storage and Distribution (discovery algorithm, platform-specific storage)
@@ -23,6 +24,9 @@ Key Contracts from Architecture
 - Full constraint validation deferred to character realization at campaign load time
 - Persistence layer initializes session state from ObjectBox (existing campaign) or starts fresh ingestion
 - Campaign discovery scans multiple locations per Section 6.3.6 (built-in, downloaded, iCloud, previous playthroughs)
+- During campaign ingestion, frontmatter chunks are tagged `sourceType: frontmatter`, `weightTier: 1` (absolute); prose chunks tagged `sourceType: prose`, `weightTier: 3` (same-file) or `weightTier: 4` (cross-file) per Section 5.3.1
+- The No-Shadow Rule applies: frontmatter assertions from one file cannot be overridden by prose from a different file
+- Realized player character chunks are stored with `isPlayer: true` and `weightTier: 2` (immediate), enabling the player-agency constraint during context assembly
 
 Consistency Requirements
 - All states use UPPER_SNAKE_CASE naming (e.g., APP_LAUNCHING, CAMPAIGN_DETAIL)
@@ -46,13 +50,14 @@ Performance Targets (from Architecture Section: Performance Targets)
 - Model initialization: 2-30 seconds (depends on cache availability)
 - Campaign discovery: <2 seconds (for discovered campaigns list to display)
 - Character realization (LLM): 5-8 seconds (Phi-4/Phi-4-mini generates realized character from fresh description)
-- Campaign ingestion (YAML frontmatter + chunking + embedding): varies by campaign size
+- Campaign ingestion (YAML frontmatter + chunking + embedding + precedence tagging): varies by campaign size
 
 Data Shapes (from Architecture)
 - Campaign metadata (campaign.yml): required fields are `title` and `version`; optional fields include `description`, `author`, `content_warnings`, `player_character` constraints, `tags`
 - Fresh character: { id, status, created_at, description, portrait_path, realizations[] }
 - Content warning: { type: string, description: string, severity: "mild"|"moderate"|"severe" }
 - Session state: { character_id, campaign_id, timestamp, inventory, relationships, ... }
+- Campaign chunk (ingested): { content, embedding, sourceType, weightTier, fileOrigin, isPlayer, ... } per Section 6.1.1 Lore Chunk schema
 
 Failure Modes
 - Plan generation timeout during campaign load: Trigger replan loop (max 5 attempts), fallback to template narration
@@ -75,6 +80,9 @@ Testing Checkpoints
 - Character constraint advisory logic matches Section 6.2.6 contract
 - Back button behavior consistent across all states
 - Campaign loading includes YAML frontmatter extraction, character realization, and ObjectBox ingestion
+- Frontmatter chunks stored with `sourceType: frontmatter` and `weightTier: 1`; prose chunks with `sourceType: prose` and `weightTier: 3` or `4` (Section 5.3.1)
+- Realized player character chunks stored with `isPlayer: true` and `weightTier: 2`
+- No-Shadow Rule enforced: no cross-file prose overrides of frontmatter assertions
 
 Cross-References for Implementation
 - Specification 008: UI Layer Implementation (to be created) should reference this journey

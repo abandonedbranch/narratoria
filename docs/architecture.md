@@ -1321,6 +1321,7 @@ The Narrator AI uses Phi-4 or Phi-4-mini (3.8B-14B parameters, 2.5GB-8GB GGUF qu
 - Consult `disabledSkills` in execution results to avoid selecting failed skills
 - Track generation attempt count in metadata
 - Avoid creating circular dependencies in the tools array
+- Never generate dialogue or decisions for the player character without player-initiated action. The Narrator AI narrates *to* the player, not *as* the player — it describes the world, presents choices, and narrates consequences, but the player character's words and decisions belong exclusively to the player. Player character chunks in context (marked `isPlayer: true`) are reference material for the AI, not license to act on the player's behalf.
 
 **Model Loading:**
 - Downloads automatically from HuggingFace Hub (`microsoft/Phi-4` or `microsoft/Phi-4-mini` GGUF variant) on first app launch
@@ -1356,6 +1357,90 @@ The Plan Generator decides *contextually* what data to retrieve. There are no fi
 ```
 
 The LLM may query lore, recent events, NPC relationships, faction reputation, or episodic memories based on scene needs. Retrieval is adaptive, driven by narrative context rather than predetermined budgets.
+
+#### 5.3.1 Context Precedence Hierarchy
+
+While retrieval is contextual rather than budget-driven, the data assembled into Phi-4's context window follows a strict precedence hierarchy. This hierarchy determines how conflicts between data sources are resolved and how the system prompt is ordered. Higher-priority data appears earlier in context and takes precedence when assertions conflict.
+
+**Precedence Tiers:**
+
+| Tier | Source | Weight | Description |
+|------|--------|--------|-------------|
+| 1 | Campaign frontmatter assertions | `absolute` | Hard constraints declared in YAML frontmatter. Immutable within the context of their source file. |
+| 2 | Active session state | `immediate` | Current location, inventory, active effects, realized player character profile. Reflects the live narrative situation. |
+| 3 | Campaign prose (same-file) | `authoritative` | Author-written narrative body text from the same file as Tier 1 frontmatter. Enriches constraints with flavor and detail. |
+| 4 | Campaign prose (cross-file) | `contextual` | Author-written prose from other campaign files retrieved via semantic search. Provides background, lore, and world-building. |
+| 5 | Persistent runtime data | `accumulated` | NPC perception scores, faction reputation, session-local memory events from the current playthrough. |
+| 6 | Cross-session memory | `historical` | Episodic and semantic memory from prior sessions, retrieved by similarity search. Lowest priority but enables continuity. |
+
+**Context Assembly Algorithm:**
+
+1. **Query ObjectBox** with scene-relevant semantic searches (driven by Plan Generator)
+2. **Tag each result** with its `sourceType` (`frontmatter` or `prose`) and `weightTier` (1-6)
+3. **Order context fragments** by tier (lowest number first), then by semantic relevance within each tier
+4. **Inject into Phi-4's system prompt** with tier boundaries clearly delineated
+5. **Enforce the No-Shadow Rule**: frontmatter assertions from one file cannot be overridden or contradicted by prose from a different file (see below)
+
+**The No-Shadow Rule:**
+
+Frontmatter assertions are the highest-priority data *within the scope of their source file*. Critically, prose in other files cannot override or contradict frontmatter assertions from a different file. This prevents campaign authors from accidentally (or intentionally) creating conflicting authorities across files.
+
+**Example — Correct Behavior:**
+
+```yaml
+# character_merlin.txt (frontmatter)
+---
+entity_type: character
+entity_id: merlin
+alignment: lawful_good
+core_traits: [never_accepts_evil, protective_of_innocents]
+---
+
+Merlin is a figure of profound wisdom who would NEVER align with evil...
+```
+
+```yaml
+# npc_merlin_morgana_relationship.txt (prose body)
+---
+entity_type: relationship
+---
+
+Morgana often tempts Merlin, suggesting his rigid morality blinds him
+to deeper truths. Despite her provocations, Merlin secretly harbors
+doubts about the nature of good and evil...
+```
+
+In this case, the relationship prose (Tier 4, `contextual`) enriches narration — Phi-4 may use it to generate scenes where Morgana challenges Merlin. But Merlin's `core_traits: [never_accepts_evil]` (Tier 1, `absolute`) remains inviolable. The AI must never generate a plan or narration where Merlin actually accepts or aligns with evil.
+
+**Implications for Campaign Authors:**
+
+- Use **frontmatter** for hard constraints: alignment, immutable character traits, forbidden actions, mechanical facts, world laws
+- Use **prose body** for narrative flavor: personality details, relationship dynamics, atmospheric descriptions, situational context
+- The system automatically ranks frontmatter higher — stylistic emphasis in prose (e.g., "NEVER EVER") does not amplify precedence weight beyond Tier 3/4
+- To make a constraint truly binding, declare it in frontmatter rather than relying on prose emphasis
+- Frontmatter keys are freeform (no enforced schema); authors choose their own constraint vocabulary
+
+**Storage Metadata:**
+
+Every chunk stored in ObjectBox carries precedence metadata (see Section 6.1.1 for schema details):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sourceType` | string | `frontmatter` or `prose` — origin within the source file |
+| `weightTier` | integer (1-6) | Precedence tier per the hierarchy above |
+| `fileOrigin` | string | Relative path to the source campaign file |
+
+These fields enable the context assembly algorithm to correctly order and deduplicate data before injection into Phi-4's prompt.
+
+**Realized Player Characters:**
+
+When a fresh character is realized at campaign start (see Section 6.2.7), the LLM generates a structured character profile — name, archetype, personality, background, goals, speech patterns — tailored to the campaign world. This ephemeral JSON is chunked, embedded, and stored in ObjectBox as regular character chunks with `isPlayer: true`. The intermediate JSON is then discarded.
+
+Realized player characters are stored identically to campaign NPCs — same chunking, same embedding, same semantic search retrieval — differentiated only by the `isPlayer` flag. This means:
+
+- **Tier 2 (`immediate`)**: Player character chunks receive `weightTier: 2` because they represent the active player identity in the current campaign session
+- **Same campaign, same lifetime**: Player character chunks persist with the playthrough data, not across campaigns. The same fresh character realizes differently in each campaign (wizard in fantasy, detective in noir)
+- **Player agency constraint**: When `isPlayer: true` chunks appear in Phi-4's context, the Narrator AI must never generate dialogue or make decisions for that character without player-initiated action (see Section 5.1). The AI narrates *to* the player, not *as* the player
 
 ### 5.4 Testing Stub
 
@@ -1407,6 +1492,10 @@ The persistence layer is shared infrastructure providing a unified storage and r
 | content | string | Chunk text |
 | embedding | float[384] | Semantic vector |
 | tokenCount | integer | Token count for context budgeting |
+| sourceType | string | `frontmatter` or `prose` — origin within the source file |
+| weightTier | integer (1-6) | Precedence tier per Section 5.3.1 hierarchy |
+| fileOrigin | string | Relative path to source campaign file |
+| isPlayer | boolean | `true` for realized player character chunks; enables player-agency constraint during context assembly |
 
 **Faction Reputation:**
 | Attribute | Type | Description |
@@ -1573,7 +1662,12 @@ All fields except `title` and `version` are optional.
 
 #### 6.2.4 Semantic File Format with Optional Frontmatter
 
-Every content file (`.txt`, `.md`) may include YAML frontmatter declaring its intent:
+Every content file (`.txt`, `.md`) may include YAML frontmatter declaring its intent. The ingestion pipeline treats frontmatter and prose body as structurally distinct data sources with different precedence weights (see Section 5.3.1):
+
+- **Frontmatter** (YAML block between `---` markers): Declares hard constraints and factual assertions. Stored with `sourceType: frontmatter` and `weightTier: 1` (absolute priority). Frontmatter keys are freeform — authors choose their own vocabulary. No schema is enforced beyond valid YAML.
+- **Prose body** (everything after the closing `---`): Provides narrative flavor, personality details, and contextual richness. Stored with `sourceType: prose` and `weightTier: 3` (same-file) or `weightTier: 4` (when retrieved cross-file via semantic search).
+
+This separation ensures that an author who writes `core_traits: [never_accepts_evil]` in frontmatter establishes an inviolable constraint, while prose emphasis like "Merlin would NEVER EVER EVER align with evil" serves as narrative flavor within that constraint — not as precedence amplification.
 
 ```yaml
 ---
@@ -3414,11 +3508,12 @@ Final metadata object assembled for chunking phase:
   },
   "inferredFields": ["entity_id", "content_type", "tags"],
   "explicitFields": ["entity_type", "priority"],
+  "frontmatterKeys": ["entity_type", "entity_id", "content_type", "priority", "portrait_asset", "tags"],
   "metadata": {}
 }
 ```
 
-The `inferredFields` list tracks which fields were auto-derived (useful for validation and debugging).
+The `inferredFields` list tracks which fields were auto-derived (useful for validation and debugging). The `frontmatterKeys` list captures all keys present in the YAML frontmatter block, enabling the chunking phase to produce separate `frontmatter`-typed chunks for frontmatter assertions and `prose`-typed chunks for body text (see Section 5.3.1 for precedence rules).
 
 ##### Phase 3: Text Chunking & Tokenization
 
@@ -3426,9 +3521,10 @@ All text content (`.txt`, `.md`) undergoes intelligent chunking based on entity 
 
 **Prose-Based Files** (`.txt`, `.md` with narrative content):
 
-1. **Paragraph-level chunking**: Split on double-newline (`\n\n`)
+0. **Frontmatter chunking**: If the file has YAML frontmatter, serialize its key-value assertions into a separate chunk with `sourceType: frontmatter` and `weightTier: 1`. This chunk represents the author's hard constraints for this entity and takes absolute precedence during context assembly (see Section 5.3.1).
+1. **Paragraph-level chunking**: Split prose body (after frontmatter) on double-newline (`\n\n`). Each prose chunk is tagged `sourceType: prose` and `weightTier: 3` (same-file context).
 2. **Token checking**: If paragraph exceeds 512 tokens, split on sentence boundaries (`. `, `! `, `? `)
-3. **Chunk metadata**: Retain chunk index, paragraph ID, token count, chunking method
+3. **Chunk metadata**: Retain chunk index, paragraph ID, token count, chunking method, `sourceType`, `weightTier`, `fileOrigin`
 4. **Semantic tagging**: Tag each chunk with content_type from frontmatter (e.g., "personality", "background", "goals")
 
 **Example:**
@@ -3597,6 +3693,12 @@ class CampaignChunk {
   String? contentType;       // "profile", "premise", "backstory"
   String semanticRole;       // "character_definition", "worldbuilding", etc.
   
+  // Precedence metadata (Section 5.3.1)
+  String sourceType;         // "frontmatter" or "prose"
+  int weightTier;            // 1-6 per Context Precedence Hierarchy
+  String fileOrigin;         // Relative path to source campaign file
+  bool isPlayer;             // true for realized player character chunks
+  
   // JSON structure (if applicable)
   String? jsonField;         // Field path within JSON: "personality.traits"
   String? jsonParent;        // Parent object path
@@ -3710,9 +3812,11 @@ Special handling for campaign-level configuration:
 
 - `manifest.json` parsed and cached in memory (not chunked/embedded)
 - `world/setting.txt` loaded into LLM system context (also embedded for search)
-- `world/constraints.md` marked as absolute boundaries (max priority filter)
+- `world/constraints.md` ingested through the standard chunking pipeline — frontmatter assertions receive `weightTier: 1` (absolute), prose body receives `weightTier: 3` (authoritative), per Section 5.3.1
 
 These provide **global context** that modifies all Narrator AI generation.
+
+> **Design Note — `world/constraints.md`:** This file's *intent* is to declare binding world laws (e.g., "magic cannot resurrect the dead," "no faster-than-light travel"). However, it follows the same precedence rules as every other campaign file. If the entire file were elevated to Tier 1 regardless of structure, Phi-4 would have no way to distinguish hard constraints from explanatory prose — everything would claim absolute authority, rendering the precedence system meaningless. Campaign authors should place world laws in the YAML frontmatter block and use the prose body for context, examples, and rationale. See Section 5.3.1 for the full precedence hierarchy and the No-Shadow Rule.
 
 ##### Phase 10: Validation & Completion
 
