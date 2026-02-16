@@ -924,171 +924,148 @@ The system must log all plan generation and execution attempts with timestamps, 
 
 ---
 
-## 3. Skills Framework
+## 3. Tool Registry
 
-### 3.1 Agent Skills Standard
+### 3.1 Design Rationale
 
-Narratoria implements the [Agent Skills Standard](https://agentskills.io/specification) with Narratoria-specific extensions for AI orchestration. A skill is a directory containing at minimum a `SKILL.md` file:
+Narratoria's capabilities are exposed to the LLM as **in-process tools** registered in a typed catalog. The Thinker selects tools by name during Phase I (Think); the engine invokes them as direct function calls during Phase II (Execute). There is no subprocess spawning, no IPC protocol, and no filesystem discovery.
 
-- **`SKILL.md`** — Required. YAML frontmatter (metadata) + markdown body (behavioral guidance and documentation)
-- **`scripts/`** — Optional. Executable programs that perform the skill's work
-- **`references/`** — Optional. Additional documentation agents can read on demand (Narratoria stores configuration schemas here)
-- **`assets/`** — Optional. Templates, images, and other static resources
-- **`config.json`** — Optional, Narratoria extension. User-saved configuration values (written by the runtime)
-- **`data/`** — Optional, Narratoria extension. Private persistent storage for the skill
+This design follows from three observations:
 
-#### SKILL.md Format
+1. **The prototype already works this way.** The research prototype's `TOOL_CATALOG` + `_tool_registry` pattern has proven sufficient for theme switching, and the same pattern extends cleanly to dice rolling, memory queries, reputation lookups, and any other capability the engine needs.
+2. **Subprocess isolation adds cost without benefit here.** Narratoria is a GPL-3 project where all capabilities ship as part of the same codebase. Language independence for third-party skill authors is not a design goal — extensibility happens through contributing tools to the project, not through a plugin marketplace.
+3. **In-process tools are simpler to test, debug, and reason about.** A tool is a function with typed inputs and a typed return value. No serialization boundary, no NDJSON parsing, no timeout management for child processes. Error handling is a `try/except` around the call.
 
-The `SKILL.md` file uses YAML frontmatter for metadata followed by a markdown body containing behavioral guidance and documentation. Standard fields go in the frontmatter root; Narratoria-specific extensions go under the `x-narratoria` key in `metadata`.
+### 3.2 Tool Catalog
 
-```markdown
----
-name: storyteller
-description: Rich narrative enhancement using local or hosted LLMs. Use when
-  the narrator needs to generate evocative prose for scene descriptions,
-  dialogue, or transitions.
-license: MIT
-metadata:
-  author: Narratoria
-  version: "1.0.0"
-  x-narratoria:
-    displayName: Storyteller
-    capabilities:
-      - narration
-      - prose
-      - scene-setting
-    priority: 80
-    retryPolicy:
-      maxRetries: 3
-      backoffMs: 100
----
+The **Tool Catalog** is the authoritative registry of every tool the LLM is allowed to invoke. It is a static data structure available at engine initialization, containing metadata the Thinker needs to make informed selections.
 
-# Storyteller Skill
+Each catalog entry declares:
 
-This skill enhances narrative scenes with rich, evocative prose using a
-configurable LLM provider (local Phi-4 or Phi-4-mini by default, or hosted APIs).
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Unique identifier used by the LLM in `tool_calls[].name`. Lowercase, underscored. |
+| `description` | string | Yes | Natural language description injected into the Think prompt so the LLM understands when to use the tool. |
+| `args` | object | Yes | Default argument schema. Keys are parameter names; values are example defaults. Serves as both documentation for the LLM and a fallback when the LLM omits optional arguments. |
 
-## Scripts
+**Example catalog entry:**
 
-- **`scripts/narrate`** — Generate narrative prose from scene context. Required
-  for the skill to function. Default timeout: 30 seconds.
-
-## Configuration
-
-See [references/config-schema.json](references/config-schema.json) for the
-configuration schema. Settings include LLM provider selection, API keys, and
-narrative style preferences.
-
-## Behavioral Guidance
-
-When generating plans that involve storytelling:
-- Use vivid sensory details appropriate to the campaign tone
-- Match narrative style to campaign setting (epic fantasy, noir, sci-fi, etc.)
-- Reference recent memories when contextually relevant
-- Produce 2-3 paragraphs of scene-setting narrative per invocation
-- Avoid purple prose; maintain readability
+```
+"apply_bespoke_theme": {
+    "description": "Apply a runtime UI theme (colors + alignment).",
+    "args": {
+        "surface": "#1e1e1e",
+        "surface_light": "#2a2a2a",
+        "text": "#e6e6e6",
+        "accent": "#f7b32b",
+        "user_align": "right"
+    }
+}
 ```
 
-**Standard Fields** (per [Agent Skills Standard](https://agentskills.io/specification)):
+The catalog is injected verbatim into the Phase I prompt under an "Available tools" heading. The Thinker sees tool names, descriptions, and argument schemas — enough to decide whether and how to call each tool. Tools not in the catalog cannot be invoked; the manifest parser strips any `tool_calls` entry whose name is absent from the catalog.
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | Yes | 1-64 chars, lowercase alphanumeric + hyphens, must match directory name |
-| `description` | Yes | Max 1024 chars. What the skill does and when to use it |
-| `license` | No | SPDX identifier or reference to bundled license file |
-| `compatibility` | No | Environment requirements (max 500 chars) |
-| `metadata` | No | Arbitrary key-value map for additional metadata |
+#### Catalog Extension
 
-**Narratoria Extensions** (under `metadata.x-narratoria`):
+Adding a new tool requires two steps:
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `displayName` | string | — | Human-readable name for UI display |
-| `capabilities` | string[] | [] | Semantic tags for plan generator skill selection |
-| `priority` | integer | 50 | Selection weight when multiple skills match (0-100) |
-| `retryPolicy` | object | — | Default retry behavior for all scripts in `scripts/` |
+1. **Add a catalog entry** with `name`, `description`, and `args` to the Tool Catalog data structure.
+2. **Register a handler** in the runtime's tool registry — a mapping from the tool name to the callable that implements it.
 
-Scripts are not declared in the `SKILL.md` frontmatter. They are executable files in the `scripts/` directory, discovered by the runtime at startup. The `SKILL.md` markdown body should document available scripts, their purpose, and any required inputs. Script-specific metadata (timeouts, required flags) can be documented in `references/` as a Narratoria extension (e.g., `references/script-manifest.json`).
+No filesystem changes, no manifest files, no discovery scan. The tool is immediately available to the Thinker on the next turn.
 
-The markdown body after frontmatter serves dual purposes:
-1. **Human documentation** — skill users and authors can read it directly
-2. **Behavioral guidance** — injected into the Plan Generator's system context when the skill is activated
+### 3.3 Tool Handler Registry
 
-This follows the Agent Skills Standard's progressive disclosure model: the runtime loads only `name` and `description` at startup, then reads the full `SKILL.md` body when the skill is activated for a plan.
+The **Tool Handler Registry** is a runtime mapping from tool names to callable implementations. It is separate from the catalog because the catalog describes tools *for the LLM* while the registry binds them *to code*.
 
-### 3.2 Skill Discovery
+```
+Registry = Map<String, Function(args: Map) -> Map>
+```
 
-At startup, the runtime scans the `skills/` directory and discovers all valid skills:
+Each handler:
 
-1. Locate all `SKILL.md` files in `skills/*/SKILL.md`; parse YAML frontmatter
-2. Validate required fields (`name`, `description`); verify `name` matches directory name
-3. Scan `scripts/` directories within each skill to discover available script executables
-4. Store `name` + `description` for lightweight skill selection during plan generation
-5. Skip skills with invalid or missing `SKILL.md`; log warnings without crashing
-6. Hot-reloading should be supported: when `SKILL.md` changes are detected, handle gracefully (auto-reload or notify user)
+- Receives a single argument map (deserialized from the LLM's `tool_calls[].args`)
+- Returns a result map (serialized into the execution context for Phase III)
+- May perform side effects (UI changes, state mutations, external queries)
+- Runs in-process, in the same thread as the Phase II executor
 
-The full `SKILL.md` markdown body is read into the Plan Generator's context only when the skill is activated for a plan — not at startup. This keeps initial context usage low per the Agent Skills Standard's progressive disclosure model.
+Handlers are registered at application startup. The UI layer or any other subsystem can contribute handlers — the engine does not need to know the implementation details. For example, the TUI registers a handler for `apply_bespoke_theme` that calls its own CSS injection method; a future GUI frontend would register a different handler for the same tool name that modifies its own widget tree.
 
-### 3.3 Skill Configuration
+### 3.4 Tool Calling Across the Tri-Phase Loop
 
-> **Note:** Configuration management (`references/config-schema.json`, `config.json`) is a Narratoria extension, not part of the Agent Skills Standard. The standard defines `SKILL.md` and optional `scripts/`, `references/`, and `assets/` directories; Narratoria uses the `references/` directory for configuration schemas and adds `config.json` and `data/` as extensions for skills that need user-editable settings (API keys, model selection, tuning parameters) and private storage.
+Tool calling touches two of the three phases. The Narrator (Phase III) never invokes tools — it only reads their results.
 
-The runtime provides a Skills Settings UI accessible from application settings:
+#### Phase I — Think
 
-- Display all discovered skills with name, description, and enabled/disabled toggle
-- Dynamically generate configuration forms from `references/config-schema.json` files within each skill directory
-- Supported input types: string (text, freeform), number, boolean (toggle), enum (dropdown)
-- Sensitive fields (API keys, passwords) use password-style masking; the `x-sensitive` flag triggers this
-- Environment variable substitution supported via `${VAR_NAME}` syntax in config values
-- Validation against schema constraints (required fields, type checking, min/max) before saving
-- Validation errors displayed inline in configuration forms with actionable error messages
-- Configuration saved to skill-specific `config.json` files within the skill directory
+The Thinker receives the full Tool Catalog as part of its system prompt. For each turn, the LLM decides:
 
-**Configuration Schema Meta-Schema:**
+- **Whether** any tools are needed (most turns require zero tool calls)
+- **Which** tools to invoke, by name
+- **What arguments** to pass, informed by the catalog's example defaults
 
-Each skill's `config-schema.json` is a standard JSON Schema with Narratoria-specific extensions:
+Tool calls are declared in the `tool_calls` array of the CognitiveManifest:
 
-| Extension | Type | Description |
-|-----------|------|-------------|
-| `x-sensitive` | boolean | If true, mask value in UI (API keys, passwords) |
-| `x-env-var` | string | Environment variable for `${VAR_NAME}` substitution |
-| `x-category` | string | UI grouping category for related fields |
-| `format: "password"` | string | UI rendering hint for password fields |
+```json
+{
+  "intent": "theme_change",
+  "narrative": "The player requests a dark blue interface.",
+  "tool_calls": [
+    {
+      "name": "apply_bespoke_theme",
+      "args": {
+        "surface": "#0d1b2a",
+        "surface_light": "#1b2838",
+        "accent": "#4fc3f7"
+      }
+    }
+  ],
+  ...
+}
+```
 
-### 3.4 Skill Script Execution
+**Validation rules applied during manifest parsing:**
 
-The Plan Executor invokes skill scripts as independent OS processes:
+- Tool calls referencing names not in the catalog are silently stripped
+- Non-dict `args` values are replaced with an empty map
+- The entire `tool_calls` array is replaced with an empty list if it is not a list
 
-1. Scripts communicate via NDJSON protocol over stdin/stdout
-2. Script input is passed as a single JSON object via stdin
-3. The executor parses all NDJSON events: `log`, `state_patch`, `asset`, `ui_event`, `error`, `done`
-4. Script dependencies declared in Plan JSON are respected; scripts execute in topological order
-5. Both parallel and sequential execution are supported per Plan JSON flags
-6. Per-script timeout (default 30 seconds) is enforced; unresponsive scripts are terminated
-7. Script failures are handled per the `required` flag in Plan JSON
-8. All events are collected for the full execution trace
+This ensures the Thinker cannot invent tools or pass malformed arguments into Phase II.
 
-### 3.5 Skill Data Management
+#### Phase II — Execute
 
-Each skill maintains private data storage in `skills/<skill-name>/data/`:
+The executor iterates over validated `tool_calls` from the manifest and dispatches each to its registered handler:
 
-- Data persists across application restarts
-- Skill data is private; other skills must not directly access another skill's data directory
-- Skills may use SQLite, JSON files, or other local storage formats
-- Data directories are created on first use if they don't exist
+1. Look up the handler by `name` in the Tool Handler Registry
+2. If no handler is registered, record an error result (`unknown_tool`) and continue
+3. If the handler exists, invoke it with the `args` map inside a `try/catch`
+4. Capture the return value (success) or exception message (failure) as a result map
+5. Collect all results into a `tool_results` list passed to Phase III
 
-For persistent narrative data shared across skills (memory events, reputation, NPC perception, character portraits), the shared persistence layer provides a common query interface. Skills communicate through this shared layer, not by accessing each other's private directories. This preserves the "no direct skill-to-skill calls" rule.
+Tool execution is **sequential** — tools run in the order declared by the Thinker. This avoids race conditions when two tools might affect the same state (e.g., a theme change followed by a UI notification). Parallel execution is not currently needed given the low tool-call volume per turn (typically 0–1).
 
-### 3.6 Graceful Degradation
+**Result format:**
 
-The system continues functioning when skills are unavailable:
+```json
+[
+  {"name": "apply_bespoke_theme", "ok": true, "output": {"status": "applied"}},
+  {"name": "roll_dice",           "ok": false, "error": "unknown_tool"}
+]
+```
 
-- Optional skills that are not installed or disabled do not prevent normal operation
-- Misconfigured skills produce user-friendly warnings, not crashes
-- Skills using hosted APIs fall back to local models when the network is unavailable
-- If plan generation fails completely, the Narrator AI provides template-based narration
-- The Plan Executor continues executing remaining plan steps when one script fails (if independent)
-- All skills log failures and continue functioning for remaining capabilities
+#### Phase III — Narrate
+
+The Narrator receives `tool_results` as read-only context in its prompt. It may reference tool outcomes in the narrated prose (e.g., "The room shifts to cooler tones as the interface adjusts around you") but cannot trigger additional tool calls. This separation ensures the Narrator's output is pure prose with no side effects.
+
+### 3.5 Graceful Degradation
+
+Tool failures do not halt the turn. The system degrades gracefully at each level:
+
+- **Unknown tool**: If the Thinker hallucinates a tool name, the manifest parser strips it before Phase II ever sees it. No error is raised; the tool call simply does not execute.
+- **Handler exception**: If a registered handler throws, the executor catches the exception, records it in `tool_results`, and continues to the next tool call. The Narrator receives the error context and can acknowledge the failure in prose.
+- **Manifest parse failure**: If the entire CognitiveManifest cannot be parsed after bounded retries (Constitution IV.A), the engine produces a fallback manifest with `intent=smalltalk`, zero tool calls, and an apologetic narration directive. The turn completes without tools.
+- **Missing handler**: If a tool is in the catalog but no handler is registered (e.g., a frontend does not support a particular tool), the executor records `unknown_tool` and continues. The tool effectively becomes a no-op for that frontend.
+
+This ensures the player always receives a response, even when tool execution fails partially or completely.
 
 ---
 
