@@ -1,0 +1,93 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "modelVersionParserMinimum": 5,
+  "entities": [
+    {
+      "id": "1:8716358926327012901",
+      "name": "StateDelta",
+      "lastPropertyId": "7:8871413156096740873",
+      "properties": [
+        {
+          "id": "1:555955979179221859",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3223836609522905521",
+          "name": "turn_number",
+          "type": 6
+        },
+        {
+          "id": "3:7621793615044394180",
+          "name": "timestamp",
+          "type": 8
+        },
+        {
+          "id": "4:7652309059663768977",
+          "name": "entity_type",
+          "type": 9
+        },
+        {
+          "id": "5:4807249718162667461",
+          "name": "entity_id",
+          "type": 9
+        },
+        {
+          "id": "6:3567234663713818871",
+          "name": "action",
+          "type": 9
+        },
+        {
+          "id": "7:8871413156096740873",
+          "name": "value",
+          "type": 9
+        }
+      ]
+    },
+    {
+      "id": "2:1681230246537918342",
+      "name": "EmbeddedFact",
+      "lastPropertyId": "6:1334068823958565909",
+      "properties": [
+        {
+          "id": "1:5841001755855522250",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:6224095014930199615",
+          "name": "turn_number",
+          "type": 6
+        },
+        {
+          "id": "3:3109255721920594886",
+          "name": "timestamp",
+          "type": 8
+        },
+        {
+          "id": "4:2244262785743950173",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "5:3559514645764747420",
+          "name": "source",
+          "type": 9
+        },
+        {
+          "id": "6:1334068823958565909",
+          "name": "embedding",
+          "type": 28,
+          "flags": 8,
+          "indexId": "1:4154044042522037984"
+        }
+      ]
+    }
+  ],
+  "lastEntityId": "2:1681230246537918342",
+  "lastIndexId": "1:4154044042522037984"
+}

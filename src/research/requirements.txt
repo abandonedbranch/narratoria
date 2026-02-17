@@ -1,0 +1,5 @@
+textual
+ollama
+objectbox
+sentence-transformers
+tiktoken

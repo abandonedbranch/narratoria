@@ -33,14 +33,13 @@ os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 import objectbox
 from sentence_transformers import SentenceTransformer
-from llama_cpp import Llama
+import ollama
 
 # ===================================================================
 # Configuration
 # ===================================================================
 
-GEMMA_REPO = "bartowski/google_gemma-3n-E2B-it-GGUF"
-GEMMA_FILE = "google_gemma-3n-E2B-it-Q2_K.gguf"
+OLLAMA_MODEL = "gemma3:1b"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 DB_DIR = "memory_prototype_db"
 
@@ -176,16 +175,15 @@ class AgenticEngine:
         if all_deltas:
             self._turn = max(d.turn_number for d in all_deltas)
 
-        # 3. LLM (single model, two call modes)
-        print(f"[engine] Step 3/3: Loading LLM ({GEMMA_FILE})...")
-        self.llm = Llama.from_pretrained(
-            repo_id=GEMMA_REPO,
-            filename=GEMMA_FILE,
-            n_ctx=4096,
-            n_threads=1,
-            verbose=False,
-        )
-        print("[engine] Engine ready.")
+        # 3. LLM (Ollama client - model served externally)
+        print(f"[engine] Step 3/3: Connecting to Ollama ({OLLAMA_MODEL})...")
+        # Verify model is available
+        try:
+            ollama.show(OLLAMA_MODEL)
+            print("[engine] Engine ready.")
+        except Exception as e:
+            print(f"[engine] Warning: Could not verify model {OLLAMA_MODEL}: {e}")
+            print("[engine] Engine ready (model will be checked on first use).")
 
     # ------------------------------------------------------------------
     # Storage helpers
@@ -294,13 +292,15 @@ class AgenticEngine:
         prompt = self._think_prompt(user_input, recent_deltas)
 
         for attempt in range(1, MAX_THINK_RETRIES + 1):
-            result = self.llm.create_chat_completion(
+            response = ollama.chat(
+                model=OLLAMA_MODEL,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=256,
-                stream=False,
-                temperature=0.2,
+                options={
+                    "temperature": 0.2,
+                    "num_predict": 256,
+                },
             )
-            raw = result["choices"][0]["message"]["content"].strip()
+            raw = response["message"]["content"].strip()
             manifest = self._parse_manifest(raw)
             if manifest is not None:
                 return manifest, recent_deltas
@@ -465,11 +465,6 @@ class AgenticEngine:
         directive = manifest.narration_directive
 
         facts_block = "\n".join(f"- {f}" for f in exec_ctx["rag_results"]) or "(none)"
-        tools_block = json.dumps(exec_ctx["tool_results"], ensure_ascii=True) if exec_ctx["tool_results"] else "(none)"
-        deltas_block = json.dumps(
-            [asdict(d) for d in manifest.state_deltas], ensure_ascii=True
-        ) if manifest.state_deltas else "(none)"
-
         ref_str = ", ".join(directive.must_reference) if directive.must_reference else "(none)"
         avoid_str = ", ".join(directive.must_avoid) if directive.must_avoid else "(none)"
 
@@ -500,10 +495,8 @@ class AgenticEngine:
             f"Write exactly {directive.sentences} sentence(s).\n"
             f"You MUST reference: {ref_str}\n"
             f"You MUST NOT mention: {avoid_str}\n\n"
-            f"Relevant facts:\n{facts_block}\n\n"
-            f"State changes this turn:\n{deltas_block}\n\n"
-            f"Tool results:\n{tools_block}\n\n"
-            f"Turn summary: {manifest.narrative}\n\n"
+            f"What happened: {manifest.narrative}\n\n"
+            f"Relevant world facts:\n{facts_block}\n\n"
             f"Player said: {user_input}\n\n"
             f"Narrate:"
         )
@@ -517,15 +510,18 @@ class AgenticEngine:
         """Phase III: stream constrained prose to the TUI."""
         prompt = self._narrate_prompt(user_input, manifest, exec_ctx)
 
-        stream = self.llm.create_chat_completion(
+        stream = ollama.chat(
+            model=OLLAMA_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=512,
+            options={
+                "temperature": 0.7,
+                "num_predict": 512,
+            },
             stream=True,
-            temperature=0.7,
         )
 
         for chunk in stream:
-            delta = chunk["choices"][0]["delta"].get("content", "")
+            delta = chunk["message"]["content"]
             if delta:
                 yield delta
 

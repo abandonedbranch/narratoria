@@ -6,11 +6,38 @@ cd "$(dirname "$0")"
 
 # Virtual environment name
 VENV_DIR=".venv"
+# Ollama model to use
+OLLAMA_MODEL="gemma3:1b"
 
 # Check if python3 is available
 if ! command -v python3 &> /dev/null; then
     echo "Error: python3 is not installed or not in PATH."
     exit 1
+fi
+
+# Check if ollama is installed
+if ! command -v ollama &> /dev/null; then
+    echo "Error: ollama is not installed or not in PATH."
+    echo "Please install Ollama from https://ollama.ai"
+    exit 1
+fi
+
+# Start Ollama service if not running
+echo "Checking Ollama service..."
+if ! pgrep -x "ollama" > /dev/null; then
+    echo "Starting Ollama service in background..."
+    ollama serve > /dev/null 2>&1 &
+    # Give it a moment to start
+    sleep 2
+fi
+
+# Pull model if not already downloaded
+echo "Ensuring model $OLLAMA_MODEL is available..."
+if ! ollama list | grep -q "$OLLAMA_MODEL"; then
+    echo "Pulling model $OLLAMA_MODEL (this may take a few minutes)..."
+    ollama pull "$OLLAMA_MODEL"
+else
+    echo "Model $OLLAMA_MODEL already available."
 fi
 
 # Create virtual environment if it doesn't exist
