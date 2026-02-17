@@ -1,0 +1,27 @@
+# World Overview: The Challenge Tower
+
+## Setting
+
+A mysterious tower exists in a timeless pocket of magic, accessible only to those deemed worthy by Leory. The tower contains a series of rooms, each with its own unique challenge. Time moves strangely here—passage of hours might feel like days, or seconds like minutes. The tower is neither cruel nor kind; it is *intentional*.
+
+## The Entrance Vestibule
+
+A circular chamber of cold stone. At its far end, an ornate door bearing symbols—ancient, elegant, holding meaning just beyond comprehension. Here Leory first appears to the player, offering the barest hint of what is to come.
+
+## The Rooms (Variable)
+
+Each room is unique:
+- **Thematic Consistency**: Challenges test different facets of character (problem-solving, courage, creativity, integrity, sacrifice)
+- **Difficulty Scaling**: Early rooms build confidence; middle rooms sow doubt; final room synthesizes everything
+- **Aesthetic Variety**: Each room has its own visual and emotional signature
+
+Author's note: Phi-4-mini will generate room descriptions and challenges that honor this framework while creating fresh variations.
+
+## Logic & Rules
+
+The tower operates by an inscrutable but fair logic:
+- **Entry**: Only those Leory invites may enter
+- **Progression**: Each room must be completed to unlock the next
+- **Failure States**: Failing a challenge locks it for a time; success opens the path forward
+- **Time Dilation**: Standard temporal rules do not apply
+- **Persistence**: What you carry remains; what you learn compounds

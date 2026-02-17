@@ -1,0 +1,19 @@
+# Campaign Credits
+
+**Title**: Wizard Runner  
+**Version**: 1.0.1  
+**Author**: Narratoria Team  
+**Genre**: Fantasy  
+**Tone**: Mysterious, Challenging, Introspective  
+
+## Campaign Description
+
+A wizard named Leory invites the player to his Challenge Tower, offering trials that test problem-solving, physical courage, creativity, and moral integrity. As the player progresses, they discover the trials are deliberately arranged to confront their personal weaknesses and foster growth.
+
+The campaign explores themes of agency, self-knowledge, and the nature of mentorship through ambiguity and mystery.
+
+## Design Notes
+
+This campaign is designed to work with the Narratoria prototype's 4-step narration pipeline and per-lens choice generation. The narrator flags enforce mystery and ambiguity as thematic elements, not narrative gaps.
+
+Phi-4-mini should generate unique challenge variations while respecting the established framework and emotional arc of three acts: Confidence, Realization, and Integration.

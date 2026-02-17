@@ -1,0 +1,17 @@
+---
+invent_facts: false
+invent_npcs: false
+resolve_mysteries: false
+invent_sensory_details: true
+elaborate_dialogue: true
+---
+
+Ambiguity is content — never explain what the source leaves unexplained.
+The tower should feel inscrutable, not friendly.
+Silence and mystery are features, not gaps to fill.
+When the source says something is "unknown," narrate it as unknown.
+Leory's motives must never be stated or implied — only wondered at.
+The tower's origin is unknowable; do not speculate on it.
+Previous adventurers' fates are uncertain — keep them that way.
+The treasure's true nature is a question, not an answer.
+Sensory details (stone, shadow, cold, sound) are welcome — explanations are not.

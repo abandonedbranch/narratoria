@@ -1,0 +1,40 @@
+# Game Mechanics: Challenge System
+
+## Challenge Progression
+
+The campaign follows a structured but flexible progression:
+
+**Phase 1: Confidence (Scenes 1-5)**  
+- 1-2 early challenges, designed to build capability and confidence
+- Success should feel *earned* but achievable
+- Introduces the challenge archetypes (puzzle, courage, agility)
+
+**Phase 2: Complexity (Scenes 6-12)**  
+- 4-6 mid-campaign challenges
+- Combine multiple archetypes; increase difficulty
+- *Critical*: Pattern recognition begins—player notices trials target specific weaknesses
+  
+**Phase 3: Revelation (Scenes 13-15)**  
+- 1-2 challenges during the realization beat
+- These may be deliberately made easier to confirm the pattern
+- Player chooses: Accept, Defy, or Avoid the implication
+
+**Phase 4: Integration (Scenes 16-20)**  
+- The final challenge synthesizes all archetypes
+- Difficulty determined by player's Act 2 choice
+- Multiple valid solutions exist
+
+## Success & Failure States
+
+**Success**: Player solves/completes the challenge; next room opens  
+**Failure**: Challenge is locked for a time; player may retry or seek alternative approach  
+**Critical Failure**: Challenge teaches a lesson; player gains insight even in defeat
+
+## Victory Conditions
+
+Each victory is valid if it aligns with:
+1. The archetype's core tension
+2. The character's established methods
+3. The campaign's thematic arc (growth through confrontation)
+
+Creativity is rewarded. Narrative consistency is expected.

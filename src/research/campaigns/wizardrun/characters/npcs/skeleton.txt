@@ -1,0 +1,12 @@
+# Characters: NPCs
+
+## Leory - The Wizard
+
+**Role**: Primary NPC, Campaign Architect  
+**Nature**: Enigmatic, speaks in riddles, motives unknowable  
+**Appearance**: Ancient, cloaked, appears from shadow  
+**Voice**: Cryptic, measured, hints rather than explains
+
+Leory offers the challenge tower trials. He appears between contests, observing, offering cryptic commentary on the player's performance. His true motivation—whether pedagogue, immortal, scientist, or something else—remains deliberately obscure.
+
+**Critical Note**: Leory's motives and the tower's origin must never be explained or fully resolved. Ambiguity is essential to the campaign's thematic weight.
