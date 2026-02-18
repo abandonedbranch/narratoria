@@ -126,9 +126,17 @@ class ChatApp(App):
         }
 
     def on_mount(self) -> None:
-        self.query_one("#chat-scroll").mount(
+        scroll = self.query_one("#chat-scroll")
+        scroll.mount(
             Label("Engine ready. State deltas will be persisted to ObjectBox.", classes="message-bot")
         )
+        
+        # Display opening narration if campaign was loaded
+        if hasattr(self, "_opening_narration") and self._opening_narration:
+            scroll.mount(
+                Markdown(self._opening_narration, classes="message-bot")
+            )
+            scroll.scroll_end(animate=False)
 
     # ------------------------------------------------------------------
     # Input handling
@@ -257,8 +265,20 @@ if __name__ == "__main__":
     print("Initializing Narratoria agentic engine (this may take a moment)...")
     try:
         engine = AgenticEngine()
+        
+        # Load campaign if specified
+        campaign_path = "campaigns/wizardrun"
+        if os.path.exists(campaign_path):
+            print(f"Loading campaign from {campaign_path}...")
+            opening_narration = engine.load_campaign(campaign_path)
+        else:
+            print("No campaign found; starting with empty state.")
+            opening_narration = None
+        
     except Exception:
         traceback.print_exc()
         sys.exit(1)
+    
     app = ChatApp(engine)
+    app._opening_narration = opening_narration  # Pass opening to TUI
     app.run()

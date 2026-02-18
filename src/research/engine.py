@@ -32,15 +32,15 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 import objectbox
-from sentence_transformers import SentenceTransformer
 import ollama
 
 # ===================================================================
 # Configuration
 # ===================================================================
 
-OLLAMA_MODEL = "gemma3:1b"
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
+OLLAMA_EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "embeddinggemma:300m")
+EMBEDDING_DIMENSIONS = 300
 DB_DIR = "memory_prototype_db"
 
 # Retrieval knobs
@@ -142,7 +142,7 @@ class EmbeddedFact:
     source = objectbox.String
     embedding = objectbox.Float32Vector(
         index=objectbox.HnswIndex(
-            dimensions=384,
+            dimensions=768,
             distance_type=objectbox.VectorDistanceType.COSINE,
         )
     )
@@ -157,12 +157,8 @@ class AgenticEngine:
     def __init__(self) -> None:
         self._turn: int = 0
 
-        # 1. Embedder
-        print("[engine] Step 1/3: Loading embedder...")
-        self.embedder = SentenceTransformer(EMBEDDING_MODEL, device="cpu")
-
-        # 2. ObjectBox
-        print(f"[engine] Step 2/3: Opening database at {DB_DIR}...")
+        # 1. ObjectBox
+        print(f"[engine] Step 1/2: Opening database at {DB_DIR}...")
         model = objectbox.Model()
         model.entity(StateDelta)
         model.entity(EmbeddedFact)
@@ -175,15 +171,16 @@ class AgenticEngine:
         if all_deltas:
             self._turn = max(d.turn_number for d in all_deltas)
 
-        # 3. LLM (Ollama client - model served externally)
-        print(f"[engine] Step 3/3: Connecting to Ollama ({OLLAMA_MODEL})...")
-        # Verify model is available
+        # 2. Ollama (LLM + embeddings)
+        print(f"[engine] Step 2/2: Connecting to Ollama...")
+        # Verify models are available
         try:
             ollama.show(OLLAMA_MODEL)
-            print("[engine] Engine ready.")
+            ollama.show(OLLAMA_EMBEDDING_MODEL)
+            print(f"[engine] Engine ready (LLM: {OLLAMA_MODEL}, Embeddings: {OLLAMA_EMBEDDING_MODEL}).")
         except Exception as e:
-            print(f"[engine] Warning: Could not verify model {OLLAMA_MODEL}: {e}")
-            print("[engine] Engine ready (model will be checked on first use).")
+            print(f"[engine] Warning: Could not verify Ollama models: {e}")
+            print("[engine] Engine ready (models will be checked on first use).")
 
     # ------------------------------------------------------------------
     # Storage helpers
@@ -209,7 +206,8 @@ class AgenticEngine:
         """Find relevant EmbeddedFacts by vector similarity."""
         if not query:
             return []
-        vec = self.embedder.encode(query).tolist()
+        response = ollama.embeddings(model=OLLAMA_EMBEDDING_MODEL, prompt=query)
+        vec = response['embedding']
         qb = self.fact_box.query(
             EmbeddedFact.embedding.nearest_neighbor(vec, limit)
         )
@@ -238,7 +236,8 @@ class AgenticEngine:
         """Embed and store a fact for future RAG retrieval."""
         if not content:
             return
-        vec = self.embedder.encode(content).tolist()
+        response = ollama.embeddings(model=OLLAMA_EMBEDDING_MODEL, prompt=content)
+        vec = response['embedding']
         row = EmbeddedFact()
         row.turn_number = turn
         row.timestamp = time.time()
@@ -246,6 +245,91 @@ class AgenticEngine:
         row.source = source
         row.embedding = vec
         self.fact_box.put(row)
+
+    def get_current_scene_state(self) -> dict:
+        """Extract the current scene state from recent deltas.
+        
+        Returns a dict with scene properties like:
+        - location: current location name
+        - atmosphere: mood/ambiance description
+        - visible_objects: what's present in the scene
+        - active_npcs: NPCs currently in scene
+        """
+        # Look at more deltas to ensure we capture all scene state
+        recent = self.get_recent_deltas(limit=20)
+        scene_state = {}
+        
+        # Process deltas in order (oldest to newest)
+        # Later deltas override earlier ones for the same entity_id
+        for delta in recent:
+            if delta["entity_type"] == "scene":
+                entity_id = delta["entity_id"]
+                action = delta["action"]
+                
+                if action == "update" or action == "add":
+                    scene_state[entity_id] = delta["value"]
+                elif action == "remove" and entity_id in scene_state:
+                    del scene_state[entity_id]
+        
+        return scene_state
+
+    def get_entity_state(self, entity_type: str, entity_id: str) -> str | None:
+        """Get the current state of a specific entity.
+        
+        Args:
+            entity_type: Type of entity (e.g., 'door', 'npc', 'inventory')
+            entity_id: Unique identifier for the entity
+            
+        Returns:
+            The current value/state of the entity, or None if not found
+        """
+        recent = self.get_recent_deltas(limit=30)
+        
+        # Process in order, later deltas override earlier ones
+        for delta in recent:
+            if delta["entity_type"] == entity_type and delta["entity_id"] == entity_id:
+                if delta["action"] == "remove":
+                    return None
+                else:  # add or update
+                    return delta["value"]
+        
+        return None
+
+    def get_active_entities(self, exclude_types: list[str] | None = None) -> dict:
+        """Get all currently active entities from recent deltas.
+        
+        Args:
+            exclude_types: Entity types to exclude (default: ['scene'])
+            
+        Returns:
+            Dict grouped by entity_type: {entity_id: value}
+        """
+        if exclude_types is None:
+            exclude_types = ["scene"]
+        
+        recent = self.get_recent_deltas(limit=30)
+        entities: dict[str, dict[str, str]] = {}
+        
+        # Process in order (oldest to newest)
+        for delta in recent:
+            entity_type = delta["entity_type"]
+            if entity_type in exclude_types:
+                continue
+            
+            entity_id = delta["entity_id"]
+            action = delta["action"]
+            
+            # Initialize type group if needed
+            if entity_type not in entities:
+                entities[entity_type] = {}
+            
+            if action == "remove":
+                entities[entity_type].pop(entity_id, None)
+            else:  # add or update
+                entities[entity_type][entity_id] = delta["value"]
+        
+        # Remove empty type groups
+        return {t: e for t, e in entities.items() if e}
 
     # ------------------------------------------------------------------
     # Phase I — THINK
@@ -279,6 +363,23 @@ class AgenticEngine:
             "- state_deltas predict what changes this turn; engine validates\n"
             "- narration_directive tells the narrator how to write the response\n"
             "- If nothing changes, use empty arrays and intent=smalltalk\n\n"
+            "Scene Tracking (IMPORTANT for narrative continuity):\n"
+            "- ALWAYS include scene deltas to track location and context\n"
+            "- Use entity_type='scene' with these entity_ids:\n"
+            "  * 'location': current place (e.g., 'dungeon_entrance', 'forest_path')\n"
+            "  * 'atmosphere': mood/ambiance (e.g., 'dark and cold', 'misty and eerie')\n"
+            "  * 'visible_objects': what player sees (JSON array, e.g., '[\"torch\", \"door\"]')\n"
+            "  * 'active_npcs': NPCs present (JSON array, e.g., '[\"skeleton\", \"guard\"]')\n"
+            "- Example: {\"entity_type\": \"scene\", \"entity_id\": \"location\", \"action\": \"update\", \"value\": \"dungeon_corridor\"}\n\n"
+            "Example Output:\n"
+            "{\n"
+            '  "intent": "exploration",\n'
+            '  "narrative": "You shove the heavy door open, revealing the corridor.",\n'
+            '  "rag_queries": [],\n'
+            '  "tool_calls": [],\n'
+            '  "state_deltas": [{"entity_type": "scene", "entity_id": "door", "action": "update", "value": "open"}],\n'
+            '  "narration_directive": {"tone": "dramatic", "style": "second_person", "sentences": 2, "must_reference": [], "must_avoid": []}\n'
+            "}\n\n"
             "Available tools:\n"
             f"{tools_block}\n\n"
             "Recent state deltas:\n"
@@ -295,9 +396,10 @@ class AgenticEngine:
             response = ollama.chat(
                 model=OLLAMA_MODEL,
                 messages=[{"role": "user", "content": prompt}],
+                format="json",
                 options={
                     "temperature": 0.2,
-                    "num_predict": 256,
+                    "num_predict": 2048,
                 },
             )
             raw = response["message"]["content"].strip()
@@ -464,6 +566,28 @@ class AgenticEngine:
     ) -> str:
         directive = manifest.narration_directive
 
+        # Extract current scene state for narrative continuity
+        scene_state = self.get_current_scene_state()
+        scene_lines = []
+        if "location" in scene_state:
+            scene_lines.append(f"Location: {scene_state['location']}")
+        if "atmosphere" in scene_state:
+            scene_lines.append(f"Atmosphere: {scene_state['atmosphere']}")
+        if "visible_objects" in scene_state:
+            scene_lines.append(f"Visible: {scene_state['visible_objects']}")
+        if "active_npcs" in scene_state:
+            scene_lines.append(f"NPCs present: {scene_state['active_npcs']}")
+        scene_block = "\n".join(scene_lines) if scene_lines else "(no scene established)"
+
+        # Extract active entities (doors, NPCs, inventory, etc.)
+        entities = self.get_active_entities()
+        entity_lines = []
+        for entity_type, entity_dict in entities.items():
+            for entity_id, value in entity_dict.items():
+                # Keep it compact: "door:main_gate = locked"
+                entity_lines.append(f"{entity_type}:{entity_id} = {value}")
+        entity_block = "\n".join(entity_lines) if entity_lines else "(none)"
+
         facts_block = "\n".join(f"- {f}" for f in exec_ctx["rag_results"]) or "(none)"
         ref_str = ", ".join(directive.must_reference) if directive.must_reference else "(none)"
         avoid_str = ", ".join(directive.must_avoid) if directive.must_avoid else "(none)"
@@ -495,6 +619,8 @@ class AgenticEngine:
             f"Write exactly {directive.sentences} sentence(s).\n"
             f"You MUST reference: {ref_str}\n"
             f"You MUST NOT mention: {avoid_str}\n\n"
+            f"Current scene:\n{scene_block}\n\n"
+            f"Active entities:\n{entity_block}\n\n"
             f"What happened: {manifest.narrative}\n\n"
             f"Relevant world facts:\n{facts_block}\n\n"
             f"Player said: {user_input}\n\n"
@@ -572,6 +698,139 @@ class AgenticEngine:
                 return None
 
         return None
+
+    # ------------------------------------------------------------------
+    # Campaign Loading
+    # ------------------------------------------------------------------
+
+    def load_campaign(self, campaign_dir: str) -> str:
+        """Load a campaign from directory structure and seed initial state.
+        
+        Args:
+            campaign_dir: Path to campaign directory (e.g., 'campaigns/wizardrun')
+            
+        Returns:
+            Opening narration text for the campaign
+        """
+        import pathlib
+        
+        campaign_path = pathlib.Path(campaign_dir)
+        if not campaign_path.exists():
+            raise FileNotFoundError(f"Campaign directory not found: {campaign_dir}")
+        
+        print(f"[engine] Loading campaign from {campaign_dir}...")
+        
+        # 1. Load manifest
+        manifest_file = campaign_path / "manifest.json"
+        if manifest_file.exists():
+            with open(manifest_file, 'r', encoding='utf-8') as f:
+                manifest = json.load(f)
+                print(f"[engine] Campaign: {manifest.get('title', 'Unknown')}")
+        
+        # 2. Embed all campaign content files
+        content_files = [
+            ("plot/premise.txt", "premise"),
+            ("world/setting.txt", "setting"),
+            ("narrator.txt", "narrator_guidance"),
+            ("lore/topics.txt", "lore"),
+            ("mechanics/rules.txt", "mechanics"),
+            ("characters/npcs/skeleton.txt", "npc_leory"),
+        ]
+        
+        facts_embedded = 0
+        for rel_path, source_tag in content_files:
+            file_path = campaign_path / rel_path
+            if file_path.exists():
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if content:
+                        # Split long files into chunks for better RAG retrieval
+                        chunks = self._chunk_content(content, max_chars=500)
+                        for i, chunk in enumerate(chunks):
+                            self.persist_fact(
+                                content=chunk,
+                                source=f"{source_tag}_{i}" if len(chunks) > 1 else source_tag,
+                                turn=0
+                            )
+                            facts_embedded += 1
+        
+        print(f"[engine] Embedded {facts_embedded} campaign facts")
+        
+        # 3. Set initial scene state based on campaign
+        initial_deltas = [
+            DeltaPrediction(
+                entity_type="scene",
+                entity_id="location",
+                action="add",
+                value="entrance_vestibule"
+            ),
+            DeltaPrediction(
+                entity_type="scene",
+                entity_id="atmosphere",
+                action="add",
+                value="cold stone chamber, mysterious, timeless"
+            ),
+            DeltaPrediction(
+                entity_type="scene",
+                entity_id="visible_objects",
+                action="add",
+                value='["ornate door with ancient symbols", "cold stone floor", "circular chamber walls"]'
+            ),
+            DeltaPrediction(
+                entity_type="npc",
+                entity_id="leory",
+                action="add",
+                value="present, enigmatic, cloaked in shadow"
+            ),
+            DeltaPrediction(
+                entity_type="story",
+                entity_id="current_act",
+                action="add",
+                value="opening"
+            ),
+            DeltaPrediction(
+                entity_type="story",
+                entity_id="tower_rooms_completed",
+                action="add",
+                value="0"
+            ),
+        ]
+        
+        self.persist_deltas(initial_deltas, turn=0)
+        print(f"[engine] Initialized campaign state with {len(initial_deltas)} deltas")
+        
+        # 4. Return opening narration
+        return (
+            "You stand in a circular chamber of cold stone. At its far end, "
+            "an ornate door bears ancient symbols—elegant, holding meaning just "
+            "beyond comprehension. From the shadows, a cloaked figure emerges. "
+            "Leory, the wizard, regards you with eyes that seem to see through time itself."
+        )
+    
+    def _chunk_content(self, content: str, max_chars: int = 500) -> list[str]:
+        """Split content into chunks for better RAG retrieval.
+        
+        Tries to split on paragraph boundaries when possible.
+        """
+        if len(content) <= max_chars:
+            return [content]
+        
+        chunks = []
+        paragraphs = content.split('\n\n')
+        current_chunk = ""
+        
+        for para in paragraphs:
+            if len(current_chunk) + len(para) + 2 <= max_chars:
+                current_chunk += para + "\n\n"
+            else:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                current_chunk = para + "\n\n"
+        
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+        
+        return chunks if chunks else [content]
 
     # ------------------------------------------------------------------
     # Lifecycle

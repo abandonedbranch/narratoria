@@ -7,7 +7,8 @@ cd "$(dirname "$0")"
 # Virtual environment name
 VENV_DIR=".venv"
 # Ollama model to use
-OLLAMA_MODEL="gemma3:1b"
+OLLAMA_MODEL="lfm2.5-thinking:1.2b"
+EMBEDDING_MODEL="embeddinggemma:300m"
 
 # Check if python3 is available
 if ! command -v python3 &> /dev/null; then
@@ -40,6 +41,15 @@ else
     echo "Model $OLLAMA_MODEL already available."
 fi
 
+# Pull embedding model if not already downloaded
+echo "Ensuring embedding model $EMBEDDING_MODEL is available..."
+if ! ollama list | grep -q "$EMBEDDING_MODEL"; then
+    echo "Pulling embedding model $EMBEDDING_MODEL (this may take a few minutes)..."
+    ollama pull "$EMBEDDING_MODEL"
+else
+    echo "Embedding model $EMBEDDING_MODEL already available."
+fi
+
 # Create virtual environment if it doesn't exist
 if [ ! -d "$VENV_DIR" ]; then
     echo "Creating virtual environment in $VENV_DIR..."
@@ -61,6 +71,16 @@ if [ -f "requirements.txt" ]; then
 else
     echo "Warning: requirements.txt not found."
 fi
+
+# Delete memory_prototype_db directory if it exists
+if [ -d "memory_prototype_db" ]; then
+    echo "Removing existing memory_prototype_db directory..."
+    rm -rf "memory_prototype_db"
+fi
+
+# Export environment variables for the engine
+export OLLAMA_MODEL
+export EMBEDDING_MODEL
 
 # Run the TUI
 echo "Starting Narratoria TUI Prototype..."
