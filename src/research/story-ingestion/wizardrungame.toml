@@ -1,0 +1,203 @@
+title = "Wizard Runner"
+
+summary = '''
+A wizard named Leory invites the player to a Challenge Tower of trials that test problem-solving, courage, creativity, and integrity. The tower is deliberate and inscrutable, and the true nature of the promised treasure remains uncertain.
+'''
+
+[player_persona]
+summary = "You are an invited challenger, drawn to the tower by Leory's summons and the promise of a prize."
+
+# Rich inventory items with descriptions and verbs
+[[player_persona.inventory]]
+name = "torch"
+summary = "A sturdy wooden handle with a bundle of kindling at the top, used to illuminate a room and provide some warmth."
+verbs = ["light", "burn", "illuminate"]
+
+[[player_persona.inventory]]
+name = "rope"
+summary = "A coil of strong hemp rope, worn but serviceable. Could be used for climbing or securing objects."
+verbs = ["tie", "climb", "secure", "lasso"]
+
+[[player_persona.inventory]]
+name = "waterskin"
+summary = "A canvas waterskin, currently full of cool water. Essential for long journeys."
+verbs = ["drink", "pour", "fill"]
+
+[[player_persona.attributes]]
+name = "STR"
+keywords = ["strength", "power", "physical", "combat", "lifting", "endurance"]
+verbs = ["attack", "strike", "bash", "shove", "lift", "break"]
+value = 6
+
+[[player_persona.attributes]]
+name = "DEX"
+keywords = ["dexterity", "agility", "stealth", "precision", "dodge", "reflexes"]
+verbs = ["dodge", "evade", "sneak", "hide", "pickpocket", "disable"]
+value = 6
+
+[[player_persona.attributes]]
+name = "INT"
+keywords = ["intelligence", "knowledge", "reasoning", "logic", "analysis", "learning"]
+verbs = ["study", "analyze", "decode", "solve", "deduce", "plan"]
+value = 6
+
+[[player_persona.attributes]]
+name = "WIS"
+keywords = ["wisdom", "perception", "insight", "intuition", "awareness", "judgment"]
+verbs = ["notice", "sense", "read", "track", "observe", "listen"]
+value = 6
+
+[[player_persona.attributes]]
+name = "CHA"
+keywords = ["charisma", "persuasion", "influence", "charm", "leadership", "social"]
+verbs = ["persuade", "charm", "intimidate", "lead", "command", "inspire"]
+value = 6
+
+[[player_persona.attributes]]
+name = "CON"
+keywords = ["constitution", "resilience", "stamina", "health", "fortitude", "toughness"]
+verbs = ["endure", "resist", "withstand", "hold", "push", "shrug"]
+value = 6
+
+[[acts]]
+title = "The Challenge Tower"
+summary = '''
+Leory presents the tower's first trials, and the player steps into a sequence of chambers shaped by a deliberate, unreadable logic.
+'''
+
+[[acts.scenes]]
+title = "Entrance Vestibule"
+summary = "A circular chamber of cold stone where Leory appears and offers the challenge."
+location = "Entrance Vestibule"
+characters_present = ["Leory"]
+
+narrative = '''
+Cold stone curves into a perfect circle. An ornate door waits at the far end, marked with elegant symbols that resist easy meaning. The air is still. Shadows gather, and Leory emerges as if from them.
+
+"You have been invited," he says, voice measured and cryptic. "The tower will ask what you are willing to face. The prize is promised. The truth is not."
+'''
+
+[[acts.scenes.options]]
+text = "Accept the challenge and approach the ornate door"
+transition = "First Trial"
+outcome = "You step toward the symbols. The door yields without sound."
+
+[[acts.scenes.options]]
+text = "Ask Leory what the prize truly is"
+skill_check = { stat = "CHA", difficulty = 4 }
+on_success = "Leory's gaze lingers. 'Names mislead. Take what you earn,' he says, and offers nothing more."
+on_fail = "Leory says nothing. The silence answers you more sharply than words."
+
+[[acts.scenes.options]]
+text = "Study the symbols for meaning"
+skill_check = { stat = "WIS", difficulty = 3 }
+on_success = "You notice a pattern in the lines, deliberate and repeating. It promises order but reveals no purpose."
+on_fail = "The symbols remain inscrutable. Their meaning refuses you."
+
+[acts.scenes.transitions]
+default = "First Trial"
+
+[[acts.scenes]]
+title = "First Trial"
+summary = "A chamber where the first test begins, designed to build confidence and establish the tower's intent."
+location = "First Trial Chamber"
+characters_present = []
+
+narrative = '''
+The chamber is wide and quiet, lit by a pale, source-less glow. A path of stone tiles crosses a shallow expanse of darkness. The air is cold and dry. Every detail feels chosen.
+'''
+
+[[acts.scenes.options]]
+text = "Cross the tiles with deliberate, measured steps"
+transition = "Observation Landing"
+outcome = "You move carefully, trusting rhythm over haste. The far side awaits."
+
+[[acts.scenes.options]]
+text = "Test each tile for stability before stepping"
+skill_check = { stat = "WIS", difficulty = 3 }
+transition = "Observation Landing"
+on_success = "You find the safe sequence and cross without incident."
+on_fail = "Your caution falters. A tile shifts, and you catch yourself before a full fall."
+
+[[acts.scenes.options]]
+text = "Leap the darkest gap"
+skill_check = { stat = "STR", difficulty = 4 }
+transition = "Observation Landing"
+on_success = "You clear the gap with a hard landing. The path holds."
+on_fail = "You come up short and scramble back to the last safe tile, heart pounding."
+
+[acts.scenes.transitions]
+default = "Observation Landing"
+
+[[acts.scenes]]
+title = "Observation Landing"
+summary = "A still landing where Leory observes without explaining."
+location = "Observation Landing"
+characters_present = ["Leory"]
+
+narrative = '''
+A narrow landing opens into silence. Leory stands at its edge, half in shadow. He studies you without judgment or praise.
+
+"You have begun," he says. "The tower will continue."
+'''
+
+[[acts.scenes.options]]
+text = "Ask if failure is allowed"
+transition = "Observation Landing"
+outcome = "Leory does not answer. The silence feels intentional."
+
+[[acts.scenes.options]]
+text = "Continue to the next chamber"
+transition = "Next Trial"
+outcome = "You step forward, and the tower answers with another door."
+
+[acts.scenes.transitions]
+default = "Next Trial"
+
+[[acts.locations]]
+title = "Entrance Vestibule"
+summary = "A circular chamber of cold stone with an ornate door marked by elegant, unreadable symbols."
+
+[[acts.locations]]
+title = "First Trial Chamber"
+summary = "A wide, quiet room lit by a pale glow, with a path of stone tiles over darkness."
+
+[[acts.locations]]
+title = "Observation Landing"
+summary = "A narrow landing of stone where Leory appears between trials."
+
+[[acts.characters]]
+title = "Leory"
+summary = "An ancient, cloaked wizard who speaks in riddles and offers the tower's trials."
+role = "Primary NPC and architect of the Challenge Tower"
+inventory = ["tower keystone", "paradox lantern", "vault of the unanswered", "sigil of the first gate"]
+
+[[acts.characters.attributes]]
+name = "STR"
+keywords = ["strength", "power", "force", "unyielding", "immovable"]
+value = 10
+
+[[acts.characters.attributes]]
+name = "DEX"
+keywords = ["speed", "precision", "unseen", "impossible", "perfect"]
+value = 10
+
+[[acts.characters.attributes]]
+name = "INT"
+keywords = ["omniscience", "calculus", "design", "pattern", "inevitable"]
+value = 10
+
+[[acts.characters.attributes]]
+name = "WIS"
+keywords = ["insight", "foresight", "clarity", "truth", "silence"]
+value = 10
+
+[[acts.characters.attributes]]
+name = "CHA"
+keywords = ["command", "gravitas", "awe", "authority", "mystery"]
+value = 10
+
+[[acts.characters.attributes]]
+name = "CON"
+keywords = ["endurance", "eternal", "unyielding", "ancient", "boundless"]
+value = 10
